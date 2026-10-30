@@ -5,7 +5,7 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 - [x] **T-0.1 Install tools** — Follow docs/SETUP.md. Acceptance: `node -v`(20+), `rustc --version`, `git --version`, `ollama -v` work.
   ⚠ 2026-10-30: node 20.20.2, rustc/cargo 1.99.1, git 2.54.0 OK. **`ollama` NOT installed** — install it + `ollama signin` before using opencode.json models.
 - [x] **T-0.2 Create project** — `npm create tauri-app@latest stock-tracker` (React, TypeScript, npm). Copy this kit's files into it.
-  Acceptance: `npm run tauri dev` opens a window. (⚠ window not yet seen — human runs `npm run tauri dev` once.)
+  Acceptance: `npm run tauri dev` opens a window. ✅ 2026-10-30: builds (1m06s), binary runs, webview connected to Vite :1420, React renders (render test passed).
 - [x] **T-0.3 Install libs** — `npm i drizzle-orm @neondatabase/serverless zod recharts xlsx jspdf react-router-dom`
   `npm i -D drizzle-kit vitest @testing-library/react @testing-library/jest-dom jsdom tailwindcss @tailwindcss/vite`
   Add scripts: `"test":"vitest run --reporter=dot"`, `"typecheck":"tsc --noEmit"`. Acceptance: `npm test` runs (0 tests ok).

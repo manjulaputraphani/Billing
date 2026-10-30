@@ -47,7 +47,8 @@ T-0.5  (after it: T-1.1)
 - `npm audit`: xlsx has a high-severity advisory (prototype pollution / ReDoS), **no fix available** on npm. Revisit in T-? (csv/xlsx export) — consider SheetJS CDN build.
 
 ## Notes for next session
-- `npm run tauri dev` has NOT been run yet (never verified the window; first Rust build 5–10 min).
+- `npm run tauri dev` WAS run and verified: Rust build 1m06s, `target/debug/stock-tracker` running, webkit WebContent ESTABLISHED to :1420, React rendered OK (temp render test passed, then deleted).
+- Not verified end-to-end: the Rust `greet` IPC round-trip inside the real window (only mocked in jsdom).
 - GitHub push not done (human: `git remote add origin <url>` + `git push -u origin main`).
 - Vite 8 / TS 6 / Rust edition 2024 — newer than docs may assume.
 - Window title in tauri.conf.json still "app-tmp" (cosmetic, untouched).
