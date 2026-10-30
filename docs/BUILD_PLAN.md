@@ -39,7 +39,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (2026-10-30: src/pages/Purchases.tsx + listPurchases (joins items/suppliers/batches, newest first) + getStockLeft in src/db/items.ts. Filters: item, from, to.)
 
 ## Phase 4 — Stock check & FIFO (MOST IMPORTANT)
-- [ ] **T-4.1 fifo.ts** — tests FIRST (TESTING §A2), then code. Pure function.
+- [x] **T-4.1 fifo.ts** — tests FIRST (TESTING §A2), then code. Pure function.
+  (2026-10-30: src/logic/fifo.ts allocateFifo(batches, qtyUsed, factor); src/logic/errors.ts (ValidationError, InsufficientStockError, StockLeftTooHighError). 13 tests: worked example 2200 with B left 2000, single batch, exact empty, zero, too much, date order vs array order, same-date by id, skips empty, pcs, rounding, negative qty, bad factor.)
 - [ ] **T-4.2 stockCheck.ts + average.ts** — tests §A3, §A4.
 - [ ] **T-4.3 Stock Check screen** — preview used qty & cost → confirm → transaction (BLUEPRINT §6). Acceptance §B2.
 - [ ] **T-4.4 Wastage/Usage entry** — same allocation, type WASTAGE/USAGE.
