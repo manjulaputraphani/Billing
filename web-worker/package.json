@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
-    "@noble/hashes": "^2.4.0"
+    "@noble/hashes": "^2.4.0",
+    "drizzle-orm": "^0.45.4",
+    "zod": "^4.6.7"
   }
 }

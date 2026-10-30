@@ -6,6 +6,12 @@
 import { neon } from "@neondatabase/serverless";
 import { argon2id } from "@noble/hashes/argon2.js";
 import { normalizePhone } from "../../src/logic/auth";
+import { getDb } from "../../src/db/client";
+import { listItems } from "../../src/db/items";
+import { getSaleBill, listSaleBills } from "../../src/db/billing";
+import { listExpenses } from "../../src/db/expenses";
+import { listActivity } from "../../src/db/activity";
+import { getShopDetails } from "../../src/db/settings";
 
 export interface Env {
   DATABASE_URL?: string;
@@ -220,6 +226,48 @@ export default {
       const session = await readSession(request, env.SESSION_SECRET);
       if (!session) return json({ error: "Not signed in" }, { status: 401 });
       return json({ user: { id: session.uid, name: session.name, role: session.role } });
+    }
+
+    // ---- W3 read API (session required) ----
+    const session = await readSession(request, env.SESSION_SECRET);
+    if (!session) return json({ error: "Not signed in" }, { status: 401 });
+
+    const db = getDb(env.DATABASE_URL as string);
+    try {
+      if (url.pathname === "/api/items" && request.method === "GET") {
+        return json({ items: await listItems(db) });
+      }
+
+      if (url.pathname === "/api/bills" && request.method === "GET") {
+        const limit = Math.min(Number(url.searchParams.get("limit")) || 50, 200);
+        return json({ bills: await listSaleBills(db, limit) });
+      }
+
+      if (url.pathname.startsWith("/api/bills/") && request.method === "GET") {
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid bill id" }, { status: 400 });
+        const bill = await getSaleBill(db, id);
+        if (!bill) return json({ error: "Bill not found" }, { status: 404 });
+        return json({ bill });
+      }
+
+      if (url.pathname === "/api/expenses" && request.method === "GET") {
+        const month = url.searchParams.get("month") ?? undefined;
+        const category = url.searchParams.get("category") ?? undefined;
+        return json({ expenses: await listExpenses(db, { month, category }) });
+      }
+
+      if (url.pathname === "/api/activity" && request.method === "GET") {
+        const limit = Math.min(Number(url.searchParams.get("limit")) || 25, 200);
+        return json({ activity: await listActivity(db, limit) });
+      }
+
+      if (url.pathname === "/api/shop" && request.method === "GET") {
+        return json({ shop: await getShopDetails(db) });
+      }
+    } catch (err) {
+      console.error("api error:", err);
+      return json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
 
     return json({ error: "Not found" }, { status: 404 });

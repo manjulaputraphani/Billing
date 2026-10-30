@@ -5,7 +5,7 @@ Tool: OpenCode
 
 ## Current task
 **Login workstream approved** (docs/PLAN_LOGIN.md) — NOT built yet. PIN login still works for now.
-Next: **W3 data API** (port db modules behind /api, actor from session). W1+W2 DONE and verified.
+Next: **W3b write API** (audit actor per request) then **W4 read-only web UI**. W1–W3(read) DONE.
 
 ## Approved decisions (2026-10-31)
 - Login: type **phone + password** (min 6 chars, argon2id hash in DB).
@@ -16,7 +16,7 @@ Next: **W3 data API** (port db modules behind /api, actor from session). W1+W2 D
 ## Status
 - [x] Billing / Bills / GST invoice / email / company settings migrated
 - [x] `sdhhe_fy2025` backed up + dropped; company details now in `settings`
-- [x] L1–L6 login · [x] W1 worker · [x] W2 auth · [ ] W3–W6 web edition
+- [x] L1–L6 login · [x] W1 worker · [x] W2 auth · [x] W3 read API · [ ] W3b writes · W4–W6
 - [ ] Profit report + dashboard cards · charts · V2-P11 credit · Funds
 
 ## Done recently
@@ -29,7 +29,7 @@ Next: **W3 data API** (port db modules behind /api, actor from session). W1+W2 D
 ## Next exact step
 1. L1: add `app_users` + `activity_log.user_id` to schema.ts, additive SQL to the current DB.
 2. L2: Rust `hash_password`/`verify_password` (argon2id; keep `hash_pin`/`verify_pin` until L4 retires them).
-3. W3 (next): /api items|purchases|stock|sales|expenses|settings|users|activity; reuse src/db modules in the Worker (hashing abstracted); actor from the session cookie; verify each route with curl.
+3. W3b (next): POST/PUT routes; thread the session actor into logActivity per request (no module-global actor in the Worker); verify each write + audit row with curl. Then W4 web UI.
 4. e2e login tests stay skipped until DATABASE_URL_TEST exists (login reads app_users).
 
 ## Notes / blockers
