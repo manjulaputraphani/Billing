@@ -5,6 +5,19 @@ import { activityLog } from "./schema";
 /** Any drizzle handle, inside or outside a transaction. */
 type AnyDb = Db | TxDb;
 
+type AuditActor = { userId: number | null; name: string };
+
+let currentActor: AuditActor = { userId: null, name: "local" };
+
+/** Set on login; cleared on lock/logout (L5). Every audit row uses this actor. */
+export function setAuditActor(actor: AuditActor | null): void {
+  currentActor = actor ?? { userId: null, name: "local" };
+}
+
+export function getAuditActor(): AuditActor {
+  return currentActor;
+}
+
 export type ActivityEntry = {
   event: string;
   summary: string;
@@ -22,6 +35,8 @@ export async function logActivity(db: AnyDb, entry: ActivityEntry): Promise<void
     summary: entry.summary,
     entity: entry.entity ?? null,
     entityId: entry.entityId ?? null,
+    userId: currentActor.userId,
+    actor: currentActor.name,
   });
 }
 
