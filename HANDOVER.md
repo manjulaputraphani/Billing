@@ -1,61 +1,50 @@
 # HANDOVER (keep under 60 lines — overwrite each time, history is in git)
 
-Last updated: 2026-10-30 23:21 by DeepSeek V4.1 Flash (OpenCode)
+Last updated: 2026-10-30 23:26 by DeepSeek V4.1 Flash (OpenCode)
 Tool: OpenCode
 
 ## Current task
-Phase 11 (audit trail, expense vendor, bill attachments) DONE. Only T-10.1 real-DB verification is
-left: no purchase/sale has been entered yet, so `sales`, `batches`, `stock_movements` are still 0.
+V2 program received → docs/PLAN_V2.md (Phases 10–17). Nothing of V2 is built yet.
+Next: **V2-P10 Sales + Profit**. Rule: ONE phase per session.
 
 ## Status
-- [x] Phase 11  ·  [x] UI polish  ·  [x] Security settings  ·  [ ] T-10.1 real-DB verified
+- [x] Interim v1 work (see below)  ·  [ ] V2-P10 … V2-P17 (none started)
 
-## Done this session
-- Keychain bug FIXED: DATABASE_URL/PIN_HASH re-created allow-all (`security ... -A`), verified silent
-  reads from another process. Cause: ad-hoc dev binaries change code signature on every Rust rebuild,
-  macOS re-prompted. Trade-off + revert steps in DECISIONS.md (2026-10-30 entries).
-- Neon verified (same DB the app uses): item "ROBUSTA P BERRY" id=1 saved.
-- T-10.1 sales: `sales` table, 'SALE' movement type, logic/sales.ts planSale (FIFO, revenue rounding,
-  oversell reject), db/sales.ts saveSale + listSales, pages/Sales.tsx, route /sales + nav.
-- T-10.2 UI polish: stone palette, dark grouped sidebar, .card/.btn/.input classes, Setup/Lock redesigned.
-- T-10.3 Security settings: keychain status (no values), Lock now, Change PIN (current PIN checked,
-  4-6 digits), Remove AI key.
-- Phase 11: `activity_log` (at, actor, event, summary, entity, entity_id) records login, lock, reset and
-  every create/update/delete (item, purchase, stock entry, sale, expense). db/activity.ts logActivity
-  joins the data transaction when there is one and never blocks the action. Settings "Recent activity".
-  `expenses.paid_to` ("Paid to (vendor)") in form + table. `expense_bills` stores the bill/invoice
-  (base64, max 4 MB, image or PDF) with "Save bill" download. All migrations additive, applied to Neon.
+## Done this session (2026-10-30)
+- Keychain bug FIXED: DATABASE_URL/PIN_HASH re-created allow-all (`security ... -A`); cause was ad-hoc
+  dev binaries changing signature on every Rust rebuild. Trade-off/revert in DECISIONS.md.
+- Interim sales (SUPERSEDED by V2-P10): logic/sales.ts planSale (FIFO, revenue, oversell), db/sales.ts,
+  Sales page, `/sales` route — the interim `sales` table is EMPTY.
+- UI polish: stone palette, dark grouped sidebar, `.card/.btn/.input` classes, Setup/Lock redesigned.
+- Security settings: keychain status (no values), Lock now, Change PIN, Remove AI key.
+- Audit: `activity_log` (login/lock/reset + item/purchase/stock/sale/expense changes, same transaction
+  when one exists). `expenses.paid_to` vendor + `expense_bills` attachments (base64, 4 MB, image/PDF).
+- V2 spec stored in docs/PLAN_V2.md; checklist + reconciliation in docs/BUILD_PLAN.md.
 
 ## In progress (exact point where work stopped)
 - File: —
 - What was half-done: nothing.
 
 ## Next task
-Finish T-10.1 verification; then T-6.2/T-6.3 (Reports page, Excel/PDF/backup) are still missing.
+**V2-P10 — Sales + Profit** (read docs/PLAN_V2.md §PHASE 10).
 
 ## Next exact step (one action the next session does first)
-- In the app: Add Purchase for ROBUSTA P BERRY → Sales → sell some qty at a price, then add an expense
-  with vendor + bill; count rows (sales, batches, stock_movements, activity_log, expense_bills) with
-  node --env-file=.env + @neondatabase/serverless (read-only, never print the URL); tick T-10.1.
+1. Create a Neon DEV branch, set its URL as `DATABASE_URL_TEST` in `.env` (gitignored) — required before
+   any V2 DB work; this also un-skips `db/*.int.test.ts`.
+2. V2-P10: write `src/logic/profit.test.ts` first (FIFO example: 1kg@₹10 + 3kg@₹12, sell 2kg @₹15 →
+   revenue 3000, cost 2200, profit 800; cancel restores 1kg + 3kg), then schema
+   (customers, new `sales` bill header, `sale_items`), generate + push migration to the DEV branch.
+3. Replace the empty interim `sales` table in that migration; keep `activity_log` until V2-P14.
+4. Every new screen: data-testid + an e2e test (per V2 rules).
 
-## Files touched this session
-- src/App.tsx, src/App.css, src/components/Layout.tsx
-- src/db/{schema,items,purchases,stock,sales,expenses,activity,sales}.ts
-- src/logic/sales.ts(+test), src/pages/{Sales,Settings,Expenses,Lock,Setup}.tsx (+tests)
-- docs/{BUILD_PLAN,DECISIONS}.md
+## Files / tests
+- Last commits: 57fe68f (audit+bills), 8095f4f (security), af2e79b (UI), 3816cb3 (interim sales)
+- `npm test` → 166 passed · `npx tsc --noEmit` → clean · e2e 13 passed / 1 skipped · cargo not re-run
 
-## Tests
-- `npm test` → 166 passed / 0 failed (28 files)
-- `npx tsc --noEmit` → clean
-- `npm run test:e2e` → 13 passed, 1 skipped (needs DATABASE_URL_TEST)
-- `cargo check` → not re-run (no Rust changes)
-
-## Blockers / errors
-- None.
-
-## Notes for next session
-- Dev Mac keychain items are allow-all now — do NOT "fix" by re-adding ACLs, it would re-break dev.
+## Blockers / notes
+- ⚠ No dev branch / `DATABASE_URL_TEST` yet → V2 DB work cannot start until the user creates it.
 - App points at the shared production DB; any test rows are REAL.
-- No DATABASE_URL_TEST → db/*.int.test.ts still skipped.
-- `ollama` still not installed — Test AI / Chat need it.
-- activity_log actor is always 'local' (single-user desktop app).
+- Keychain items are allow-all on this Mac — do NOT re-add ACLs (would re-break dev).
+- `ollama` is not installed — AI phases (P13 photo OCR, P17 bill reader) need it.
+- Spec conflicts to respect: interim sales → replaced by V2-P10; `activity_log` → base for V2-P14
+  `audit_log`; interim audit already records login/lock, keep logging until P14 migrates it.

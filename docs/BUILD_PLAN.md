@@ -138,3 +138,22 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 - [x] **T-11.3 Bill attachment** — `expense_bills` table (file stored base64 in Postgres, 4 MB cap,
   image/* or PDF). Attach/replace in the expense form; "Save bill" downloads it.
   (2026-10-30: migration applied additively; full suite 166 green, tsc clean.)
+
+## V2 PLAN — full spec in docs/PLAN_V2.md (Phases 10–17, added 2026-10-30)
+> ONE phase per session. Every DB change: `drizzle-kit generate` + push to a DEV branch first.
+> PREREQUISITE: create a Neon dev branch + `DATABASE_URL_TEST` before any V2 DB work.
+- [ ] **V2-P10** Sales + Profit (customers, bill no, sale_items, cancel, profit report, dashboard cards)
+- [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
+- [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
+- [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO
+- [ ] **V2-P14** Barcode + reorder list + `audit_log` (before/after JSON)
+- [ ] **V2-P15** Auto-update + dark mode + languages (en/te/hi/kn)
+- [ ] **V2-P16** Users/roles + locations/transfers + accountant Excel export + daily summary
+- [ ] **V2-P17** Offline outbox (SQLite) + AI bill reader
+
+Reconciliation with the interim work of 2026-10-30:
+- The interim "Phase 10 sales" (single-item `sales` table) is SUPERSEDED by V2-P10 (bill header +
+  `sale_items`). The interim `sales` table is EMPTY, so it can be replaced in the V2-P10 migration.
+- The interim `activity_log` (login/lock/create-update-delete summaries) is the base for V2-P14
+  `audit_log` (adds user_name, before_json/after_json); migrate it in V2-P14, keep using it meanwhile.
+- The current app still points at the single production DB; all V2 migrations must go to a dev branch first.
