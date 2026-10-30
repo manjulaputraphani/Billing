@@ -9,5 +9,9 @@
   },
   "devDependencies": {
     "wrangler": "^4"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "@noble/hashes": "^2.4.0"
   }
 }

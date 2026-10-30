@@ -199,7 +199,7 @@ Reconciliation with the interim work of 2026-10-30:
 
 ## WEB EDITION — Cloudflare (see docs/PLAN_WEB.md, proposed 2026-10-31)
 - [x] **W1** Worker scaffold + /api/health (verified locally with wrangler dev: 200 JSON). Node 22 needed for wrangler 4/deploy; wrangler 3 used for local dev.
-- [ ] **W2** Auth API (phone+password, argon2 verify via hash-wasm, HttpOnly session, rate limit)
+- [x] **W2** Auth API — login/logout/me, phone normalization, argon2id verify via **@noble/hashes** (hash-wasm WASM is blocked on Workers), signed HttpOnly cookie, 5-attempt rate limit. Verified locally: 200/401/404/429 paths + logout.
 - [ ] **W3** API port of the db modules (actor from session)
 - [ ] **W4** Web UI (Pages) + lib/platform.ts (fetch API, print, opener)
 - [ ] **W5** Email via Resend API (HTML invoice)

@@ -1,11 +1,193 @@
 /**
  * SREE DURGA HARIHARA ENTERPRISES — web API (Cloudflare Worker)
- * W1: scaffold + health check. The Neon URL is a Worker secret, never sent to the browser.
+ * W1: health. W2: phone + password auth with HttpOnly signed sessions.
+ * Secrets (wrangler secret / .dev.vars): DATABASE_URL, SESSION_SECRET.
  */
+import { neon } from "@neondatabase/serverless";
+import { argon2id } from "@noble/hashes/argon2.js";
+import { normalizePhone } from "../../src/logic/auth";
 
 export interface Env {
   DATABASE_URL?: string;
   SESSION_SECRET?: string;
+}
+
+const COOKIE = "sdhhe_session";
+const SESSION_HOURS = 12;
+const MAX_ATTEMPTS = 5;
+const ATTEMPT_WINDOW_MS = 15 * 60_000;
+
+type Session = { uid: number; name: string; role: "owner" | "staff"; exp: number };
+
+const attempts = new Map<string, { count: number; resetAt: number }>();
+
+function json(data: unknown, init: ResponseInit = {}): Response {
+  return Response.json(data, init);
+}
+
+function b64url(bytes: Uint8Array): string {
+  let text = "";
+  for (const byte of bytes) text += String.fromCharCode(byte);
+  return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function b64urlDecode(value: string): Uint8Array {
+  const pad = value.length % 4 ? "=".repeat(4 - (value.length % 4)) : "";
+  const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/") + pad);
+  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+}
+
+async function hmac(secret: string, data: string): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data)));
+}
+
+async function createToken(session: Session, secret: string): Promise<string> {
+  const payload = b64url(new TextEncoder().encode(JSON.stringify(session)));
+  const signature = b64url(await hmac(secret, payload));
+  return `${payload}.${signature}`;
+}
+
+async function readSession(request: Request, secret: string): Promise<Session | null> {
+  const cookie = request.headers.get("Cookie") ?? "";
+  const part = cookie.split(/;\s*/).find((entry) => entry.startsWith(`${COOKIE}=`));
+  if (!part) return null;
+  const [payload, signature] = part.slice(COOKIE.length + 1).split(".");
+  if (!payload || !signature) return null;
+  if (signature !== b64url(await hmac(secret, payload))) return null;
+  try {
+    const session = JSON.parse(new TextDecoder().decode(b64urlDecode(payload))) as Session;
+    return session.exp > Date.now() ? session : null;
+  } catch {
+    return null;
+  }
+}
+
+function b64decode(value: string): Uint8Array {
+  const padded = value + "=".repeat((4 - (value.length % 4)) % 4);
+  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+}
+
+function b64encode(bytes: Uint8Array): string {
+  let text = "";
+  for (const byte of bytes) text += String.fromCharCode(byte);
+  return btoa(text).replace(/=+$/, "");
+}
+
+/** Verify a PHC argon2id hash ($argon2id$v=19$m=…,t=…,p=…$salt$digest). */
+function verifyArgon2(password: string, hash: string): boolean {
+  const parts = hash.split("$");
+  if (parts.length !== 6 || parts[1] !== "argon2id") return false;
+  const params = new Map(
+    parts[3].split(",").map((kv) => kv.split("=") as [string, string]),
+  );
+  const m = Number(params.get("m"));
+  const t = Number(params.get("t"));
+  const p = Number(params.get("p"));
+  if (!Number.isFinite(m) || !Number.isFinite(t) || !Number.isFinite(p)) return false;
+  const salt = b64decode(parts[4]);
+  const expected = b64encode(b64decode(parts[5]));
+  const digest = argon2id(new TextEncoder().encode(password), salt, {
+    m,
+    t,
+    p,
+    dkLen: b64decode(parts[5]).length,
+  });
+  const actual = b64encode(digest);
+  if (actual.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < actual.length; i += 1) {
+    diff |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function sessionCookie(token: string, url: URL): string {
+  const secure = url.protocol === "https:" ? "; Secure" : "";
+  return `${COOKIE}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}${secure}`;
+}
+
+function clearCookie(): string {
+  return `${COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`;
+}
+
+function retryAfterMs(phone: string): number {
+  const entry = attempts.get(phone);
+  if (!entry) return 0;
+  if (Date.now() > entry.resetAt) {
+    attempts.delete(phone);
+    return 0;
+  }
+  return entry.count >= MAX_ATTEMPTS ? entry.resetAt - Date.now() : 0;
+}
+
+function recordFailure(phone: string): void {
+  const now = Date.now();
+  const entry = attempts.get(phone);
+  if (!entry || now > entry.resetAt) {
+    attempts.set(phone, { count: 1, resetAt: now + ATTEMPT_WINDOW_MS });
+  } else {
+    entry.count += 1;
+  }
+}
+
+async function login(request: Request, env: Env, url: URL): Promise<Response> {
+  const body = (await request.json().catch(() => null)) as { phone?: string; password?: string } | null;
+  if (!body?.phone || !body?.password) {
+    return json({ error: "Phone and password are required" }, { status: 400 });
+  }
+  const phone = normalizePhone(body.phone);
+  if (!phone.valid) return json({ error: phone.reason }, { status: 400 });
+
+  const wait = retryAfterMs(phone.phone);
+  if (wait > 0) {
+    return json({ error: `Too many attempts. Try again in ${Math.ceil(wait / 1000)}s` }, { status: 429 });
+  }
+
+  const sql = neon(env.DATABASE_URL as string);
+  const rows = (await sql`
+    select id, name, phone, password_hash, role, active
+    from app_users where phone = ${phone.phone} limit 1
+  `) as { id: number; name: string; password_hash: string; role: string; active: boolean }[];
+
+  const user = rows[0];
+  if (!user) {
+    recordFailure(phone.phone);
+    return json({ error: "No account found for this number" }, { status: 404 });
+  }
+  if (!user.active) {
+    return json({ error: "This account is disabled — ask the owner" }, { status: 403 });
+  }
+
+  let valid = false;
+  try {
+    valid = verifyArgon2(body.password, user.password_hash);
+  } catch (err) {
+    console.error("argon2 verify failed:", err);
+  }
+  if (!valid) {
+    recordFailure(phone.phone);
+    return json({ error: "Wrong password" }, { status: 401 });
+  }
+
+  attempts.delete(phone.phone);
+  const session: Session = {
+    uid: Number(user.id),
+    name: String(user.name),
+    role: user.role === "owner" ? "owner" : "staff",
+    exp: Date.now() + SESSION_HOURS * 3600_000,
+  };
+  const token = await createToken(session, env.SESSION_SECRET as string);
+  return json(
+    { user: { id: session.uid, name: session.name, role: session.role } },
+    { headers: { "Set-Cookie": sessionCookie(token, url) } },
+  );
 }
 
 export default {
@@ -13,7 +195,7 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/health" && request.method === "GET") {
-      return Response.json({
+      return json({
         ok: true,
         service: "sdhhe-api",
         databaseConfigured: Boolean(env.DATABASE_URL),
@@ -22,6 +204,24 @@ export default {
       });
     }
 
-    return Response.json({ error: "Not found" }, { status: 404 });
+    if (!env.DATABASE_URL || !env.SESSION_SECRET) {
+      return json({ error: "Server not configured" }, { status: 500 });
+    }
+
+    if (url.pathname === "/api/auth/login" && request.method === "POST") {
+      return login(request, env, url);
+    }
+
+    if (url.pathname === "/api/auth/logout" && request.method === "POST") {
+      return json({ ok: true }, { headers: { "Set-Cookie": clearCookie() } });
+    }
+
+    if (url.pathname === "/api/auth/me" && request.method === "GET") {
+      const session = await readSession(request, env.SESSION_SECRET);
+      if (!session) return json({ error: "Not signed in" }, { status: 401 });
+      return json({ user: { id: session.uid, name: session.name, role: session.role } });
+    }
+
+    return json({ error: "Not found" }, { status: 404 });
   },
 };
