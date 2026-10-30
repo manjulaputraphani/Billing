@@ -51,7 +51,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (2026-10-30: `updatePurchase(url,id,input)` / `deletePurchase(url,id)` in src/db/purchases.ts — ONE transaction: change/delete purchase + batch + its PURCHASE movement, then `replayAndWriteBack` (load all batches/movements of the item, run replayItem, write back qty_remaining + movement costs, rebuild movement_batch_links). Purchases page gained Edit modal + Delete confirm; a ReplayConflictError rolls back and shows the conflicting date. §B3 tests in stock.int.test.ts (price ₹10→₹11 → 2300; delete first purchase → 1200) — SKIPPED until DATABASE_URL_TEST is set.)
 
 ## Phase 5 — Expenses & Dashboard
-- [ ] **T-5.1 Expenses CRUD** — src/pages/Expenses.tsx.
+- [x] **T-5.1 Expenses CRUD** — src/pages/Expenses.tsx.
+  (2026-10-30: src/db/expenses.ts listExpenses(month, category) + create/update/delete + listExpenseCategories + monthRange; zod category required, amountPaise int > 0, date required. Page: month picker, category filter, table (date/category/amount/payment/note), month total footer, add/edit modal with category datalist (presets + custom), delete confirm. 12 tests.)
 - [ ] **T-5.2 Dashboard** — month spend, stock value, low-stock list, last 5 purchases.
 
 ## Phase 6 — Reports & Backup

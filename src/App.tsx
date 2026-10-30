@@ -6,6 +6,7 @@ import { DbProvider } from "./lib/db-context";
 import { getSecret, SECRET_KEYS } from "./lib/secrets";
 import AddPurchase from "./pages/AddPurchase";
 import ComingSoon from "./pages/ComingSoon";
+import Expenses from "./pages/Expenses";
 import Home from "./pages/Home";
 import Items from "./pages/Items";
 import Lock from "./pages/Lock";
@@ -64,7 +65,7 @@ export default function App() {
             <Route path="purchases" element={<Purchases />} />
             <Route path="purchases/new" element={<AddPurchase />} />
             <Route path="stock-check" element={<StockCheck />} />
-            <Route path="expenses" element={<ComingSoon title="Expenses" />} />
+            <Route path="expenses" element={<Expenses />} />
             <Route path="reports" element={<ComingSoon title="Reports" />} />
             <Route
               path="settings"
