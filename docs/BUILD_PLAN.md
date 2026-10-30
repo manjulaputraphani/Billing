@@ -196,3 +196,11 @@ Reconciliation with the interim work of 2026-10-30:
 - [x] **L4** phone+password login, first-run owner setup, lock/logout, retire PIN (2026-10-31: Lock rewritten; App phases setup→login→home; audit actor set on login; PIN_HASH deleted after first member login; Setup is connection-only; App/Lock/Setup tests rewritten — 208 green)
 - [~] **L5** audit attribution — groundwork DONE: activity_log.user_id column + `setAuditActor`/`getAuditActor`; every logActivity row now uses the session actor when set. Done: setAuditActor on login / cleared on lock — every write is now attributed. Pending: user filter in Settings.
 - [x] **L6** Settings → Users (add / reset password / deactivate, Owner only) — 2026-10-31: members card (list, add, reset, deactivate/enable), role-aware (owner only), 3 new tests. Login stream complete.
+
+## WEB EDITION — Cloudflare (see docs/PLAN_WEB.md, proposed 2026-10-31)
+- [ ] **W1** Worker scaffold + /api/health + DATABASE_URL secret (wrangler dev)
+- [ ] **W2** Auth API (phone+password, argon2 verify via hash-wasm, HttpOnly session, rate limit)
+- [ ] **W3** API port of the db modules (actor from session)
+- [ ] **W4** Web UI (Pages) + lib/platform.ts (fetch API, print, opener)
+- [ ] **W5** Email via Resend API (HTML invoice)
+- [ ] **W6** Hardening + Playwright e2e against Pages/Worker
