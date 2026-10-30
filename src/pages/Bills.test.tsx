@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import Bills from "./Bills";
 import { DbProvider } from "../lib/db-context";
 import { cancelSaleBill, getSaleBill, listSaleBills, type SaleBillRow } from "../db/billing";
+import { sendEmail } from "../lib/email";
 
 vi.mock("../db/client", () => ({
   getDb: vi.fn(() => ({})),
@@ -19,6 +20,7 @@ vi.mock("../db/settings", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../db/settings")>();
   return {
     ...actual,
+    getEmailSettings: vi.fn(async () => ({ fromEmail: "shop@example.com", fromName: "SDHHE", host: "smtp.gmail.com", port: "465" })),
     getShopDetails: vi.fn(async () => ({
       name: "SDHHE",
       address: "",
@@ -32,6 +34,15 @@ vi.mock("../db/settings", async (importOriginal) => {
     })),
   };
 });
+vi.mock("../lib/email", () => ({
+  sendEmail: vi.fn(async () => {}),
+  billEmailSubject: (billNo: string, shopName: string) => `Invoice ${billNo} — ${shopName}`,
+}));
+vi.mock("../db/activity", () => ({ logActivity: vi.fn(async () => {}) }));
+vi.mock("../lib/secrets", () => ({
+  getSecret: vi.fn(async () => "app-password"),
+  SECRET_KEYS: { SMTP_PASSWORD: "SMTP_PASSWORD" },
+}));
 vi.mock("../lib/printBill", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/printBill")>();
   return { ...actual, printBill: vi.fn() };
@@ -70,6 +81,7 @@ const DETAIL = {
   customerPhone: null,
   customerAddress: null,
   customerGstin: null,
+      customerEmail: null,
   paymentMode: "Cash",
   subtotalPaise: 7500,
   discountPaise: 0,
@@ -146,6 +158,28 @@ describe("Bills list", () => {
     expect(cancelSaleBill).toHaveBeenCalledWith(URL, 1);
     expect(await screen.findByText(/SD-2026-000001 cancelled — stock restored/)).toBeInTheDocument();
     expect(listSaleBills).toHaveBeenCalledTimes(2);
+  });
+
+  it("emails the bill to the customer email", async () => {
+    vi.mocked(getSaleBill).mockResolvedValue({ ...DETAIL, customerEmail: "buyer@example.com" });
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByText("SD-2026-000001");
+    const [viewButton] = screen.getAllByRole("button", { name: "View" });
+    await user.click(viewButton);
+    await screen.findByTestId("bills-detail");
+
+    await user.click(screen.getByTestId("bills-email"));
+
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "buyer@example.com",
+        subject: "Invoice SD-2026-000001 — SDHHE",
+      }),
+    );
+    const call = vi.mocked(sendEmail).mock.calls[0][0];
+    expect(call.html).toContain("ROBUSTA P BERRY");
+    expect(await screen.findByText(/Emailed to buyer@example.com/)).toBeInTheDocument();
   });
 
   it("does not offer cancel for an already cancelled bill", async () => {

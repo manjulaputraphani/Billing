@@ -6,7 +6,10 @@ import {
   type SaleBillDetail,
   type SaleBillRow,
 } from "../db/billing";
-import { getShopDetails, type ShopDetails } from "../db/settings";
+import { getEmailSettings, getShopDetails, type ShopDetails } from "../db/settings";
+import { logActivity } from "../db/activity";
+import { getSecret, SECRET_KEYS } from "../lib/secrets";
+import { billEmailSubject, sendEmail } from "../lib/email";
 import { useDb, useDbUrl } from "../lib/db-context";
 import { printBill, buildBillHtml } from "../lib/printBill";
 import { formatRupees } from "../logic/units";
@@ -25,6 +28,8 @@ export default function Bills() {
   const [success, setSuccess] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [bills, shopRow] = await Promise.all([listSaleBills(db, 100), getShopDetails(db)]);
@@ -59,6 +64,47 @@ export default function Bills() {
       setDetail(await getSaleBill(db, row.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function emailBill() {
+    if (!detail || !shop) return;
+    setError(null);
+    setEmailStatus(null);
+    if (!detail.customerEmail) {
+      setError("Add the customer's email in GST Billing first (it is saved with the customer)");
+      return;
+    }
+    setEmailBusy(true);
+    try {
+      const cfg = await getEmailSettings(db);
+      const password = await getSecret(SECRET_KEYS.SMTP_PASSWORD);
+      if (!cfg.fromEmail.trim() || !password) {
+        setError("Set up email in Settings → Email (sender address + Gmail app password)");
+        return;
+      }
+      await sendEmail({
+        host: cfg.host,
+        port: Number(cfg.port) || 465,
+        username: cfg.fromEmail,
+        password,
+        fromEmail: cfg.fromEmail,
+        fromName: cfg.fromName,
+        to: detail.customerEmail,
+        subject: billEmailSubject(detail.billNo, shop.name),
+        html: buildBillHtml(detail, shop),
+      });
+      await logActivity(db, {
+        event: "bill.email",
+        summary: `Bill ${detail.billNo} emailed to ${detail.customerEmail}`,
+        entity: "sale",
+        entityId: detail.id,
+      });
+      setEmailStatus(`Emailed to ${detail.customerEmail}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setEmailBusy(false);
     }
   }
 
@@ -224,6 +270,15 @@ export default function Bills() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
+              className="btn-ghost"
+              data-testid="bills-email"
+              onClick={() => void emailBill()}
+              disabled={emailBusy}
+            >
+              {emailBusy ? "Sending…" : "Email bill"}
+            </button>
+            <button
+              type="button"
               className="btn-primary"
               data-testid="bills-print"
               onClick={() => shop && printBill(detail, shop)}
@@ -243,6 +298,7 @@ export default function Bills() {
                 Cancel bill
               </button>
             )}
+            {emailStatus && <span className="self-center text-sm text-emerald-700">{emailStatus}</span>}
           </div>
         </section>
       )}

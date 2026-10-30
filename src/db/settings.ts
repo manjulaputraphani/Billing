@@ -59,8 +59,7 @@ export async function getShopDetails(db: Db): Promise<ShopDetails> {
   };
 }
 
-export async function saveShopDetails(db: Db, shop: ShopDetails): Promise<void> {
-  const pairs: [string, string][] = [
+export async function saveShopDetails(db: Db, shop: ShopDetails): Promise<void> {  const pairs: [string, string][] = [
     [SHOP_KEYS[0], shop.name.trim()],
     [SHOP_KEYS[1], shop.address.trim()],
     [SHOP_KEYS[2], shop.phone.trim()],
@@ -119,5 +118,51 @@ export async function saveAiConfig(db: Db, config: AiConfig): Promise<void> {
       .insert(settings)
       .values(row)
       .onConflictDoUpdate({ target: settings.key, set: { value: row.value } });
+  }
+}
+
+export type EmailSettings = {
+  fromEmail: string;
+  fromName: string;
+  host: string;
+  port: string;
+};
+
+export const DEFAULT_EMAIL: EmailSettings = {
+  fromEmail: "",
+  fromName: "",
+  host: "smtp.gmail.com",
+  port: "465",
+};
+
+const EMAIL_KEYS = ["smtp_from_email", "smtp_from_name", "smtp_host", "smtp_port"] as const;
+
+/** SMTP sender settings (the app password lives in the Keychain, not here). */
+export async function getEmailSettings(db: Db): Promise<EmailSettings> {
+  const rows = await db
+    .select({ key: settings.key, value: settings.value })
+    .from(settings)
+    .where(inArray(settings.key, [...EMAIL_KEYS]));
+  const map = new Map(rows.map((row) => [row.key, row.value]));
+  return {
+    fromEmail: map.get("smtp_from_email") ?? DEFAULT_EMAIL.fromEmail,
+    fromName: map.get("smtp_from_name") ?? DEFAULT_EMAIL.fromName,
+    host: map.get("smtp_host") ?? DEFAULT_EMAIL.host,
+    port: map.get("smtp_port") ?? DEFAULT_EMAIL.port,
+  };
+}
+
+export async function saveEmailSettings(db: Db, email: EmailSettings): Promise<void> {
+  const pairs: [string, string][] = [
+    [EMAIL_KEYS[0], email.fromEmail.trim()],
+    [EMAIL_KEYS[1], email.fromName.trim()],
+    [EMAIL_KEYS[2], email.host.trim()],
+    [EMAIL_KEYS[3], email.port.trim()],
+  ];
+  for (const [key, value] of pairs) {
+    await db
+      .insert(settings)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: settings.key, set: { value } });
   }
 }

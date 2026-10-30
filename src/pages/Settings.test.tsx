@@ -17,6 +17,9 @@ vi.mock("../db/settings", () => ({
   DEFAULT_SHOP: { name: "", address: "", phone: "", gstin: "" },
   getAiConfig: vi.fn(async () => ({ enabled: false, mode: "local", model: "glm-5.3-flash:cloud" })),
   saveAiConfig: vi.fn(async () => {}),
+  DEFAULT_EMAIL: { fromEmail: "", fromName: "", host: "smtp.gmail.com", port: "465" },
+  getEmailSettings: vi.fn(async () => ({ fromEmail: "shop@example.com", fromName: "SDHHE", host: "smtp.gmail.com", port: "465" })),
+  saveEmailSettings: vi.fn(async () => {}),
   getShopDetails: vi.fn(async () => ({
     name: "SDHHE",
     address: "",
@@ -43,6 +46,7 @@ vi.mock("../lib/secrets", async (importOriginal) => {
 });
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(async () => "1.0.0") }));
 vi.mock("../ai/ollama", () => ({ chat: vi.fn() }));
+vi.mock("../lib/email", () => ({ sendEmail: vi.fn(async () => {}), billEmailSubject: vi.fn() }));
 vi.mock("../db/activity", () => ({
   listActivity: vi.fn(async () => []),
   logActivity: vi.fn(async () => {}),

@@ -87,6 +87,7 @@ describe("GST billing", () => {
       customerPhone: null,
       customerAddress: null,
       customerGstin: null,
+      customerEmail: null,
       paymentMode: "Cash",
       subtotalPaise: 4000,
       discountPaise: 0,
@@ -143,6 +144,7 @@ describe("GST billing", () => {
       phone: "9000000001",
       address: "1-16-135, REVENUE COLONY, Kurnool",
       gstin: "27AAPFU0939F1ZV",
+      email: "buyer@example.com",
     });
     renderPage();
     const user = userEvent.setup();

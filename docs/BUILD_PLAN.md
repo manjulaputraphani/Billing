@@ -169,6 +169,11 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (opens services.gst.gov.in in the browser via opener), inline check-digit warning (non-blocking), and
   auto-fill from a saved customer when the GSTIN matches (`findCustomerByGstin`). Saving a bill caches
   the customer so next bills fill themselves. 200 tests green.
+- [x] **T-10.4 Bill email** — Settings → Email (From email, display name, SMTP host/port, Gmail app
+  password saved to Keychain, Send test email). Customer email field on billing (saved with the
+  customer). Bills → View → **Email bill** sends the HTML invoice from the shop's address and logs
+  `bill.email`. Rust command `send_email` via `lettre` (rustls). Tested with GSTIN 37JAGPM1479E1ZE
+  (valid): bill SD-2026-000004. 203 tests green, cargo check clean.
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO

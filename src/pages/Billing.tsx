@@ -43,6 +43,7 @@ export default function Billing() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerGstin, setCustomerGstin] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
   const [gstinStatus, setGstinStatus] = useState<GstinCheck | null>(null);
   const [gstinNote, setGstinNote] = useState<string | null>(null);
   const [draftItemId, setDraftItemId] = useState<number | "">("");
@@ -99,6 +100,7 @@ export default function Billing() {
         setCustomerName(saved.name);
         setCustomerPhone(saved.phone ?? "");
         setCustomerAddress(saved.address ?? "");
+        setCustomerEmail(saved.email ?? "");
         setGstinNote("Loaded saved customer details — edit if needed");
       }
     } catch {
@@ -172,6 +174,7 @@ export default function Billing() {
           phone: customerPhone,
           address: customerAddress,
           gstin: customerGstin,
+          email: customerEmail,
         });
         customerId = customer.id;
       }
@@ -200,6 +203,7 @@ export default function Billing() {
       setCustomerPhone("");
       setCustomerAddress("");
       setCustomerGstin("");
+      setCustomerEmail("");
       setGstinStatus(null);
       setGstinNote(null);
     } catch (err) {
@@ -299,6 +303,22 @@ export default function Billing() {
               className="input w-full uppercase"
               value={customerGstin}
               onChange={(e) => void onGstinChange(e.currentTarget.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <label className="label" htmlFor="bill-email">
+              Customer email (for the bill)
+            </label>
+            <input
+              id="bill-email"
+              type="email"
+              className="input w-full"
+              placeholder="buyer@example.com"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.currentTarget.value)}
             />
           </div>
         </div>

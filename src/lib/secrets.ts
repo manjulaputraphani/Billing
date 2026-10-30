@@ -5,6 +5,7 @@ export const SECRET_KEYS = {
   DATABASE_URL: "DATABASE_URL",
   PIN_HASH: "PIN_HASH",
   OLLAMA_API_KEY: "OLLAMA_API_KEY",
+  SMTP_PASSWORD: "SMTP_PASSWORD",
 } as const;
 
 export type SecretKey = (typeof SECRET_KEYS)[keyof typeof SECRET_KEYS];

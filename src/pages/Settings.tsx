@@ -5,7 +5,17 @@ import { DEFAULT_AI_CONFIG, getAiConfig, saveAiConfig, type AiConfig } from "../
 import { useDb } from "../lib/db-context";
 import { deleteSecret, getSecret, hashPin, saveSecret, SECRET_KEYS, verifyPin } from "../lib/secrets";
 import { listActivity, logActivity, type ActivityRow } from "../db/activity";
-import { DEFAULT_SHOP, getShopDetails, saveShopDetails, type ShopDetails } from "../db/settings";
+import {
+  DEFAULT_EMAIL,
+  DEFAULT_SHOP,
+  getEmailSettings,
+  getShopDetails,
+  saveEmailSettings,
+  saveShopDetails,
+  type EmailSettings,
+  type ShopDetails,
+} from "../db/settings";
+import { sendEmail } from "../lib/email";
 
 const PIN_RE = /^\d{4,6}$/;
 
@@ -34,6 +44,10 @@ export default function Settings({
   const [pinStatus, setPinStatus] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [shop, setShop] = useState<ShopDetails>(DEFAULT_SHOP);
+  const [emailCfg, setEmailCfg] = useState<EmailSettings>(DEFAULT_EMAIL);
+  const [emailKeyInput, setEmailKeyInput] = useState("");
+  const [emailKeySaved, setEmailKeySaved] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [shopStatus, setShopStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,7 +60,63 @@ export default function Settings({
     getShopDetails(db)
       .then(setShop)
       .catch(() => setShop(DEFAULT_SHOP));
+    getEmailSettings(db)
+      .then(setEmailCfg)
+      .catch(() => setEmailCfg(DEFAULT_EMAIL));
+    getSecret(SECRET_KEYS.SMTP_PASSWORD)
+      .then((value) => setEmailKeySaved(Boolean(value)))
+      .catch(() => setEmailKeySaved(false));
   }, [db]);
+
+  async function saveEmailCfg() {
+    setError(null);
+    setEmailStatus(null);
+    try {
+      await saveEmailSettings(db, emailCfg);
+      setEmailStatus("Email settings saved");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function saveEmailKey() {
+    const value = emailKeyInput.trim();
+    if (!value) return;
+    setError(null);
+    try {
+      await saveSecret(SECRET_KEYS.SMTP_PASSWORD, value);
+      setEmailKeyInput("");
+      setEmailKeySaved(true);
+      setEmailStatus("App password saved to Keychain");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function sendTestEmail() {
+    setEmailStatus("Sending test email…");
+    try {
+      const password = await getSecret(SECRET_KEYS.SMTP_PASSWORD);
+      if (!password) {
+        setEmailStatus("Save the Gmail app password first");
+        return;
+      }
+      await sendEmail({
+        host: emailCfg.host,
+        port: Number(emailCfg.port) || 465,
+        username: emailCfg.fromEmail,
+        password,
+        fromEmail: emailCfg.fromEmail,
+        fromName: emailCfg.fromName,
+        to: emailCfg.fromEmail,
+        subject: "Stock Tracker test email",
+        html: "<p>This is a test email from Stock Tracker. Your bill emails are ready.</p>",
+      });
+      setEmailStatus("Test email sent — check your inbox");
+    } catch (err) {
+      setEmailStatus(`Email failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   async function saveShop() {
     setError(null);
@@ -292,6 +362,51 @@ export default function Settings({
         >
           Update PIN
         </button>
+      </section>
+
+      <section className="space-y-3 card p-4">
+        <div>
+          <h2 className="text-sm font-medium">Email (send bills)</h2>
+          <p className="text-sm text-gray-500">
+            Gmail SMTP + app password. Bills go out from your own address as HTML invoices.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="label" htmlFor="email-from">From email</label>
+            <input id="email-from" type="email" className="input w-full" value={emailCfg.fromEmail}
+              onChange={(e) => setEmailCfg({ ...emailCfg, fromEmail: e.currentTarget.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="email-name">Display name</label>
+            <input id="email-name" className="input w-full" value={emailCfg.fromName}
+              onChange={(e) => setEmailCfg({ ...emailCfg, fromName: e.currentTarget.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="email-host">SMTP host</label>
+            <input id="email-host" className="input w-full" value={emailCfg.host}
+              onChange={(e) => setEmailCfg({ ...emailCfg, host: e.currentTarget.value })} />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="email-port">Port</label>
+            <input id="email-port" className="input w-full" value={emailCfg.port}
+              onChange={(e) => setEmailCfg({ ...emailCfg, port: e.currentTarget.value })} />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <label className="label" htmlFor="email-password">Gmail app password</label>
+          <div className="flex gap-2">
+            <input id="email-password" type="password" autoComplete="off" className="flex-1 input"
+              placeholder={emailKeySaved ? "App password saved — enter a new one to replace" : "16-character app password"}
+              value={emailKeyInput} onChange={(e) => setEmailKeyInput(e.currentTarget.value)} />
+            <button type="button" className="btn-ghost" onClick={() => void saveEmailKey()}>Save password</button>
+          </div>
+        </div>
+        {emailStatus && <p role="status" className="text-sm text-gray-600">{emailStatus}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn-primary" onClick={() => void saveEmailCfg()}>Save email settings</button>
+          <button type="button" className="btn-ghost" onClick={() => void sendTestEmail()}>Send test email</button>
+        </div>
       </section>
 
       <section className="space-y-3 card p-4">

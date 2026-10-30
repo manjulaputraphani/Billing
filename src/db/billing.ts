@@ -301,6 +301,7 @@ export const customerSchema = z.object({
   phone: z.string().trim().max(20, "Phone is too long").optional(),
   address: z.string().trim().max(200, "Address is too long").optional(),
   gstin: z.string().trim().max(20, "GSTIN is too long").optional(),
+  email: z.string().trim().max(120, "Email is too long").optional(),
 });
 
 export type CustomerInput = z.infer<typeof customerSchema>;
@@ -322,6 +323,7 @@ export async function createCustomer(
       phone: data.phone?.trim() || null,
       address: data.address?.trim() || null,
       gstin: data.gstin?.trim().toUpperCase() || null,
+      email: data.email?.trim() || null,
     })
     .returning({ id: customers.id, name: customers.name, phone: customers.phone });
   await logActivity(db, {
@@ -352,6 +354,7 @@ export type SaleBillDetail = {
   customerPhone: string | null;
   customerAddress: string | null;
   customerGstin: string | null;
+  customerEmail: string | null;
   paymentMode: string;
   subtotalPaise: number;
   discountPaise: number;
@@ -374,6 +377,7 @@ export async function getSaleBill(db: Db, id: number): Promise<SaleBillDetail | 
       customerPhone: customers.phone,
       customerAddress: customers.address,
       customerGstin: customers.gstin,
+      customerEmail: customers.email,
       paymentMode: saleBills.paymentMode,
       subtotalPaise: saleBills.subtotalPaise,
       discountPaise: saleBills.discountPaise,
@@ -413,6 +417,7 @@ export type SavedCustomer = {
   phone: string | null;
   address: string | null;
   gstin: string | null;
+  email: string | null;
 };
 
 /** Customer saved earlier with this GSTIN (for auto-fill on the billing form). */
@@ -426,6 +431,7 @@ export async function findCustomerByGstin(db: Db, gstin: string): Promise<SavedC
       phone: customers.phone,
       address: customers.address,
       gstin: customers.gstin,
+      email: customers.email,
     })
     .from(customers)
     .where(eq(customers.gstin, normalized))
