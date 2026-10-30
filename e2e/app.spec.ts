@@ -161,6 +161,7 @@ test.describe("app shell", () => {
       ["Items", "Items"],
       ["Purchases", "Purchases"],
       ["Add Purchase", "Add Purchase"],
+      ["Stock Check", "Stock Check"],
       ["Settings", "Settings"],
     ] as const) {
       await page.getByRole("link", { name: link, exact: true }).click();
@@ -168,7 +169,6 @@ test.describe("app shell", () => {
     }
 
     for (const [link, heading] of [
-      ["Stock Check", "Stock Check"],
       ["Expenses", "Expenses"],
       ["Reports", "Reports"],
     ] as const) {

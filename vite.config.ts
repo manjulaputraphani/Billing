@@ -36,6 +36,6 @@ export default defineConfig(() => ({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     // DB tests need a live database — run them with `npm run test:db`, never in the normal suite.
-    exclude: ["**/node_modules/**", "**/dist/**", "**/*.int.test.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/*.int.test.ts", "e2e/**"],
   },
 }));

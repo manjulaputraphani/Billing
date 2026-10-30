@@ -4,7 +4,8 @@ import { resetAll, setupTestDb, testDbUrl } from "./test-utils";
 import { createItem } from "./items";
 import { addPurchase } from "./purchases";
 import { saveStockEntry } from "./stock";
-import { batches, movementBatchLinks, stockMovements } from "./schema";
+import { deletePurchase, updatePurchase } from "./purchases";
+import { batches, movementBatchLinks, purchases, stockMovements } from "./schema";
 
 const db = await setupTestDb();
 const url = testDbUrl();
@@ -82,8 +83,77 @@ suite("B2 — stock check (worked example)", () => {
   });
 });
 
-suite("B4 — failure mid-transaction", () => {
+
+suite("B3 — editing a purchase replays later movements", () => {
   beforeEach(async () => {
+    if (db) await resetAll(db);
+  });
+
+  it("price ₹10 → ₹11 turns the stock-check cost from 2200 into 2300", async () => {
+    const item = await seedTwoBatches();
+
+    await saveStockEntry(url!, {
+      itemId: item.id,
+      type: "STOCK_CHECK",
+      enteredLeft: 2000,
+      date: "2026-10-05",
+    });
+
+    const [firstPurchase] = await db!
+      .select()
+      .from(purchases)
+      .orderBy(purchases.id)
+      .limit(1);
+
+    await updatePurchase(url!, firstPurchase.id, {
+      qty: 1,
+      unitPricePaise: 1100,
+      date: "2026-10-01",
+    });
+
+    const [movement] = await db!
+      .select()
+      .from(stockMovements)
+      .where(eq(stockMovements.type, "STOCK_CHECK"));
+    expect(movement.costPaise).toBe(2300);
+
+    const links = await db!.select().from(movementBatchLinks).orderBy(movementBatchLinks.batchId);
+    expect(links.map((l) => l.costPaise)).toEqual([1100, 1200]);
+
+    const batchRows = await db!.select().from(batches).orderBy(batches.id);
+    expect(batchRows.map((b) => b.qtyRemaining)).toEqual([0, 2000]);
+  });
+
+  it("deleting a purchase replays the remaining movements", async () => {
+    const item = await seedTwoBatches();
+
+    await saveStockEntry(url!, {
+      itemId: item.id,
+      type: "STOCK_CHECK",
+      enteredLeft: 2000,
+      date: "2026-10-05",
+    });
+
+    const [firstPurchase] = await db!
+      .select()
+      .from(purchases)
+      .orderBy(purchases.id)
+      .limit(1);
+    await deletePurchase(url!, firstPurchase.id);
+
+    // Only batch B (3000 g) remains, so the same "2 kg left" now uses 1000 g @ ₹12.
+    const [movement] = await db!
+      .select()
+      .from(stockMovements)
+      .where(eq(stockMovements.type, "STOCK_CHECK"));
+    expect(movement.costPaise).toBe(1200);
+
+    const batchRows = await db!.select().from(batches);
+    expect(batchRows.map((b) => b.qtyRemaining)).toEqual([2000]);
+  });
+});
+
+suite("B4 — failure mid-transaction", () => {  beforeEach(async () => {
     if (db) await resetAll(db);
   });
 

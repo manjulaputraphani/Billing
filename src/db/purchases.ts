@@ -1,8 +1,9 @@
-import { asc, desc, eq, gte, lte, and, sql } from "drizzle-orm";
+import { asc, desc, eq, gte, inArray, lte, and, sql } from "drizzle-orm";
 import { z } from "zod";
-import type { Db } from "./client";
-import { batches, items, purchases, suppliers } from "./schema";
-import { costPaise, toBase, type Unit } from "../logic/units";
+import { withTransaction, type Db, type TxDb } from "./client";
+import { batches, items, movementBatchLinks, purchases, stockMovements, suppliers } from "./schema";
+import { baseFactor, costPaise, toBase, type Unit } from "../logic/units";
+import { replayItem, type ReplayMovement } from "../logic/replay";
 
 export const PAYMENT_MODES = ["Cash", "UPI", "Card", "Credit"] as const;
 
@@ -140,8 +141,7 @@ export async function listSuppliers(db: Db): Promise<string[]> {
   return rows.map((r) => r.name);
 }
 
-export type PurchaseListRow = {
-  id: number;
+export type PurchaseListRow = {  id: number;
   date: string;
   itemId: number;
   itemName: string;
@@ -150,6 +150,8 @@ export type PurchaseListRow = {
   unitPricePaise: number;
   totalPaise: number;
   supplier: string | null;
+  paymentMode: string | null;
+  note: string | null;
   qtyRemaining: number;
 };
 
@@ -175,6 +177,8 @@ export async function listPurchases(
       unitPricePaise: purchases.unitPricePaise,
       totalPaise: purchases.totalPaise,
       supplier: suppliers.name,
+      paymentMode: purchases.paymentMode,
+      note: purchases.note,
       qtyRemaining: batches.qtyRemaining,
     })
     .from(purchases)
@@ -185,4 +189,228 @@ export async function listPurchases(
     .orderBy(desc(purchases.purchaseDate), desc(purchases.id));
 
   return rows.map((r) => ({ ...r, qtyRemaining: r.qtyRemaining ?? 0 }));
+}
+
+// ---------------------------------------------------------------------------
+// Edit / delete a purchase, then replay every later movement of that item
+// (docs/BLUEPRINT.md §6). All inside ONE transaction.
+// ---------------------------------------------------------------------------
+
+export const purchaseEditSchema = z.object({
+  qty: z.number({ message: "Quantity is required" }).positive("Quantity must be more than 0"),
+  unitPricePaise: z
+    .number({ message: "Price is required" })
+    .int("Price must be whole paise")
+    .min(0, "Price cannot be negative"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date"),
+  supplierName: z.string().trim().max(80, "Supplier name is too long").optional(),
+  paymentMode: z.enum(PAYMENT_MODES).optional(),
+  note: z.string().trim().max(200, "Note is too long").optional(),
+});
+
+export type PurchaseEditInput = z.infer<typeof purchaseEditSchema>;
+
+export function parsePurchaseEdit(input: unknown): PurchaseEditInput {
+  const result = purchaseEditSchema.safeParse(input);
+  if (!result.success) {
+    throw new Error(result.error.issues[0]?.message ?? "Invalid purchase");
+  }
+  return result.data;
+}
+
+async function findOrCreateSupplier(
+  tx: TxDb,
+  name: string | null,
+): Promise<number | null> {
+  if (!name) return null;
+  const [existing] = await tx
+    .select({ id: suppliers.id })
+    .from(suppliers)
+    .where(sql`lower(${suppliers.name}) = lower(${name})`)
+    .limit(1);
+  if (existing) return existing.id;
+  const [created] = await tx.insert(suppliers).values({ name }).returning({ id: suppliers.id });
+  return created.id;
+}
+
+/** Replay the item and write back batch leftovers, movement costs and links. */
+async function replayAndWriteBack(
+  tx: TxDb,
+  itemId: number,
+  factor: number,
+): Promise<void> {
+  const batchRows = await tx
+    .select({
+      id: batches.id,
+      qtyOriginal: batches.qtyOriginal,
+      unitPricePaise: batches.unitPricePaise,
+      purchaseDate: batches.purchaseDate,
+    })
+    .from(batches)
+    .where(eq(batches.itemId, itemId))
+    .orderBy(asc(batches.purchaseDate), asc(batches.id))
+    .for("update");
+
+  const movementRows = await tx
+    .select({
+      id: stockMovements.id,
+      type: stockMovements.type,
+      movementDate: stockMovements.movementDate,
+      qtyChange: stockMovements.qtyChange,
+      enteredQtyLeft: stockMovements.enteredQtyLeft,
+    })
+    .from(stockMovements)
+    .where(eq(stockMovements.itemId, itemId))
+    .orderBy(asc(stockMovements.movementDate), asc(stockMovements.id));
+
+  const result = replayItem(
+    batchRows,
+    movementRows.map((m) => ({ ...m, type: m.type as ReplayMovement["type"] })),
+    factor,
+  );
+
+  for (const row of result.batches) {
+    await tx.update(batches).set({ qtyRemaining: row.qtyRemaining }).where(eq(batches.id, row.id));
+  }
+
+  for (const movement of result.movements) {
+    await tx
+      .update(stockMovements)
+      .set({ qtyChange: movement.qtyChange, costPaise: movement.costPaise })
+      .where(eq(stockMovements.id, movement.id));
+  }
+
+  const replayedIds = result.movements.map((m) => m.id);
+  if (replayedIds.length > 0) {
+    await tx.delete(movementBatchLinks).where(inArray(movementBatchLinks.movementId, replayedIds));
+    if (result.links.length > 0) {
+      await tx.insert(movementBatchLinks).values(result.links);
+    }
+  }
+}
+
+/** Change a purchase (and its batch), then replay later movements. */
+export async function updatePurchase(
+  url: string,
+  purchaseId: number,
+  input: unknown,
+): Promise<void> {
+  const data = parsePurchaseEdit(input);
+
+  await withTransaction(url, async (tx) => {
+    const [row] = await tx
+      .select({
+        id: purchases.id,
+        itemId: purchases.itemId,
+        qtyBase: purchases.qtyBase,
+        purchaseDate: purchases.purchaseDate,
+        unit: items.unit,
+      })
+      .from(purchases)
+      .innerJoin(items, eq(items.id, purchases.itemId))
+      .where(eq(purchases.id, purchaseId))
+      .for("update");
+
+    if (!row) throw new Error("Purchase not found");
+
+    const unit = row.unit as Unit;
+    const factor = baseFactor(unit);
+    const qtyBase = toBase(data.qty, unit);
+    const totalPaise = costPaise(qtyBase, data.unitPricePaise, unit);
+    const supplierId = await findOrCreateSupplier(tx, data.supplierName?.trim() || null);
+
+    await tx
+      .update(purchases)
+      .set({
+        qtyBase,
+        unitPricePaise: data.unitPricePaise,
+        totalPaise,
+        purchaseDate: data.date,
+        supplierId,
+        paymentMode: data.paymentMode ?? null,
+        note: data.note?.trim() || null,
+      })
+      .where(eq(purchases.id, purchaseId));
+
+    await tx
+      .update(batches)
+      .set({
+        qtyOriginal: qtyBase,
+        unitPricePaise: data.unitPricePaise,
+        purchaseDate: data.date,
+      })
+      .where(eq(batches.purchaseId, purchaseId));
+
+    // Keep the PURCHASE movement in step with the purchase it mirrors.
+    const [purchaseMovement] = await tx
+      .select({ id: stockMovements.id })
+      .from(stockMovements)
+      .where(
+        and(
+          eq(stockMovements.itemId, row.itemId),
+          eq(stockMovements.type, "PURCHASE"),
+          eq(stockMovements.movementDate, row.purchaseDate),
+          eq(stockMovements.qtyChange, row.qtyBase),
+        ),
+      )
+      .limit(1);
+
+    if (purchaseMovement) {
+      await tx
+        .update(stockMovements)
+        .set({ qtyChange: qtyBase, costPaise: totalPaise, movementDate: data.date })
+        .where(eq(stockMovements.id, purchaseMovement.id));
+    }
+
+    await replayAndWriteBack(tx, row.itemId, factor);
+  });
+}
+
+/** Delete a purchase, its batch and its PURCHASE movement, then replay. */
+export async function deletePurchase(url: string, purchaseId: number): Promise<void> {
+  await withTransaction(url, async (tx) => {
+    const [row] = await tx
+      .select({
+        id: purchases.id,
+        itemId: purchases.itemId,
+        qtyBase: purchases.qtyBase,
+        purchaseDate: purchases.purchaseDate,
+      })
+      .from(purchases)
+      .where(eq(purchases.id, purchaseId));
+
+    if (!row) throw new Error("Purchase not found");
+
+    const [item] = await tx
+      .select({ unit: items.unit })
+      .from(items)
+      .where(eq(items.id, row.itemId));
+    const factor = baseFactor(item.unit as Unit);
+
+    const movementIds = (
+      await tx
+        .select({ id: stockMovements.id })
+        .from(stockMovements)
+        .where(eq(stockMovements.itemId, row.itemId))
+    ).map((m) => m.id);
+
+    if (movementIds.length > 0) {
+      await tx
+        .delete(movementBatchLinks)
+        .where(inArray(movementBatchLinks.movementId, movementIds));
+    }
+
+    await tx.delete(batches).where(eq(batches.purchaseId, purchaseId));
+    await tx.delete(purchases).where(eq(purchases.id, purchaseId));
+    await tx.delete(stockMovements).where(
+      and(
+        eq(stockMovements.itemId, row.itemId),
+        eq(stockMovements.type, "PURCHASE"),
+        eq(stockMovements.movementDate, row.purchaseDate),
+        eq(stockMovements.qtyChange, row.qtyBase),
+      ),
+    );
+
+    await replayAndWriteBack(tx, row.itemId, factor);
+  });
 }
