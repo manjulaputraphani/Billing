@@ -25,6 +25,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # OS keychain (macOS Keychain / Windows Credential Manager / Linux secret-service)
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+# SMTP for emailing bills (Gmail app password, stored in Keychain)
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "rustls-tls", "hostname"] }
 # PIN hashing — argon2id with a random salt
 argon2 = "0.5"
 # enables OsRng for salt generation (same crate argon2 already pulls in)

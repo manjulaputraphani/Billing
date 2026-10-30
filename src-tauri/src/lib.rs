@@ -57,9 +57,60 @@ fn verify_pin(pin: String, hash: String) -> Result<bool, String> {
         .is_ok())
 }
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EmailInput {
+    host: String,
+    port: u16,
+    username: String,
+    password: String,
+    from_email: String,
+    from_name: Option<String>,
+    to: String,
+    subject: String,
+    html: String,
+}
+
+/// Send the invoice email from the shop's own address (Gmail app password).
+#[tauri::command]
+async fn send_email(input: EmailInput) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || send_email_blocking(input))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn send_email_blocking(input: EmailInput) -> Result<(), String> {
+    use lettre::message::header::ContentType;
+    use lettre::message::Mailbox;
+    use lettre::transport::smtp::authentication::Credentials;
+    use lettre::{Message, SmtpTransport, Transport};
+
+    let from = Mailbox::new(
+        input.from_name.filter(|name| !name.trim().is_empty()),
+        input
+            .from_email
+            .parse()
+            .map_err(|_| "Invalid sender email")?,
+    );
+    let message = Message::builder()
+        .from(from)
+        .to(input.to.parse().map_err(|_| "Invalid recipient email")?)
+        .subject(input.subject)
+        .header(ContentType::TEXT_HTML)
+        .body(input.html)
+        .map_err(|e| e.to_string())?;
+
+    let mailer = SmtpTransport::relay(&input.host)
+        .map_err(|e| e.to_string())?
+        .port(input.port)
+        .credentials(Credentials::new(input.username, input.password))
+        .build();
+
+    mailer.send(&message).map(|_| ()).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    tauri::Builder::default()
+pub fn run() {    tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
@@ -67,7 +118,8 @@ pub fn run() {
             get_secret,
             delete_secret,
             hash_pin,
-            verify_pin
+            verify_pin,
+            send_email
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
