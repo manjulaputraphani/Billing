@@ -22,3 +22,16 @@ export class StockLeftTooHighError extends Error {
     this.name = "StockLeftTooHighError";
   }
 }
+
+/** A replay (after editing/deleting a purchase) no longer fits the stored entries. */
+export class ReplayConflictError extends Error {
+  readonly movementId: number;
+  readonly movementDate: string;
+
+  constructor(movementId: number, movementDate: string, reason: string) {
+    super(`Cannot save: the entry on ${movementDate} no longer fits (${reason})`);
+    this.name = "ReplayConflictError";
+    this.movementId = movementId;
+    this.movementDate = movementDate;
+  }
+}
