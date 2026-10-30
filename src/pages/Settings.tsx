@@ -48,6 +48,7 @@ export default function Settings({
   const [emailKeyInput, setEmailKeyInput] = useState("");
   const [emailKeySaved, setEmailKeySaved] = useState(false);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [testTo, setTestTo] = useState("");
   const [shopStatus, setShopStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,7 +109,7 @@ export default function Settings({
         password,
         fromEmail: emailCfg.fromEmail,
         fromName: emailCfg.fromName,
-        to: emailCfg.fromEmail,
+        to: testTo.trim() || emailCfg.fromEmail,
         subject: "Stock Tracker test email",
         html: "<p>This is a test email from Stock Tracker. Your bill emails are ready.</p>",
       });
@@ -403,6 +404,11 @@ export default function Settings({
           </div>
         </div>
         {emailStatus && <p role="status" className="text-sm text-gray-600">{emailStatus}</p>}
+        <div className="space-y-1">
+          <label className="label" htmlFor="email-test-to">Send test to (optional)</label>
+          <input id="email-test-to" type="email" className="input w-full" placeholder="Defaults to the From email"
+            value={testTo} onChange={(e) => setTestTo(e.currentTarget.value)} />
+        </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-primary" onClick={() => void saveEmailCfg()}>Save email settings</button>
           <button type="button" className="btn-ghost" onClick={() => void sendTestEmail()}>Send test email</button>
