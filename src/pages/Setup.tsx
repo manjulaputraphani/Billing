@@ -52,10 +52,13 @@ export default function Setup({ onDone }: { onDone: () => void }) {
     <main className="flex min-h-screen items-center justify-center bg-[#f7f6f4] p-6">
       <div className="card w-full max-w-md p-6">
         <header className="mb-6 flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-semibold text-white">
-            ST
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[9px] font-bold tracking-[0.08em] text-white">
+            SDHHE
           </span>
           <span className="space-y-0.5">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.2em] text-stone-500">
+              SREE DURGA HARIHARA ENTERPRISES
+            </p>
             <h1 className="text-lg font-semibold tracking-tight">Set up Stock Tracker</h1>
             <p className="text-sm text-gray-500">
               Connect your Neon database. It is stored in this computer&apos;s secure storage; members

@@ -37,7 +37,7 @@ function billDate(iso: string): string {
 export function buildBillHtml(bill: SaleBillDetail, shop: ShopDetails): string {
   const { cgstPaise, sgstPaise } = splitGst(bill.gstPaise);
   const taxablePaise = bill.subtotalPaise - bill.discountPaise;
-  const mark = initials(shop.name || "Stock Tracker");
+  const mark = shop.shortName?.trim() || initials(shop.name || "Stock Tracker");
 
   const rows = bill.lines
     .map((line, index) => {

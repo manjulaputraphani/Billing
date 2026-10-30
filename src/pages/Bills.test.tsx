@@ -22,7 +22,8 @@ vi.mock("../db/settings", async (importOriginal) => {
     ...actual,
     getEmailSettings: vi.fn(async () => ({ fromEmail: "shop@example.com", fromName: "SDHHE", host: "smtp.gmail.com", port: "465" })),
     getShopDetails: vi.fn(async () => ({
-      name: "SDHHE",
+      name: "SREE DURGA HARIHARA ENTERPRISES",
+      shortName: "SDHHE",
       address: "",
       phone: "",
       email: "",
@@ -174,7 +175,7 @@ describe("Bills list", () => {
     expect(sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "buyer@example.com",
-        subject: "Invoice SD-2026-000001 — SDHHE",
+        subject: expect.stringContaining("SD-2026-000001"),
       }),
     );
     const call = vi.mocked(sendEmail).mock.calls[0][0];

@@ -590,6 +590,18 @@ export default function Settings({
             />
           </div>
           <div className="space-y-1">
+            <label className="label" htmlFor="shop-short-name">
+              Short name (bill mark)
+            </label>
+            <input
+              id="shop-short-name"
+              className="input w-full uppercase"
+              placeholder="SDHHE"
+              value={shop.shortName}
+              onChange={(e) => setShop({ ...shop, shortName: e.currentTarget.value })}
+            />
+          </div>
+          <div className="space-y-1">
             <label className="label" htmlFor="shop-phone">
               Phone
             </label>

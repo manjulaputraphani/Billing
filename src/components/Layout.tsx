@@ -40,15 +40,17 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen bg-[#f7f6f4] text-stone-900">
       <aside className="flex w-60 shrink-0 flex-col bg-stone-900 text-stone-100">
-        <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
-          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-semibold text-white shadow-sm">
-            ST
+        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[9px] font-bold tracking-[0.08em] text-white shadow-sm">
+            SDHHE
           </span>
-          <span>
-            <span className="block text-[15px] font-semibold tracking-tight text-white">
-              Stock Tracker
+          <span className="min-w-0">
+            <span className="block text-[11.5px] font-semibold uppercase leading-snug tracking-[0.08em] text-white">
+              SREE DURGA HARIHARA ENTERPRISES
             </span>
-            <span className="block text-[11px] text-stone-400">Inventory &amp; costing</span>
+            <span className="mt-1 block text-[9.5px] uppercase tracking-[0.2em] text-stone-500">
+              Inventory · Billing · Accounts
+            </span>
           </span>
         </div>
 
@@ -81,7 +83,7 @@ export default function Layout() {
         </nav>
 
         <p className="border-t border-white/10 px-5 py-3 text-[11px] text-stone-500">
-          Local desktop app · PIN protected
+          Local desktop · Member sign-in
         </p>
       </aside>
 

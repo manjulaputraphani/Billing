@@ -22,7 +22,8 @@ vi.mock("../db/settings", () => ({
   getEmailSettings: vi.fn(async () => ({ fromEmail: "shop@example.com", fromName: "SDHHE", host: "smtp.gmail.com", port: "465" })),
   saveEmailSettings: vi.fn(async () => {}),
   getShopDetails: vi.fn(async () => ({
-    name: "SDHHE",
+    name: "SREE DURGA HARIHARA ENTERPRISES",
+    shortName: "SDHHE",
     address: "",
     phone: "",
     email: "",

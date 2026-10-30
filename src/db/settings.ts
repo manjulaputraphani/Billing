@@ -5,6 +5,7 @@ import type { OllamaMode } from "../ai/ollama";
 
 export type ShopDetails = {
   name: string;
+  shortName: string;
   address: string;
   phone: string;
   email: string;
@@ -17,6 +18,7 @@ export type ShopDetails = {
 
 export const DEFAULT_SHOP: ShopDetails = {
   name: "",
+  shortName: "",
   address: "",
   phone: "",
   email: "",
@@ -29,6 +31,7 @@ export const DEFAULT_SHOP: ShopDetails = {
 
 const SHOP_KEYS = [
   "shop_name",
+  "shop_short_name",
   "shop_address",
   "shop_phone",
   "shop_email",
@@ -48,6 +51,7 @@ export async function getShopDetails(db: Db): Promise<ShopDetails> {
   const map = new Map(rows.map((row) => [row.key, row.value]));
   return {
     name: map.get("shop_name") ?? DEFAULT_SHOP.name,
+    shortName: map.get("shop_short_name") ?? DEFAULT_SHOP.shortName,
     address: map.get("shop_address") ?? DEFAULT_SHOP.address,
     phone: map.get("shop_phone") ?? DEFAULT_SHOP.phone,
     email: map.get("shop_email") ?? DEFAULT_SHOP.email,
@@ -61,14 +65,15 @@ export async function getShopDetails(db: Db): Promise<ShopDetails> {
 
 export async function saveShopDetails(db: Db, shop: ShopDetails): Promise<void> {  const pairs: [string, string][] = [
     [SHOP_KEYS[0], shop.name.trim()],
-    [SHOP_KEYS[1], shop.address.trim()],
-    [SHOP_KEYS[2], shop.phone.trim()],
-    [SHOP_KEYS[3], shop.email.trim()],
-    [SHOP_KEYS[4], shop.gstin.trim().toUpperCase()],
-    [SHOP_KEYS[5], shop.bankName.trim()],
-    [SHOP_KEYS[6], shop.bankAccount.trim()],
-    [SHOP_KEYS[7], shop.bankIfsc.trim().toUpperCase()],
-    [SHOP_KEYS[8], shop.bankBranch.trim()],
+    [SHOP_KEYS[1], shop.shortName.trim().toUpperCase()],
+    [SHOP_KEYS[2], shop.address.trim()],
+    [SHOP_KEYS[3], shop.phone.trim()],
+    [SHOP_KEYS[4], shop.email.trim()],
+    [SHOP_KEYS[5], shop.gstin.trim().toUpperCase()],
+    [SHOP_KEYS[6], shop.bankName.trim()],
+    [SHOP_KEYS[7], shop.bankAccount.trim()],
+    [SHOP_KEYS[8], shop.bankIfsc.trim().toUpperCase()],
+    [SHOP_KEYS[9], shop.bankBranch.trim()],
   ];
   for (const [key, value] of pairs) {
     await db
