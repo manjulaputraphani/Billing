@@ -1,5 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 
+// Login now reads members (app_users) from the database.
+test.skip(!process.env.DATABASE_URL_TEST, "Member login needs a test database (DATABASE_URL_TEST)");
+
 /**
  * Full UI tour with the Tauri backend stubbed.
  *

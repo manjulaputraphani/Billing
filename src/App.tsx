@@ -4,8 +4,7 @@ import "./App.css";
 import Layout from "./components/Layout";
 import { DbProvider } from "./lib/db-context";
 import { getSecret, SECRET_KEYS } from "./lib/secrets";
-import { getDb } from "./db/client";
-import { logActivity } from "./db/activity";
+import { setAuditActor } from "./db/activity";
 import AddPurchase from "./pages/AddPurchase";
 import Billing from "./pages/Billing";
 import Bills from "./pages/Bills";
@@ -21,7 +20,7 @@ import Settings from "./pages/Settings";
 import Setup from "./pages/Setup";
 import StockCheck from "./pages/StockCheck";
 import Suggestions from "./pages/Suggestions";
-type Phase = "loading" | "setup" | "lock" | "home";
+type Phase = "loading" | "setup" | "login" | "home";
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>("loading");
@@ -31,10 +30,9 @@ export default function App() {
   const bootstrap = useCallback(async () => {
     try {
       const savedUrl = await getSecret(SECRET_KEYS.DATABASE_URL);
-      const savedHash = await getSecret(SECRET_KEYS.PIN_HASH);
-      if (savedUrl && savedHash) {
+      if (savedUrl) {
         setUrl(savedUrl);
-        setPhase("lock");
+        setPhase("login");
       } else {
         setUrl(null);
         setPhase("setup");
@@ -50,18 +48,6 @@ export default function App() {
     void bootstrap();
   }, [bootstrap]);
 
-  /** Successful PIN entry → record the login, then show the app. */
-  const unlock = useCallback(async () => {
-    try {
-      if (url) {
-        await logActivity(getDb(url), { event: "login", summary: "Unlocked the app" });
-      }
-    } catch {
-      // Audit logging must never block a login.
-    }
-    setPhase("home");
-  }, [url]);
-
   if (phase === "loading") {
     return <main className="p-8 text-sm text-gray-500">Loading…</main>;
   }
@@ -70,8 +56,8 @@ export default function App() {
     return <Setup onDone={() => void bootstrap()} />;
   }
 
-  if (phase === "lock") {
-    return <Lock onUnlock={() => void unlock()} />;
+  if (phase === "login") {
+    return <Lock url={url ?? ""} onLogin={() => setPhase("home")} />;
   }
 
   return (
@@ -95,7 +81,10 @@ export default function App() {
               path="settings"
               element={
                 <Settings
-                  onLock={() => setPhase("lock")}
+                  onLock={() => {
+                    setAuditActor(null);
+                    setPhase("login");
+                  }}
                   onReset={() => {
                     setUrl(null);
                     setPhase("setup");

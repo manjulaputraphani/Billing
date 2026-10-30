@@ -2,84 +2,89 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
-import { deleteSecret, getSecret, verifyPin } from "./lib/secrets";
+import { getSecret, verifyPassword } from "./lib/secrets";
+import { countUsers, createUser, findUserByPhone } from "./db/users";
 
 vi.mock("./lib/secrets", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./lib/secrets")>();
   return {
     ...actual,
-    saveSecret: vi.fn(),
     getSecret: vi.fn(),
+    saveSecret: vi.fn(),
     deleteSecret: vi.fn(),
     hashPin: vi.fn(),
     verifyPin: vi.fn(),
+    hashPassword: vi.fn(),
+    verifyPassword: vi.fn(),
   };
 });
-
 vi.mock("./db/client", () => ({ getDb: vi.fn(() => ({})), pingDb: vi.fn() }));
+vi.mock("./db/users", () => ({
+  countUsers: vi.fn(),
+  findUserByPhone: vi.fn(),
+  createUser: vi.fn(),
+}));
+vi.mock("./db/activity", () => ({
+  logActivity: vi.fn(async () => {}),
+  setAuditActor: vi.fn(),
+  listActivity: vi.fn(async () => []),
+}));
 
 const SAVED_URL = "postgresql://user:secret@ep-host-1.neon.tech/db";
-const HASH = "$argon2id$stored-hash";
+const USER = {
+  id: 1,
+  name: "Phani",
+  phone: "9876543210",
+  role: "owner" as const,
+  active: true,
+  passwordHash: "hash",
+};
 
-function savedBoth() {
-  vi.mocked(getSecret).mockImplementation(async (key) =>
-    key === "DATABASE_URL" ? SAVED_URL : HASH,
-  );
-}
+beforeEach(() => {
+  vi.mocked(getSecret)
+    .mockReset()
+    .mockImplementation(async (key) => (key === "DATABASE_URL" ? SAVED_URL : null));
+  vi.mocked(countUsers).mockReset().mockResolvedValue(1);
+  vi.mocked(findUserByPhone).mockReset().mockResolvedValue(USER);
+  vi.mocked(createUser).mockReset().mockResolvedValue(USER);
+  vi.mocked(verifyPassword).mockReset().mockResolvedValue(true);
+});
 
 describe("App start flow", () => {
-  beforeEach(() => {
-    vi.mocked(getSecret).mockReset();
-    vi.mocked(verifyPin).mockReset().mockResolvedValue(true);
-    vi.mocked(deleteSecret).mockReset().mockResolvedValue(undefined);
-  });
-
-  it("shows Setup on first launch when nothing is saved", async () => {
+  it("shows Setup on first launch when no connection is saved", async () => {
     vi.mocked(getSecret).mockResolvedValue(null);
     render(<App />);
 
-    expect(await screen.findByRole("heading", { name: /set up stock tracker/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /set up stock tracker/i }),
+    ).toBeInTheDocument();
   });
 
-  it("asks for the PIN (not the URL) when a connection is saved", async () => {
-    savedBoth();
+  it("asks for phone + password (not the URL or a PIN) when connected", async () => {
     render(<App />);
 
-    expect(await screen.findByLabelText("PIN")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Phone number")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
     expect(screen.queryByLabelText("Neon connection string")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^pin$/i)).not.toBeInTheDocument();
   });
 
-  it("goes to Home after the correct PIN", async () => {
-    savedBoth();
+  it("goes Home after a correct phone + password", async () => {
     render(<App />);
     const user = userEvent.setup();
 
-    await user.type(await screen.findByLabelText("PIN"), "1234");
-    await user.click(screen.getByRole("button", { name: /unlock/i }));
+    await user.type(await screen.findByLabelText("Phone number"), "9876543210");
+    await user.type(screen.getByLabelText("Password"), "secret123");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
   });
 
-  it("resets the connection through an in-app modal, not window.confirm", async () => {
-    savedBoth();
-    const confirmSpy = vi.spyOn(window, "confirm");
+  it("shows the owner setup on the very first run", async () => {
+    vi.mocked(countUsers).mockResolvedValue(0);
     render(<App />);
-    const user = userEvent.setup();
 
-    await user.type(await screen.findByLabelText("PIN"), "1234");
-    await user.click(screen.getByRole("button", { name: /unlock/i }));
-    await screen.findByRole("heading", { name: "Dashboard" });
-
-    await user.click(screen.getByRole("link", { name: /settings/i }));
-    await user.click(screen.getByRole("button", { name: /reset connection/i }));
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
-    expect(confirmSpy).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: /yes, reset/i }));
-
-    expect(deleteSecret).toHaveBeenCalledWith("DATABASE_URL");
-    expect(deleteSecret).toHaveBeenCalledWith("PIN_HASH");
-    expect(await screen.findByRole("heading", { name: /set up stock tracker/i })).toBeInTheDocument();
-    confirmSpy.mockRestore();
+    expect(await screen.findByTestId("owner-form")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create owner" })).toBeInTheDocument();
   });
 });

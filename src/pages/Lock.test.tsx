@@ -2,66 +2,99 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Lock from "./Lock";
-import { getSecret, verifyPin } from "../lib/secrets";
+import { countUsers, createUser, findUserByPhone } from "../db/users";
+import { setAuditActor } from "../db/activity";
+import { verifyPassword } from "../lib/secrets";
 
-vi.mock("../lib/secrets", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../lib/secrets")>();
-  return {
-    ...actual,
-    saveSecret: vi.fn(),
-    getSecret: vi.fn(),
-    deleteSecret: vi.fn(),
-    hashPin: vi.fn(),
-    verifyPin: vi.fn(),
-  };
+vi.mock("../db/client", () => ({ getDb: vi.fn(() => ({})) }));
+vi.mock("../db/users", () => ({ countUsers: vi.fn(), findUserByPhone: vi.fn(), createUser: vi.fn() }));
+vi.mock("../db/activity", () => ({
+  logActivity: vi.fn(async () => {}),
+  setAuditActor: vi.fn(),
+}));
+vi.mock("../lib/secrets", () => ({
+  verifyPassword: vi.fn(),
+  deleteSecret: vi.fn(async () => {}),
+  SECRET_KEYS: { PIN_HASH: "PIN_HASH" },
+}));
+
+const USER = {
+  id: 1,
+  name: "Ravi",
+  phone: "9876543210",
+  role: "owner" as const,
+  active: true,
+  passwordHash: "hash",
+};
+
+function renderPage() {
+  const onLogin = vi.fn();
+  render(<Lock url="postgresql://user:pass@host/db" onLogin={onLogin} />);
+  return onLogin;
+}
+
+beforeEach(() => {
+  vi.mocked(countUsers).mockReset().mockResolvedValue(1);
+  vi.mocked(findUserByPhone).mockReset().mockResolvedValue(USER);
+  vi.mocked(createUser).mockReset().mockResolvedValue(USER);
+  vi.mocked(verifyPassword).mockReset().mockResolvedValue(true);
+  vi.mocked(setAuditActor).mockReset();
 });
 
-describe("Lock", () => {
-  beforeEach(() => {
-    vi.mocked(getSecret).mockReset().mockResolvedValue("$argon2id$stored-hash");
-    vi.mocked(verifyPin).mockReset();
-  });
-
-  it("shows an error for a wrong PIN and does not unlock", async () => {
-    vi.mocked(verifyPin).mockResolvedValue(false);
-    const onUnlock = vi.fn();
-    render(<Lock onUnlock={onUnlock} />);
+describe("member login", () => {
+  it("signs in with phone + password and records the actor", async () => {
+    const onLogin = renderPage();
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText("PIN"), "1111");
-    await user.click(screen.getByRole("button", { name: /unlock/i }));
+    await user.type(await screen.findByLabelText("Phone number"), "9876543210");
+    await user.type(screen.getByLabelText("Password"), "secret123");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Wrong PIN/i);
-    expect(onUnlock).not.toHaveBeenCalled();
+    expect(verifyPassword).toHaveBeenCalledWith("secret123", "hash");
+    expect(setAuditActor).toHaveBeenCalledWith({ userId: 1, name: "Ravi" });
+    expect(onLogin).toHaveBeenCalledWith(USER);
   });
 
-  it("locks out for a countdown after 5 wrong attempts", async () => {
-    vi.mocked(verifyPin).mockResolvedValue(false);
-    const onUnlock = vi.fn();
-    render(<Lock onUnlock={onUnlock} />);
+  it("shows the owner setup on the first run", async () => {
+    vi.mocked(countUsers).mockResolvedValue(0);
+    const onLogin = renderPage();
     const user = userEvent.setup();
 
-    for (let attempt = 0; attempt < 5; attempt++) {
-      await user.type(screen.getByLabelText("PIN"), "1111");
-      await user.click(screen.getByRole("button", { name: /unlock/i }));
-      await screen.findByRole("alert");
-    }
+    expect(await screen.findByTestId("owner-form")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Your name"), "Phani");
+    await user.type(screen.getByLabelText("Phone number"), "9876543210");
+    await user.type(screen.getByLabelText("Password"), "secret123");
+    await user.type(screen.getByLabelText("Confirm password"), "secret123");
+    await user.click(screen.getByRole("button", { name: "Create owner" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/Try again in \d+s/i);
-    expect(screen.getByRole("button", { name: /unlock/i })).toBeDisabled();
-    expect(onUnlock).not.toHaveBeenCalled();
+    expect(createUser).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ name: "Phani", phone: "9876543210", role: "owner" }),
+    );
+    expect(onLogin).toHaveBeenCalledWith(USER);
   });
 
-  it("unlocks with the correct PIN", async () => {
-    vi.mocked(verifyPin).mockResolvedValue(true);
-    const onUnlock = vi.fn();
-    render(<Lock onUnlock={onUnlock} />);
+  it("rejects a wrong password", async () => {
+    vi.mocked(verifyPassword).mockResolvedValue(false);
+    const onLogin = renderPage();
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText("PIN"), "1234");
-    await user.click(screen.getByRole("button", { name: /unlock/i }));
+    await user.type(await screen.findByLabelText("Phone number"), "9876543210");
+    await user.type(screen.getByLabelText("Password"), "wrong");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(onUnlock).toHaveBeenCalledTimes(1);
-    expect(verifyPin).toHaveBeenCalledWith("1234", "$argon2id$stored-hash");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong password");
+    expect(onLogin).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown or disabled account", async () => {
+    vi.mocked(findUserByPhone).mockResolvedValueOnce(null);
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText("Phone number"), "9876543210");
+    await user.type(screen.getByLabelText("Password"), "secret123");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No account found");
   });
 });

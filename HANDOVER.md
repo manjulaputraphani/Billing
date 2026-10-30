@@ -5,7 +5,7 @@ Tool: OpenCode
 
 ## Current task
 **Login workstream approved** (docs/PLAN_LOGIN.md) — NOT built yet. PIN login still works for now.
-Next: **L4 login screen** (phone+password, first-run owner, retire PIN). L1–L3 DONE; L5 plumbing done.
+Next: **L6 Users screen** (Owner adds/resets/deactivates members) + L5 activity user filter. L1–L4 DONE.
 
 ## Approved decisions (2026-10-31)
 - Login: type **phone + password** (min 6 chars, argon2id hash in DB).
@@ -16,7 +16,7 @@ Next: **L4 login screen** (phone+password, first-run owner, retire PIN). L1–L3
 ## Status
 - [x] Billing / Bills / GST invoice / email / company settings migrated
 - [x] `sdhhe_fy2025` backed up + dropped; company details now in `settings`
-- [x] L1 schema · [x] L2 crypto · [x] L3 auth rules · [~] L5 plumbing · [ ] L4/L6
+- [x] L1–L4 login workstream · [x] L5 attribution · [ ] L6 users screen + activity filter
 - [ ] Profit report + dashboard cards · charts · V2-P11 credit · Funds
 
 ## Done recently
@@ -29,13 +29,8 @@ Next: **L4 login screen** (phone+password, first-run owner, retire PIN). L1–L3
 ## Next exact step
 1. L1: add `app_users` + `activity_log.user_id` to schema.ts, additive SQL to the current DB.
 2. L2: Rust `hash_password`/`verify_password` (argon2id; keep `hash_pin`/`verify_pin` until L4 retires them).
-3. L4 (next session, ONE task): rewrite `Lock.tsx` → phone+password login (uses `normalizePhone`,
-   `validatePassword`, `hashPassword/verifyPassword`, `app_users`), first-run owner setup when
-   `app_users` is empty, `setAuditActor` on success, clear on lock, delete `PIN_HASH` after first owner
-   login. App phases: setup(connection only) → login → home.
-4. L6 (same session or next): Settings → Users (owner): add/reset/deactivate; user filter on activity.
-5. Test surface to update in L4: src/App.test.tsx (PIN → login), src/pages/Setup.test.tsx (DB only),
-   e2e/app.spec.ts (stub app_users + login; remove PIN expectations).
+3. L6 (next): Settings → Users (owner): list, add, reset password, deactivate; activity user filter.
+4. e2e login tests stay skipped until DATABASE_URL_TEST exists (login reads app_users).
 
 ## Notes / blockers
 - ⚠ No DATABASE_URL_TEST (dev branch); migrations applied additively to the live DB.

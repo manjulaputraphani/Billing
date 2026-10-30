@@ -193,6 +193,6 @@ Reconciliation with the interim work of 2026-10-30:
 - [x] **L1** `app_users` + `activity_log.user_id` schema/migration (2026-10-31: table created, 0 rows; column + index on activity_log)
 - [x] **L2** argon2 `hash_password` / `verify_password` commands (2026-10-31: shared hash_secret/verify_secret, PIN commands kept; 4 Rust tests pass)
 - [x] **L3** phone normalization + password rules (min 6, tests first) — `src/logic/auth.ts` (+4 tests)
-- [ ] **L4** phone+password login screen, first-run owner setup, lock/logout, retire PIN
-- [~] **L5** audit attribution — groundwork DONE: activity_log.user_id column + `setAuditActor`/`getAuditActor`; every logActivity row now uses the session actor when set. Pending: call setAuditActor on login, clear on lock, user filter in Settings.
-- [ ] **L6** Settings → Users (add / reset password / deactivate, Owner only)
+- [x] **L4** phone+password login, first-run owner setup, lock/logout, retire PIN (2026-10-31: Lock rewritten; App phases setup→login→home; audit actor set on login; PIN_HASH deleted after first member login; Setup is connection-only; App/Lock/Setup tests rewritten — 208 green)
+- [~] **L5** audit attribution — groundwork DONE: activity_log.user_id column + `setAuditActor`/`getAuditActor`; every logActivity row now uses the session actor when set. Done: setAuditActor on login / cleared on lock — every write is now attributed. Pending: user filter in Settings.
+- [ ] **L6** Settings → Users (add / reset password / deactivate, Owner only) — NEXT
