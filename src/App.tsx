@@ -12,6 +12,7 @@ import Expenses from "./pages/Expenses";
 import Items from "./pages/Items";
 import Lock from "./pages/Lock";
 import Purchases from "./pages/Purchases";
+import Sales from "./pages/Sales";
 import Settings from "./pages/Settings";
 import Setup from "./pages/Setup";
 import StockCheck from "./pages/StockCheck";
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="purchases" element={<Purchases />} />
             <Route path="purchases/new" element={<AddPurchase />} />
             <Route path="stock-check" element={<StockCheck />} />
+            <Route path="sales" element={<Sales />} />
             <Route path="expenses" element={<Expenses />} />
             <Route path="reports" element={<ComingSoon title="Reports" />} />
             <Route

@@ -8,6 +8,7 @@ const LINKS = [
   { to: "/purchases", label: "Purchases" },
   { to: "/purchases/new", label: "Add Purchase" },
   { to: "/stock-check", label: "Stock Check" },
+  { to: "/sales", label: "Sales" },
   { to: "/expenses", label: "Expenses" },
   { to: "/reports", label: "Reports" },
   { to: "/settings", label: "Settings" },

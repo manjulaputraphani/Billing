@@ -12,3 +12,6 @@
 - 2026-10-30 · `@types/node` (devDependency) · `src/db/test-utils.ts` reads `process.env.DATABASE_URL_TEST`; removes the old `@ts-expect-error` in vite.config.ts
 - 2026-10-30 · `@playwright/test` (devDependency) + e2e/ specs · runs the real React UI in Chromium with Tauri IPC stubbed; the only automated check of the Setup→Lock→Home flow without a GUI
 - 2026-10-30 · `@tauri-apps/plugin-http` + `tauri-plugin-http` · Ollama calls go through Rust, bypassing webview CORS; capability scope limited to http://localhost:11434/* and https://ollama.com/*
+- 2026-10-30 · Sales = `sales` table + `SALE` stock movement with FIFO batch links · stock left stays one source of truth (sum of open batches), no duplicate counters
+- 2026-10-30 · Sale price stored as paise per display unit (kg/l/pcs), total = round(qty × price / factor) · matches batch costing and avoids float money
+- 2026-10-30 · keychain items DATABASE_URL/PIN_HASH re-created allow-all on this dev Mac (`security ... -A`) · ad-hoc dev binaries change code signature on every Rust rebuild, so macOS re-prompted forever; app still uses keyring, revert by deleting the items + redoing Setup

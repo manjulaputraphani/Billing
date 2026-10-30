@@ -109,3 +109,13 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 
 ## Phase 9 — Real-use
 - [ ] **T-9.1** One week real data; compare with bills daily. Log mismatches as bugs in HANDOVER.
+
+## Phase 10 — Sales (added 2026-10-30 on request)
+- [ ] **T-10.1 Sold details** — record a sale: item, quantity sold, sale price per unit, date, note.
+  One transaction: take the quantity from the oldest batches (FIFO), write a `SALE` stock movement
+  + batch links, insert a `sales` row (qty base units, price paise, total paise). Because batches
+  shrink, "stock left" drops automatically on Items, Dashboard, Stock Check and suggestions.
+  Reject overselling (`Not enough stock`). New Sales page: form with live revenue + left-stock
+  preview and a recent-sales list. Money integer paise, qty integer base units.
+  Accept: logic/sales.test.ts + pages/Sales.test.tsx green, tsc clean, sale row visible in Neon.
+  (2026-10-30: code + tests + migration done; waiting for one real purchase → sale to verify.)

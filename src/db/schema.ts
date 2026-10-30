@@ -86,7 +86,7 @@ export const stockMovements = pgTable(
   (t) => [
     check(
       "stock_movements_type_valid",
-      sql`${t.type} in ('PURCHASE','STOCK_CHECK','USAGE','WASTAGE','ADJUSTMENT')`,
+      sql`${t.type} in ('PURCHASE','STOCK_CHECK','USAGE','WASTAGE','ADJUSTMENT','SALE')`,
     ),
   ],
 );
@@ -105,6 +105,26 @@ export const movementBatchLinks = pgTable(
     costPaise: integer("cost_paise").notNull(),
   },
   (t) => [primaryKey({ columns: [t.movementId, t.batchId] })],
+);
+
+export const sales = pgTable(
+  "sales",
+  {
+    id: serial("id").primaryKey(),
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id),
+    movementId: integer("movement_id")
+      .notNull()
+      .references(() => stockMovements.id),
+    qtyBase: integer("qty_base").notNull(),
+    unitPricePaise: integer("unit_price_paise").notNull(),
+    totalPaise: integer("total_paise").notNull(),
+    soldAt: date("sold_at").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("sales_qty_positive", sql`${t.qtyBase} > 0`)],
 );
 
 export const expenses = pgTable("expenses", {
