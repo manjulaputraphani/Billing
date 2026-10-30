@@ -51,7 +51,7 @@ describe("member login", () => {
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(verifyPassword).toHaveBeenCalledWith("secret123", "hash");
-    expect(setAuditActor).toHaveBeenCalledWith({ userId: 1, name: "Ravi" });
+    expect(setAuditActor).toHaveBeenCalledWith({ userId: 1, name: "Ravi", role: "owner" });
     expect(onLogin).toHaveBeenCalledWith(USER);
   });
 
