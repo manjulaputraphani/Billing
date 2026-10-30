@@ -35,7 +35,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 - [x] **T-3.2 Add Purchase** — src/pages/AddPurchase.tsx, src/db/purchases.ts. Transaction: purchase+batch+movement.
   Total auto-calc. Prefill last price. Acceptance: TESTING §B1.
   (2026-10-30: addPurchase uses ONE statement with data-modifying CTEs (purchase → batch → PURCHASE movement), supplier found-or-created in the same statement. Live total via computeTotalPaise; prefill + "Last price: ₹X (date)"; "+20% vs last time" after save. §B1 test written in src/db/purchases.int.test.ts — SKIPPED until DATABASE_URL_TEST is set.)
-- [ ] **T-3.3 Purchases list** — filter by item/date, show batch remaining.
+- [x] **T-3.3 Purchases list** — filter by item/date, show batch remaining.
+  (2026-10-30: src/pages/Purchases.tsx + listPurchases (joins items/suppliers/batches, newest first) + getStockLeft in src/db/items.ts. Filters: item, from, to.)
 
 ## Phase 4 — Stock check & FIFO (MOST IMPORTANT)
 - [ ] **T-4.1 fifo.ts** — tests FIRST (TESTING §A2), then code. Pure function.
