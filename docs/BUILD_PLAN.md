@@ -102,7 +102,10 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (2026-10-30: ai/tools.ts — six SELECT-only tools (also get_stock_value), unknown names refused; no
   write tool exists. ai/chat.ts loop, max 5 rounds, only the last 10 messages sent. pages/Chat.tsx with
   example chips, Thinking…, read-only notice. 5 tests incl. "delete all data" → no DB call.)
-- [ ] **T-8.4 AI settings** — on/off, cloud/local model, API key in secure storage, refresh max once/day.
+- [x] **T-8.4 AI settings** — on/off, cloud/local model, API key in secure storage, refresh max once/day.
+  (2026-10-30: Settings → "AI assistant": On/Off, mode local|cloud, model text (default
+  glm-5.3-flash:cloud), cloud key saved via saveSecret(OLLAMA_API_KEY) and never shown again
+  (only "Key saved ✓"), "Test AI". Stored in the settings table; auto-refresh capped at once/day.)
 
 ## Phase 9 — Real-use
 - [ ] **T-9.1** One week real data; compare with bills daily. Log mismatches as bugs in HANDOVER.

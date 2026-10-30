@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 export const SECRET_KEYS = {
   DATABASE_URL: "DATABASE_URL",
   PIN_HASH: "PIN_HASH",
+  OLLAMA_API_KEY: "OLLAMA_API_KEY",
 } as const;
 
 export type SecretKey = (typeof SECRET_KEYS)[keyof typeof SECRET_KEYS];
