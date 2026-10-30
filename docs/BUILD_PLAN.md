@@ -164,6 +164,11 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 - [x] **Multi-item bill test** (6 lines, mixed units kg/l/pcs): SD-2026-000003 = ₹940 + 5% GST ₹47 =
   ₹987, per-line CGST/SGST shares, HSN per line, total row shows "6 items" when units differ, stock
   deducted per item (e.g. CHANA 10→8 kg, MATCH BOX 50→40 pcs), profit ₹125. 192 tests green.
+- [x] **GSTIN assist (free route)** — portal has no public API/captcha automation is not allowed: added
+  `src/logic/gstin.ts` (format + official mod-36 check digit, tests), "Search GSTIN on portal" button
+  (opens services.gst.gov.in in the browser via opener), inline check-digit warning (non-blocking), and
+  auto-fill from a saved customer when the GSTIN matches (`findCustomerByGstin`). Saving a bill caches
+  the customer so next bills fill themselves. 200 tests green.
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO

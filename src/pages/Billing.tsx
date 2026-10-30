@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   createCustomer,
   createSaleBill,
+  findCustomerByGstin,
   getSaleBill,
   type SaleBillDetail,
 } from "../db/billing";
@@ -9,6 +10,8 @@ import { listItems, type ItemRow } from "../db/items";
 import { PAYMENT_MODES } from "../db/purchases";
 import { getShopDetails, type ShopDetails } from "../db/settings";
 import { useDb, useDbUrl } from "../lib/db-context";
+import { validateGstin, type GstinCheck } from "../logic/gstin";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { printBill } from "../lib/printBill";
 import { gstFromRate } from "../logic/gst";
 import { rupeesToPaise } from "../logic/purchase";
@@ -40,6 +43,8 @@ export default function Billing() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerGstin, setCustomerGstin] = useState("");
+  const [gstinStatus, setGstinStatus] = useState<GstinCheck | null>(null);
+  const [gstinNote, setGstinNote] = useState<string | null>(null);
   const [draftItemId, setDraftItemId] = useState<number | "">("");
   const [draftQty, setDraftQty] = useState("");
   const [draftPrice, setDraftPrice] = useState("");
@@ -76,6 +81,44 @@ export default function Billing() {
     const gstPaise = gstFromRate(taxablePaise, Number(gstRateBp) || 0);
     return { subtotalPaise, discountPaise, taxablePaise, gstPaise, totalPaise: taxablePaise + gstPaise };
   }, [discount, gstRateBp, lines]);
+
+  async function onGstinChange(value: string) {
+    setCustomerGstin(value);
+    setGstinNote(null);
+    const raw = value.trim().toUpperCase();
+    if (raw.length !== 15) {
+      setGstinStatus(null);
+      return;
+    }
+    const check = validateGstin(raw);
+    setGstinStatus(check);
+    if (!check.valid) return;
+    try {
+      const saved = await findCustomerByGstin(db, check.normalized);
+      if (saved) {
+        setCustomerName(saved.name);
+        setCustomerPhone(saved.phone ?? "");
+        setCustomerAddress(saved.address ?? "");
+        setGstinNote("Loaded saved customer details — edit if needed");
+      }
+    } catch {
+      // Lookup is a convenience; never block billing on it.
+    }
+  }
+
+  const GST_PORTAL = "https://services.gst.gov.in/services/searchtp";
+
+  async function openGstPortal() {
+    try {
+      await openUrl(GST_PORTAL);
+    } catch {
+      try {
+        window.open(GST_PORTAL, "_blank", "noopener");
+      } catch {
+        // opening the browser must never crash the form
+      }
+    }
+  }
 
   function addLine() {
     setError(null);
@@ -157,6 +200,8 @@ export default function Billing() {
       setCustomerPhone("");
       setCustomerAddress("");
       setCustomerGstin("");
+      setGstinStatus(null);
+      setGstinNote(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -253,10 +298,24 @@ export default function Billing() {
               id="bill-gstin"
               className="input w-full uppercase"
               value={customerGstin}
-              onChange={(e) => setCustomerGstin(e.currentTarget.value)}
+              onChange={(e) => void onGstinChange(e.currentTarget.value)}
             />
           </div>
         </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" className="btn-ghost" data-testid="gst-portal" onClick={() => void openGstPortal()}>
+            Search GSTIN on portal
+          </button>
+          {gstinNote && <span className="text-sm text-emerald-700">{gstinNote}</span>}
+          {gstinStatus && !gstinStatus.valid && (
+            <span className="text-sm text-amber-700">{gstinStatus.reason}</span>
+          )}
+        </div>
+        <p className="text-xs text-gray-500">
+          The GST portal has no public API. Open it, enter the GSTIN + captcha, then copy the legal
+          name and address here — saved customers auto-fill next time.
+        </p>
 
         <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
           <div className="space-y-1">

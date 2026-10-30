@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import Billing from "./Billing";
 import { DbProvider } from "../lib/db-context";
 import { listItems } from "../db/items";
-import { createCustomer, createSaleBill, getSaleBill } from "../db/billing";
+import { createCustomer, createSaleBill, findCustomerByGstin, getSaleBill } from "../db/billing";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 vi.mock("../db/client", () => ({
   getDb: vi.fn(() => ({})),
@@ -15,8 +16,15 @@ vi.mock("../db/client", () => ({
 vi.mock("../db/items", () => ({ listItems: vi.fn() }));
 vi.mock("../db/billing", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../db/billing")>();
-  return { ...actual, createCustomer: vi.fn(), createSaleBill: vi.fn(), getSaleBill: vi.fn() };
+  return {
+    ...actual,
+    createCustomer: vi.fn(),
+    createSaleBill: vi.fn(),
+    getSaleBill: vi.fn(),
+    findCustomerByGstin: vi.fn(),
+  };
 });
+vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("../db/settings", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../db/settings")>();
   return {
@@ -52,6 +60,7 @@ describe("GST billing", () => {
     vi.mocked(createCustomer).mockReset();
     vi.mocked(createSaleBill).mockReset();
     vi.mocked(getSaleBill).mockReset();
+    vi.mocked(findCustomerByGstin).mockReset().mockResolvedValue(null);
   });
 
   it("adds a line and applies 5% GST", async () => {
@@ -125,5 +134,43 @@ describe("GST billing", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Choose a customer for a credit sale");
     expect(createSaleBill).not.toHaveBeenCalled();
+  });
+
+  it("auto-fills a saved customer when the GSTIN is valid", async () => {
+    vi.mocked(findCustomerByGstin).mockResolvedValue({
+      id: 9,
+      name: "KALKI ENTERPRISES",
+      phone: "9000000001",
+      address: "1-16-135, REVENUE COLONY, Kurnool",
+      gstin: "27AAPFU0939F1ZV",
+    });
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText("Customer GSTIN"), "27AAPFU0939F1ZV");
+
+    expect(await screen.findByText(/Loaded saved customer details/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Customer (optional)")).toHaveValue("KALKI ENTERPRISES");
+    expect(screen.getByLabelText("Billing address")).toHaveValue("1-16-135, REVENUE COLONY, Kurnool");
+    expect(findCustomerByGstin).toHaveBeenCalledWith(expect.anything(), "27AAPFU0939F1ZV");
+  });
+
+  it("warns on a wrong GSTIN check digit", async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.type(screen.getByLabelText("Customer GSTIN"), "27AAPFU0939F1ZW");
+
+    expect(await screen.findByText(/Check digit should be V/)).toBeInTheDocument();
+    expect(findCustomerByGstin).not.toHaveBeenCalled();
+  });
+
+  it("opens the GST portal for a captcha lookup", async () => {
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByTestId("gst-portal");
+
+    await user.click(screen.getByTestId("gst-portal"));
+    expect(openUrl).toHaveBeenCalledWith("https://services.gst.gov.in/services/searchtp");
   });
 });

@@ -406,3 +406,30 @@ export async function getSaleBill(db: Db, id: number): Promise<SaleBillDetail | 
 
   return { ...bill, lines };
 }
+
+export type SavedCustomer = {
+  id: number;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  gstin: string | null;
+};
+
+/** Customer saved earlier with this GSTIN (for auto-fill on the billing form). */
+export async function findCustomerByGstin(db: Db, gstin: string): Promise<SavedCustomer | null> {
+  const normalized = gstin.trim().toUpperCase();
+  if (!normalized) return null;
+  const [row] = await db
+    .select({
+      id: customers.id,
+      name: customers.name,
+      phone: customers.phone,
+      address: customers.address,
+      gstin: customers.gstin,
+    })
+    .from(customers)
+    .where(eq(customers.gstin, normalized))
+    .orderBy(desc(customers.id))
+    .limit(1);
+  return row ?? null;
+}
