@@ -18,6 +18,7 @@ const GROUPS: { heading: string; links: Link[] }[] = [
       { to: "/purchases", label: "Purchases" },
       { to: "/purchases/new", label: "Add Purchase" },
       { to: "/stock-check", label: "Stock Check" },
+      { to: "/billing", label: "GST Billing" },
       { to: "/sales", label: "Sales" },
     ],
   },

@@ -22,3 +22,6 @@
 - 2026-10-31 · Execution order: V2-P10 → charts → V2-P11 credit → Funds tab · charts need real sales, funds need credit/payments data
 - 2026-10-31 · V2-P10 tables named `sale_bills` / `sale_items` (interim `sales` kept until the new screens replace it), `sale_items.movement_id` added · exact batch restore on cancel needs the SALE movement link
 - 2026-10-31 · Migration workflow: `drizzle-kit pull` baseline committed under `drizzle/`; `generate` needs an interactive TTY, so new tables go to the DEV branch via push first (once DATABASE_URL_TEST exists)
+- 2026-10-31 · P10 billing tables pushed additively to the current DB (customers/sale_bills/sale_items) · dev branch still missing; additive CREATE only, existing screens unaffected (dev-branch rule remains for future changes)
+- 2026-10-31 · GST bill printing via a hidden iframe + system Print dialog (Save as PDF) · no extra PDF dependency yet; shop name/address/phone/GSTIN read from Settings (`shop_*` keys)
+- 2026-10-31 · GST math in `src/logic/gst.ts` (basis points, rounded paise, exact CGST/SGST split) · one source for bill totals and the future GST report

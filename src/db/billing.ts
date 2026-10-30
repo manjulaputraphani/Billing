@@ -223,8 +223,6 @@ export type SaleBillRow = {
   paymentMode: string;
   cancelled: boolean;
 };
-
-/** Newest bills first, with the customer name for display. */
 export async function listSaleBills(db: Db, limit = 50): Promise<SaleBillRow[]> {
   return db
     .select({
@@ -291,4 +289,100 @@ export async function cancelSaleBill(url: string, saleId: number): Promise<{ res
 
     return { restored: lines.length };
   });
+}
+
+export const customerSchema = z.object({
+  name: z.string().trim().min(1, "Customer name is required").max(80, "Customer name is too long"),
+  phone: z.string().trim().max(20, "Phone is too long").optional(),
+});
+
+export type CustomerInput = z.infer<typeof customerSchema>;
+
+/** Add a customer (used by the billing screen when a name is typed). */
+export async function createCustomer(
+  db: Db,
+  input: unknown,
+): Promise<{ id: number; name: string; phone: string | null }> {
+  const parsed = customerSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid customer");
+  }
+  const data = parsed.data;
+  const [created] = await db
+    .insert(customers)
+    .values({ name: data.name, phone: data.phone?.trim() || null })
+    .returning({ id: customers.id, name: customers.name, phone: customers.phone });
+  await logActivity(db, {
+    event: "customer.create",
+    summary: `Customer added: ${created.name}`,
+    entity: "customer",
+    entityId: created.id,
+  });
+  return created;
+}
+
+export type SaleBillLineDetail = {
+  itemName: string;
+  unit: string;
+  qtyBase: number;
+  unitPricePaise: number;
+  lineTotalPaise: number;
+  costPaise: number;
+  profitPaise: number;
+};
+
+export type SaleBillDetail = {
+  id: number;
+  billNo: string;
+  saleDate: string;
+  customerName: string | null;
+  customerPhone: string | null;
+  paymentMode: string;
+  subtotalPaise: number;
+  discountPaise: number;
+  gstPaise: number;
+  totalPaise: number;
+  paidPaise: number;
+  cancelled: boolean;
+  lines: SaleBillLineDetail[];
+};
+
+/** One bill with its lines — used by the printable GST bill. */
+export async function getSaleBill(db: Db, id: number): Promise<SaleBillDetail | null> {
+  const [bill] = await db
+    .select({
+      id: saleBills.id,
+      billNo: saleBills.billNo,
+      saleDate: saleBills.saleDate,
+      customerName: customers.name,
+      customerPhone: customers.phone,
+      paymentMode: saleBills.paymentMode,
+      subtotalPaise: saleBills.subtotalPaise,
+      discountPaise: saleBills.discountPaise,
+      gstPaise: saleBills.gstPaise,
+      totalPaise: saleBills.totalPaise,
+      paidPaise: saleBills.paidPaise,
+      cancelled: saleBills.cancelled,
+    })
+    .from(saleBills)
+    .leftJoin(customers, eq(saleBills.customerId, customers.id))
+    .where(eq(saleBills.id, id));
+  if (!bill) return null;
+
+  const lines = await db
+    .select({
+      itemName: items.name,
+      unit: items.unit,
+      qtyBase: saleItems.qtyBase,
+      unitPricePaise: saleItems.unitPricePaise,
+      lineTotalPaise: saleItems.lineTotalPaise,
+      costPaise: saleItems.costPaise,
+      profitPaise: saleItems.profitPaise,
+    })
+    .from(saleItems)
+    .innerJoin(items, eq(items.id, saleItems.itemId))
+    .where(eq(saleItems.saleId, id))
+    .orderBy(asc(saleItems.id));
+
+  return { ...bill, lines };
 }

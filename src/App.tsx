@@ -7,6 +7,7 @@ import { getSecret, SECRET_KEYS } from "./lib/secrets";
 import { getDb } from "./db/client";
 import { logActivity } from "./db/activity";
 import AddPurchase from "./pages/AddPurchase";
+import Billing from "./pages/Billing";
 import Chat from "./pages/Chat";
 import ComingSoon from "./pages/ComingSoon";
 import Dashboard from "./pages/Dashboard";
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="purchases" element={<Purchases />} />
             <Route path="purchases/new" element={<AddPurchase />} />
             <Route path="stock-check" element={<StockCheck />} />
+            <Route path="billing" element={<Billing />} />
             <Route path="sales" element={<Sales />} />
             <Route path="expenses" element={<Expenses />} />
             <Route path="reports" element={<ComingSoon title="Reports" />} />

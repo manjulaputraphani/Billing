@@ -3,6 +3,47 @@ import type { Db } from "./client";
 import { settings } from "./schema";
 import type { OllamaMode } from "../ai/ollama";
 
+export type ShopDetails = {
+  name: string;
+  address: string;
+  phone: string;
+  gstin: string;
+};
+
+export const DEFAULT_SHOP: ShopDetails = { name: "", address: "", phone: "", gstin: "" };
+
+const SHOP_KEYS = ["shop_name", "shop_address", "shop_phone", "shop_gstin"] as const;
+
+/** Shop header printed on GST bills (Settings → Shop details). */
+export async function getShopDetails(db: Db): Promise<ShopDetails> {
+  const rows = await db
+    .select({ key: settings.key, value: settings.value })
+    .from(settings)
+    .where(inArray(settings.key, [...SHOP_KEYS]));
+  const map = new Map(rows.map((row) => [row.key, row.value]));
+  return {
+    name: map.get("shop_name") ?? DEFAULT_SHOP.name,
+    address: map.get("shop_address") ?? DEFAULT_SHOP.address,
+    phone: map.get("shop_phone") ?? DEFAULT_SHOP.phone,
+    gstin: map.get("shop_gstin") ?? DEFAULT_SHOP.gstin,
+  };
+}
+
+export async function saveShopDetails(db: Db, shop: ShopDetails): Promise<void> {
+  const pairs: [string, string][] = [
+    [SHOP_KEYS[0], shop.name.trim()],
+    [SHOP_KEYS[1], shop.address.trim()],
+    [SHOP_KEYS[2], shop.phone.trim()],
+    [SHOP_KEYS[3], shop.gstin.trim().toUpperCase()],
+  ];
+  for (const [key, value] of pairs) {
+    await db
+      .insert(settings)
+      .values({ key, value })
+      .onConflictDoUpdate({ target: settings.key, set: { value } });
+  }
+}
+
 export type AiConfig = {
   enabled: boolean;
   mode: OllamaMode;

@@ -5,6 +5,7 @@ import { DEFAULT_AI_CONFIG, getAiConfig, saveAiConfig, type AiConfig } from "../
 import { useDb } from "../lib/db-context";
 import { deleteSecret, getSecret, hashPin, saveSecret, SECRET_KEYS, verifyPin } from "../lib/secrets";
 import { listActivity, logActivity, type ActivityRow } from "../db/activity";
+import { DEFAULT_SHOP, getShopDetails, saveShopDetails, type ShopDetails } from "../db/settings";
 
 const PIN_RE = /^\d{4,6}$/;
 
@@ -32,12 +33,31 @@ export default function Settings({
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinStatus, setPinStatus] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [shop, setShop] = useState<ShopDetails>(DEFAULT_SHOP);
+  const [shopStatus, setShopStatus] = useState<string | null>(null);
 
   useEffect(() => {
     listActivity(db)
       .then(setActivity)
       .catch(() => setActivity([]));
   }, [db]);
+
+  useEffect(() => {
+    getShopDetails(db)
+      .then(setShop)
+      .catch(() => setShop(DEFAULT_SHOP));
+  }, [db]);
+
+  async function saveShop() {
+    setError(null);
+    setShopStatus(null);
+    try {
+      await saveShopDetails(db, shop);
+      setShopStatus("Shop details saved");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -271,6 +291,67 @@ export default function Settings({
           disabled={pinBusy}
         >
           Update PIN
+        </button>
+      </section>
+
+      <section className="space-y-3 card p-4">
+        <div>
+          <h2 className="text-sm font-medium">Shop details</h2>
+          <p className="text-sm text-gray-500">Printed on every GST bill.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-name">
+              Shop name
+            </label>
+            <input
+              id="shop-name"
+              className="input w-full"
+              value={shop.name}
+              onChange={(e) => setShop({ ...shop, name: e.currentTarget.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-phone">
+              Phone
+            </label>
+            <input
+              id="shop-phone"
+              className="input w-full"
+              value={shop.phone}
+              onChange={(e) => setShop({ ...shop, phone: e.currentTarget.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-address">
+              Address
+            </label>
+            <input
+              id="shop-address"
+              className="input w-full"
+              value={shop.address}
+              onChange={(e) => setShop({ ...shop, address: e.currentTarget.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-gstin">
+              GSTIN
+            </label>
+            <input
+              id="shop-gstin"
+              className="input w-full uppercase"
+              value={shop.gstin}
+              onChange={(e) => setShop({ ...shop, gstin: e.currentTarget.value })}
+            />
+          </div>
+        </div>
+        {shopStatus && (
+          <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+            {shopStatus}
+          </p>
+        )}
+        <button type="button" className="btn-primary" onClick={() => void saveShop()}>
+          Save shop details
         </button>
       </section>
 

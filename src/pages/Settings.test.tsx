@@ -14,8 +14,11 @@ vi.mock("../db/client", () => ({
 }));
 vi.mock("../db/settings", () => ({
   DEFAULT_AI_CONFIG: { enabled: false, mode: "local", model: "glm-5.3-flash:cloud" },
+  DEFAULT_SHOP: { name: "", address: "", phone: "", gstin: "" },
   getAiConfig: vi.fn(async () => ({ enabled: false, mode: "local", model: "glm-5.3-flash:cloud" })),
   saveAiConfig: vi.fn(async () => {}),
+  getShopDetails: vi.fn(async () => ({ name: "SDHHE", address: "", phone: "", gstin: "" })),
+  saveShopDetails: vi.fn(async () => {}),
 }));
 vi.mock("../lib/secrets", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/secrets")>();
