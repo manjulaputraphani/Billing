@@ -50,7 +50,7 @@ T-4.1  (FIFO: src/logic/fifo.ts + the BLUEPRINT §5 worked example as a test)
 
 ## Tests
 - Last run: `npm test` → 58 passed / 0 failed (12 files)
-- `npm run test:e2e` → 5 passed (Playwright, Chromium, Tauri IPC stubbed)
+- `npm run test:e2e` → 13 passed (Playwright, Chromium, Tauri IPC stubbed)
 - `npm run test:db` → 1 passed, 5 SKIPPED (needs DATABASE_URL_TEST)
 - `npm run typecheck` → clean
 
