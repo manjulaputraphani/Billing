@@ -11,3 +11,4 @@
 - 2026-10-30 · `rand_core` added only to enable its `getrandom` feature · argon2 needs OsRng for the salt; reuses the version already in the tree
 - 2026-10-30 · `@types/node` (devDependency) · `src/db/test-utils.ts` reads `process.env.DATABASE_URL_TEST`; removes the old `@ts-expect-error` in vite.config.ts
 - 2026-10-30 · `@playwright/test` (devDependency) + e2e/ specs · runs the real React UI in Chromium with Tauri IPC stubbed; the only automated check of the Setup→Lock→Home flow without a GUI
+- 2026-10-30 · `@tauri-apps/plugin-http` + `tauri-plugin-http` · Ollama calls go through Rust, bypassing webview CORS; capability scope limited to http://localhost:11434/* and https://ollama.com/*

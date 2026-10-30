@@ -90,7 +90,14 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   priority 1-3, messages with ₹, numbers carried alongside. db/suggestions.ts loadRuleStats in ONE
   SQL query + dismissal rows in ai_suggestions (dismissed=true). Pages: /suggestions (full list +
   Refresh) and a Dashboard card with the top 3 + Dismiss. 17 tests.)
-- [ ] **T-8.2 Ollama explain** — src/ai/suggest.ts: send stats JSON, get JSON array back, validate with zod, cache in ai_suggestions, fallback to rules.
+- [x] **T-8.2 Ollama explain** — src/ai/suggest.ts: send stats JSON, get JSON array back, validate with zod, cache in ai_suggestions, fallback to rules.
+  (2026-10-30: ai/ollama.ts chat() — local http://localhost:11434/api/chat, cloud https://ollama.com/api/chat
+  with Bearer key, stream false, 60s AbortController. ai/suggest.ts builds a human-numbers summary
+  (no raw tables/secrets), zod-validates ≤5 suggestions, DROPS any message mentioning a number absent
+  from the input, strips markdown fences, falls back with "AI unavailable, showing basic suggestions".
+  db/settings.ts stores enabled/mode/model; key in keychain (OLLAMA_API_KEY). Suggestions page gained
+  "Refresh AI suggestions" + once-per-day auto-refresh (shouldAutoRefresh) + cached in ai_suggestions.
+  8 tests.)
 - [ ] **T-8.3 Chat with tools** — read-only tools only (get_item_usage, get_price_history, get_low_stock_items, get_spending_by_category, get_supplier_comparison).
 - [ ] **T-8.4 AI settings** — on/off, cloud/local model, API key in secure storage, refresh max once/day.
 
