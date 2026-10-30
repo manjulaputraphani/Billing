@@ -10,5 +10,9 @@ export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dialect: "postgresql",
+  // This Neon project also holds an unrelated app's tables (CamelCase, public)
+  // and an `sdhhe_fy2025` schema. Restrict push to public so drizzle never
+  // touches anything outside our own lowercase tables.
+  schemaFilter: ["public"],
   dbCredentials: { url },
 });
