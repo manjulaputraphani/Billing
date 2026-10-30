@@ -5,7 +5,7 @@ Tool: OpenCode
 
 ## Current task
 **Login workstream approved** (docs/PLAN_LOGIN.md) — NOT built yet. PIN login still works for now.
-Next: **L1 schema** (`app_users`, `activity_log.user_id`).
+Next: **L2 crypto** (`hash_password`/`verify_password`). L1 DONE (app_users table + activity_log.user_id applied).
 
 ## Approved decisions (2026-10-31)
 - Login: type **phone + password** (min 6 chars, argon2id hash in DB).
@@ -16,7 +16,7 @@ Next: **L1 schema** (`app_users`, `activity_log.user_id`).
 ## Status
 - [x] Billing / Bills / GST invoice / email / company settings migrated
 - [x] `sdhhe_fy2025` backed up + dropped; company details now in `settings`
-- [ ] L1–L6 login workstream (see BUILD_PLAN tail)
+- [x] L1 schema · [ ] L2–L6 login workstream (see BUILD_PLAN tail)
 - [ ] Profit report + dashboard cards · charts · V2-P11 credit · Funds
 
 ## Done recently

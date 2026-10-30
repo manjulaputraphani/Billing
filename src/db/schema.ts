@@ -153,12 +153,28 @@ export const expenseBills = pgTable("expense_bills", {
 export const activityLog = pgTable("activity_log", {
   id: serial("id").primaryKey(),
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  userId: integer("user_id").references(() => appUsers.id),
   actor: text("actor").notNull().default("local"),
   event: text("event").notNull(),
   summary: text("summary").notNull(),
   entity: text("entity"),
   entityId: integer("entity_id"),
 });
+
+/** Members who log in with phone + password (docs/PLAN_LOGIN.md). */
+export const appUsers = pgTable(
+  "app_users",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    phone: text("phone").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    role: text("role").notNull().default("staff"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("app_users_role_valid", sql`${t.role} in ('owner','staff')`)],
+);
 
 // V2-P10 billing. NOTE: named sale_bills so the interim `sales` table keeps working
 // until the New Sale / Sales list screens replace it (see docs/BUILD_PLAN.md).
