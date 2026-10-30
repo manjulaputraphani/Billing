@@ -22,6 +22,12 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# OS keychain (macOS Keychain / Windows Credential Manager / Linux secret-service)
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+# PIN hashing — argon2id with a random salt
+argon2 = "0.5"
+# enables OsRng for salt generation (same crate argon2 already pulls in)
+rand_core = { version = "0.6", features = ["getrandom"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

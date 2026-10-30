@@ -21,7 +21,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   Note: `costPaise(qtyBase, unitPricePaise, pricePer = "kg")` — the 3rd arg is the unit the PRICE is quoted in (qty is always base units). Pass `"pcs"` or `"l"` for those items.
 
 ## Phase 2 — Setup & security
-- [ ] **T-2.1 Secure storage** — Tauri plugin for OS keychain/stronghold; save/read `DATABASE_URL`, `PIN_HASH`.
+- [x] **T-2.1 Secure storage** — Tauri plugin for OS keychain/stronghold; save/read `DATABASE_URL`, `PIN_HASH`.
+  (2026-10-30: `keyring` 3 + `argon2` 0.5 in Rust; commands save_secret/get_secret/delete_secret/hash_pin/verify_pin, service "stock-tracker"; typed wrappers in src/lib/secrets.ts. `cargo check` clean. Note: the scaffold `greet` command was removed.)
 - [ ] **T-2.2 Setup screen** — first launch: enter Neon URL, test connection, set PIN. Acceptance: restart → asks PIN, not URL.
 - [ ] **T-2.3 PIN lock** — wrong PIN 5× → wait 60 s. Tests TESTING §C.
 
