@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getDashboard, type DashboardData } from "../db/dashboard";
 import { useDb } from "../lib/db-context";
+import { useSuggestions } from "../lib/useSuggestions";
 import { formatQuantity, formatRupees, type Unit } from "../logic/units";
 
 function currentMonth(): string {
@@ -46,6 +47,7 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { suggestions, dismiss } = useSuggestions(db, month);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -130,6 +132,36 @@ export default function Dashboard() {
               </ul>
             </section>
           )}
+
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium">Suggestions</h2>
+              <Link to="/suggestions" className="text-sm underline">
+                View all
+              </Link>
+            </div>
+            {suggestions.length === 0 ? (
+              <p className="text-sm text-gray-500">Nothing to flag right now.</p>
+            ) : (
+              <ul className="space-y-2">
+                {suggestions.slice(0, 3).map((suggestion) => (
+                  <li
+                    key={`${suggestion.type}:${suggestion.itemId ?? "all"}`}
+                    className="flex items-start justify-between gap-3 rounded border border-gray-200 bg-white p-3"
+                  >
+                    <p className="text-sm">{suggestion.message}</p>
+                    <button
+                      type="button"
+                      className="shrink-0 text-xs underline"
+                      onClick={() => void dismiss(suggestion)}
+                    >
+                      Dismiss
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
           <section className="space-y-2">
             <h2 className="text-lg font-medium">Low stock</h2>

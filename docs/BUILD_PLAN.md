@@ -57,7 +57,10 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (2026-10-30: src/db/dashboard.ts getDashboard(db, month) — every sum in SQL: purchases, expenses, total, used cost (STOCK_CHECK+USAGE), wastage, stock value (round(sum(qty*price/factor))), low stock via HAVING, last 5 purchases/checks, price alerts via ROW_NUMBER window (>10%). src/pages/Dashboard.tsx: month picker, 6 cards, price alerts, low stock with links to /purchases/new?item=ID (AddPurchase now preselects from ?item=), empty state "Add your first item". Dashboard is the index route; Home.tsx removed. Tests: 4 UI, 3 int (SQL) SKIPPED, e2e main-flow SKIPPED until DATABASE_URL_TEST.)
 
 ## Phase 6 — Reports & Backup
-- [ ] **T-6.1 stats.ts** — daily usage, days left, price change %, monthly spend, overbuying (tests §A5).
+- [x] **T-6.1 stats.ts** — daily usage, days left, price change %, monthly spend, overbuying (tests §A5).
+  (2026-10-30: added as a Phase-8 prerequisite — Phase 6 was never committed. src/logic/stats.ts:
+  dailyUsage, daysLeft, priceChangePct, spendChangePct + §A5 tests. T-6.2 Reports page and
+  T-6.3 export are STILL MISSING.)
 - [ ] **T-6.2 Reports page** — price history chart, usage, spend by category/supplier.
 - [ ] **T-6.3 Export** — Excel (xlsx) + PDF; full backup JSON export & import into a fresh Neon branch (§D).
 
@@ -81,7 +84,12 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   GitHub — no remote configured.)
 
 ## Phase 8 — AI suggestions
-- [ ] **T-8.1 Rule suggestions** — src/logic/rules.ts: low stock, price up >10%, spend up >15%, overbuying. No AI.
+- [x] **T-8.1 Rule suggestions** — src/logic/rules.ts: low stock, price up >10%, spend up >15%, overbuying. No AI.
+  (2026-10-30: buildSuggestions(stats) → low_stock (daysLeft <= 5 or stock <= min), price_up (>10%),
+  spend_up (>15% vs last month), overbuying (>2x used in 30d), high_wastage (>5% of used);
+  priority 1-3, messages with ₹, numbers carried alongside. db/suggestions.ts loadRuleStats in ONE
+  SQL query + dismissal rows in ai_suggestions (dismissed=true). Pages: /suggestions (full list +
+  Refresh) and a Dashboard card with the top 3 + Dismiss. 17 tests.)
 - [ ] **T-8.2 Ollama explain** — src/ai/suggest.ts: send stats JSON, get JSON array back, validate with zod, cache in ai_suggestions, fallback to rules.
 - [ ] **T-8.3 Chat with tools** — read-only tools only (get_item_usage, get_price_history, get_low_stock_items, get_spending_by_category, get_supplier_comparison).
 - [ ] **T-8.4 AI settings** — on/off, cloud/local model, API key in secure storage, refresh max once/day.

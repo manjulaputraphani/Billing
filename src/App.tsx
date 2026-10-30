@@ -14,6 +14,7 @@ import Purchases from "./pages/Purchases";
 import Settings from "./pages/Settings";
 import Setup from "./pages/Setup";
 import StockCheck from "./pages/StockCheck";
+import Suggestions from "./pages/Suggestions";
 type Phase = "loading" | "setup" | "lock" | "home";
 
 export default function App() {
@@ -62,6 +63,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="items" element={<Items />} />
+            <Route path="suggestions" element={<Suggestions />} />
             <Route path="purchases" element={<Purchases />} />
             <Route path="purchases/new" element={<AddPurchase />} />
             <Route path="stock-check" element={<StockCheck />} />
