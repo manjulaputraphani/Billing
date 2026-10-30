@@ -4,7 +4,14 @@ import { chat } from "../ai/ollama";
 import { DEFAULT_AI_CONFIG, getAiConfig, saveAiConfig, type AiConfig } from "../db/settings";
 import { useDb } from "../lib/db-context";
 import { deleteSecret, getSecret, hashPin, saveSecret, SECRET_KEYS, verifyPin } from "../lib/secrets";
-import { listActivity, logActivity, type ActivityRow } from "../db/activity";
+import { getAuditActor, listActivity, logActivity, type ActivityRow } from "../db/activity";
+import {
+  createUser,
+  listAppUsers,
+  resetUserPassword,
+  setUserActive,
+  type AppUser,
+} from "../db/users";
 import {
   DEFAULT_EMAIL,
   DEFAULT_SHOP,
@@ -51,12 +58,71 @@ export default function Settings({
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [testTo, setTestTo] = useState("");
   const [shopStatus, setShopStatus] = useState<string | null>(null);
+  const [members, setMembers] = useState<AppUser[]>([]);
+  const [membersStatus, setMembersStatus] = useState<string | null>(null);
+  const [memberName, setMemberName] = useState("");
+  const [memberPhone, setMemberPhone] = useState("");
+  const [memberPassword, setMemberPassword] = useState("");
+  const [resetTarget, setResetTarget] = useState<AppUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const isOwner = getAuditActor().role === "owner";
 
   useEffect(() => {
     listActivity(db)
       .then(setActivity)
       .catch(() => setActivity([]));
   }, [db]);
+
+  async function loadMembers() {
+    setMembers(await listAppUsers(db));
+  }
+
+  useEffect(() => {
+    if (getAuditActor().role === "owner") {
+      listAppUsers(db).then(setMembers).catch(() => setMembers([]));
+    }
+  }, [db]);
+
+  async function addMember() {
+    setError(null);
+    setMembersStatus(null);
+    try {
+      await createUser(db, { name: memberName, phone: memberPhone, password: memberPassword, role: "staff" });
+      setMembersStatus("Member added");
+      setMemberName("");
+      setMemberPhone("");
+      setMemberPassword("");
+      await loadMembers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function saveResetPassword() {
+    if (!resetTarget) return;
+    setError(null);
+    setMembersStatus(null);
+    try {
+      await resetUserPassword(db, resetTarget.id, resetPassword);
+      setMembersStatus(`Password reset for ${resetTarget.name}`);
+      setResetTarget(null);
+      setResetPassword("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function toggleMember(user: AppUser) {
+    setError(null);
+    setMembersStatus(null);
+    try {
+      await setUserActive(db, user.id, !user.active);
+      setMembersStatus(`${user.name} ${user.active ? "disabled" : "enabled"}`);
+      await loadMembers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   useEffect(() => {
     getShopDetails(db)
@@ -365,6 +431,96 @@ export default function Settings({
           Update PIN
         </button>
       </section>
+
+      {isOwner && (
+        <section className="space-y-3 card p-4" data-testid="members-card">
+          <div>
+            <h2 className="text-sm font-medium">Users (members)</h2>
+            <p className="text-sm text-gray-500">
+              Owner only. Members sign in with their phone number and password.
+            </p>
+          </div>
+          {members.length === 0 ? (
+            <p className="text-sm text-gray-500">No members yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100 text-sm">
+              {members.map((member) => (
+                <li key={member.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                  <span>
+                    <b>{member.name}</b> · {member.phone}{" "}
+                    <span className={`badge ${member.role === "owner" ? "badge-ok" : ""}`}>
+                      {member.role}
+                    </span>{" "}
+                    {!member.active && <span className="badge badge-bad">disabled</span>}
+                  </span>
+                  <span className="space-x-3">
+                    <button
+                      type="button"
+                      className="text-sm underline"
+                      onClick={() => {
+                        setResetTarget(member);
+                        setResetPassword("");
+                      }}
+                    >
+                      Reset password
+                    </button>
+                    <button
+                      type="button"
+                      className={`text-sm underline ${member.active ? "text-red-700" : "text-emerald-700"}`}
+                      onClick={() => void toggleMember(member)}
+                    >
+                      {member.active ? "Deactivate" : "Enable"}
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <label className="label" htmlFor="member-name">Member name</label>
+              <input id="member-name" className="input w-full" value={memberName}
+                onChange={(e) => setMemberName(e.currentTarget.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="label" htmlFor="member-phone">Member phone</label>
+              <input id="member-phone" className="input w-full" inputMode="numeric" value={memberPhone}
+                onChange={(e) => setMemberPhone(e.currentTarget.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="label" htmlFor="member-password">Member password</label>
+              <input id="member-password" type="password" className="input w-full" value={memberPassword}
+                onChange={(e) => setMemberPassword(e.currentTarget.value)} />
+            </div>
+          </div>
+          <button type="button" className="btn-primary" onClick={() => void addMember()}>
+            Add member
+          </button>
+
+          {resetTarget && (
+            <div className="space-y-2 rounded-xl bg-stone-50 p-3">
+              <p className="text-sm">New password for <b>{resetTarget.name}</b></p>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 input"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.currentTarget.value)}
+                />
+                <button type="button" className="btn-primary" onClick={() => void saveResetPassword()}>
+                  Save password
+                </button>
+                <button type="button" className="btn-ghost" onClick={() => setResetTarget(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {membersStatus && <p role="status" className="text-sm text-emerald-700">{membersStatus}</p>}
+        </section>
+      )}
 
       <section className="space-y-3 card p-4">
         <div>

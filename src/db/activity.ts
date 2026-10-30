@@ -5,7 +5,7 @@ import { activityLog } from "./schema";
 /** Any drizzle handle, inside or outside a transaction. */
 type AnyDb = Db | TxDb;
 
-type AuditActor = { userId: number | null; name: string };
+export type AuditActor = { userId: number | null; name: string; role?: "owner" | "staff" };
 
 let currentActor: AuditActor = { userId: null, name: "local" };
 

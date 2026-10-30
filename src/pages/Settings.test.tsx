@@ -4,7 +4,8 @@ import userEvent from "@testing-library/user-event";
 import Settings from "./Settings";
 import { DbProvider } from "../lib/db-context";
 import { deleteSecret, getSecret, hashPin, saveSecret, verifyPin } from "../lib/secrets";
-import { listActivity, logActivity } from "../db/activity";
+import { getAuditActor, listActivity, logActivity } from "../db/activity";
+import { createUser, listAppUsers, setUserActive } from "../db/users";
 
 vi.mock("../db/client", () => ({
   getDb: vi.fn(() => ({})),
@@ -50,6 +51,13 @@ vi.mock("../lib/email", () => ({ sendEmail: vi.fn(async () => {}), billEmailSubj
 vi.mock("../db/activity", () => ({
   listActivity: vi.fn(async () => []),
   logActivity: vi.fn(async () => {}),
+  getAuditActor: vi.fn(() => ({ userId: 1, name: "Phani", role: "owner" })),
+}));
+vi.mock("../db/users", () => ({
+  listAppUsers: vi.fn(async () => []),
+  createUser: vi.fn(),
+  resetUserPassword: vi.fn(async () => {}),
+  setUserActive: vi.fn(async () => {}),
 }));
 
 const URL = "postgresql://user:pass@localhost:5432/test";
@@ -73,6 +81,19 @@ beforeEach(() => {
   vi.mocked(verifyPin).mockReset().mockResolvedValue(true);
   vi.mocked(listActivity).mockReset().mockResolvedValue([]);
   vi.mocked(logActivity).mockReset().mockResolvedValue(undefined);
+  vi.mocked(getAuditActor).mockReturnValue({ userId: 1, name: "Phani", role: "owner" });
+  vi.mocked(listAppUsers).mockReset().mockResolvedValue([
+    { id: 1, name: "Phani", phone: "9876543210", role: "owner", active: true },
+    { id: 2, name: "Ravi", phone: "9123456780", role: "staff", active: true },
+  ]);
+  vi.mocked(createUser).mockReset().mockResolvedValue({
+    id: 3,
+    name: "Priya",
+    phone: "9000000000",
+    role: "staff",
+    active: true,
+  });
+  vi.mocked(setUserActive).mockReset().mockResolvedValue(undefined);
 });
 
 describe("Settings — security", () => {
@@ -186,6 +207,42 @@ describe("Settings — security", () => {
     await user.selectOptions(screen.getByLabelText("Member"), "Ravi");
     expect(screen.queryByText("Phani signed in")).not.toBeInTheDocument();
     expect(screen.getByText("Sale SD-2026-000010")).toBeInTheDocument();
+  });
+
+  it("owner sees members and can add one", async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("Ravi")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Member name"), "Priya");
+    await user.type(screen.getByLabelText("Member phone"), "9000000000");
+    await user.type(screen.getByLabelText("Member password"), "secret123");
+    await user.click(screen.getByRole("button", { name: "Add member" }));
+
+    expect(createUser).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ name: "Priya", phone: "9000000000", role: "staff" }),
+    );
+    expect(await screen.findByText("Member added")).toBeInTheDocument();
+  });
+
+  it("owner can deactivate a member", async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await screen.findByText("Ravi");
+    const [, raviDeactivate] = screen.getAllByRole("button", { name: "Deactivate" });
+    await user.click(raviDeactivate);
+
+    expect(setUserActive).toHaveBeenCalledWith(expect.anything(), 2, false);
+    expect(await screen.findByText(/Ravi disabled/)).toBeInTheDocument();
+  });
+
+  it("hides the users card from staff", async () => {
+    vi.mocked(getAuditActor).mockReturnValue({ userId: 2, name: "Ravi", role: "staff" });
+    renderPage();
+    await screen.findByText(/PIN: set/);
+    expect(screen.queryByTestId("members-card")).not.toBeInTheDocument();
   });
 
   it("removes the saved AI key", async () => {

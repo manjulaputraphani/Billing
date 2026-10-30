@@ -50,7 +50,7 @@ export default function Lock({ url, onLogin }: Props) {
   }, [lockedUntil]);
 
   async function finishLogin(user: AppUser) {
-    setAuditActor({ userId: user.id, name: user.name });
+    setAuditActor({ userId: user.id, name: user.name, role: user.role });
     try {
       await logActivity(db, { event: "login", summary: `${user.name} signed in` });
     } catch {

@@ -195,4 +195,4 @@ Reconciliation with the interim work of 2026-10-30:
 - [x] **L3** phone normalization + password rules (min 6, tests first) — `src/logic/auth.ts` (+4 tests)
 - [x] **L4** phone+password login, first-run owner setup, lock/logout, retire PIN (2026-10-31: Lock rewritten; App phases setup→login→home; audit actor set on login; PIN_HASH deleted after first member login; Setup is connection-only; App/Lock/Setup tests rewritten — 208 green)
 - [~] **L5** audit attribution — groundwork DONE: activity_log.user_id column + `setAuditActor`/`getAuditActor`; every logActivity row now uses the session actor when set. Done: setAuditActor on login / cleared on lock — every write is now attributed. Pending: user filter in Settings.
-- [ ] **L6** Settings → Users (add / reset password / deactivate, Owner only) — NEXT
+- [x] **L6** Settings → Users (add / reset password / deactivate, Owner only) — 2026-10-31: members card (list, add, reset, deactivate/enable), role-aware (owner only), 3 new tests. Login stream complete.
