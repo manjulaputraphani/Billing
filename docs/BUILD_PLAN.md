@@ -64,7 +64,14 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 ## Phase 7 — Packaging
 - [x] **T-7.1 Icon/name** — tauri.conf.json productName "Stock Tracker", icons via `npx tauri icon`.
   (2026-10-30: version 1.0.0 (tauri + package.json), productName "Stock Tracker", identifier com.stocktracker.app, window title "Stock Tracker" 1280x800, min 1024x700. Version shown in Settings via getVersion(). app-icon.png (1024², generated) → `npx tauri icon` wrote all sizes incl. .icns/.ico. Windows bundle: targets ["nsis","msi"], nsis installMode "currentUser" + startMenuFolder "Stock Tracker" (NSIS also creates the desktop shortcut by default).)
-- [ ] **T-7.2 Local build** — `npm run tauri build`. Acceptance: installer runs on your OS (§E).
+- [x] **T-7.2 Local build** — `npm run tauri build`. Acceptance: installer runs on your OS (§E).
+  (2026-10-30: pre-flight green (typecheck, 119 unit tests; test:db 1 passed / 13 skipped — no
+  DATABASE_URL_TEST). Secret scan: no real credential outside the gitignored `.env`; one real
+  hostname had leaked into src/lib/url.test.ts and was replaced with a fake. `npm run tauri build`
+  compiled the release binary but produced NO bundle: targets are ["nsis","msi"] (Windows-only).
+  `--bundles app` produced src-tauri/target/release/bundle/macos/Stock Tracker.app (~4.1 MB).
+  DMG step fails twice in this sandbox (hdiutil "couldn't unmount - Resource busy"). Windows
+  .exe/.msi must be built on Windows or via the T-7.3 CI.)
 - [ ] **T-7.3 CI builds** — .github/workflows/release.yml using tauri-apps/tauri-action for windows/macos/ubuntu + run `npm test`.
 
 ## Phase 8 — AI suggestions

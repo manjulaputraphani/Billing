@@ -3,8 +3,8 @@ import { hostOf, hostLabel } from "./url";
 
 describe("hostOf", () => {
   it("extracts only the hostname from a Neon URL", () => {
-    expect(hostOf("postgresql://user:secret@ep-shiny-king-pooler.c-2.us-east-1.aws.neon.tech/db?sslmode=require")).toBe(
-      "ep-shiny-king-pooler.c-2.us-east-1.aws.neon.tech",
+    expect(hostOf("postgresql://user:secret@ep-example-1234-pooler.us-east-1.aws.neon.tech/db?sslmode=require")).toBe(
+      "ep-example-1234-pooler.us-east-1.aws.neon.tech",
     );
   });
 
