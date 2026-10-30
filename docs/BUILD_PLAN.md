@@ -23,7 +23,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 ## Phase 2 — Setup & security
 - [x] **T-2.1 Secure storage** — Tauri plugin for OS keychain/stronghold; save/read `DATABASE_URL`, `PIN_HASH`.
   (2026-10-30: `keyring` 3 + `argon2` 0.5 in Rust; commands save_secret/get_secret/delete_secret/hash_pin/verify_pin, service "stock-tracker"; typed wrappers in src/lib/secrets.ts. `cargo check` clean. Note: the scaffold `greet` command was removed.)
-- [ ] **T-2.2 Setup screen** — first launch: enter Neon URL, test connection, set PIN. Acceptance: restart → asks PIN, not URL.
+- [x] **T-2.2 Setup screen** — first launch: enter Neon URL, test connection, set PIN. Acceptance: restart → asks PIN, not URL.
+  (2026-10-30: src/pages/Setup.tsx — URL field, "Test connection" via `pingDb` (`select 1`), PIN + confirm (4-6 digits), errors "Cannot connect - check the connection string" / "PINs do not match", saves DATABASE_URL + PIN_HASH, shows ONLY the host (src/lib/url.ts). CSP set in tauri.conf.json: strict `csp` + `devCsp` with https://*.neon.tech in connect-src. The "restart → asks PIN" half is wired in T-2.3.)
 - [ ] **T-2.3 PIN lock** — wrong PIN 5× → wait 60 s. Tests TESTING §C.
 
 ## Phase 3 — Items & Purchases

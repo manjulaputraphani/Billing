@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { sql } from "drizzle-orm";
 import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
@@ -15,4 +16,9 @@ export function getDb(url: string): Db {
     throw new Error("getDb(url): a database URL is required");
   }
   return drizzle(neon(url), { schema });
+}
+
+/** Cheapest possible round-trip to prove a connection string works. */
+export async function pingDb(url: string): Promise<void> {
+  await getDb(url).execute(sql`select 1`);
 }
