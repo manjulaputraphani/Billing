@@ -45,7 +45,7 @@ sale+cancel transactions, screens. BLOCKED on the Neon dev branch (`DATABASE_URL
 
 ## Files / tests
 - Last commits: 57fe68f (audit+bills), 8095f4f (security), af2e79b (UI), 3816cb3 (interim sales)
-- `npm test` → 166 passed · `npx tsc --noEmit` → clean · e2e 13 passed / 1 skipped · cargo not re-run
+- `npm test` → 171 passed (29 files) · `npx tsc --noEmit` → clean · e2e 13 passed / 1 skipped · cargo not re-run
 
 ## Blockers / notes
 - ⚠ No dev branch / `DATABASE_URL_TEST` yet → V2 DB work cannot start until the user creates it.
