@@ -191,7 +191,7 @@ Reconciliation with the interim work of 2026-10-30:
 
 ## LOGIN WORKSTREAM — see docs/PLAN_LOGIN.md (approved 2026-10-31)
 - [x] **L1** `app_users` + `activity_log.user_id` schema/migration (2026-10-31: table created, 0 rows; column + index on activity_log)
-- [ ] **L2** argon2 `hash_password` / `verify_password` commands
+- [x] **L2** argon2 `hash_password` / `verify_password` commands (2026-10-31: shared hash_secret/verify_secret, PIN commands kept; 4 Rust tests pass)
 - [ ] **L3** phone normalization + password rules (min 6, tests first)
 - [ ] **L4** phone+password login screen, first-run owner setup, lock/logout, retire PIN
 - [ ] **L5** audit attribution (user id + name on every write) + user filter

@@ -38,23 +38,70 @@ fn delete_secret(key: String) -> Result<(), String> {
 /// Hash a PIN with argon2id and a fresh random salt.
 #[tauri::command]
 fn hash_pin(pin: String) -> Result<String, String> {
-    let salt = SaltString::generate(&mut OsRng);
-    Argon2::default()
-        .hash_password(pin.as_bytes(), &salt)
-        .map(|hash| hash.to_string())
-        .map_err(|e| e.to_string())
+    hash_secret(&pin)
 }
 
 /// Check a PIN against a stored argon2 hash. A malformed hash is `false`, not an error.
 #[tauri::command]
 fn verify_pin(pin: String, hash: String) -> Result<bool, String> {
-    let parsed = match PasswordHash::new(&hash) {
-        Ok(p) => p,
-        Err(_) => return Ok(false),
+    Ok(verify_secret(&pin, &hash))
+}
+
+fn hash_secret(secret: &str) -> Result<String, String> {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(secret.as_bytes(), &salt)
+        .map(|hash| hash.to_string())
+        .map_err(|e| e.to_string())
+}
+
+fn verify_secret(secret: &str, hash: &str) -> bool {
+    let parsed = match PasswordHash::new(hash) {
+        Ok(parsed) => parsed,
+        Err(_) => return false,
     };
-    Ok(Argon2::default()
-        .verify_password(pin.as_bytes(), &parsed)
-        .is_ok())
+    Argon2::default()
+        .verify_password(secret.as_bytes(), &parsed)
+        .is_ok()
+}
+
+/// Hash a member password (argon2id + random salt) — docs/PLAN_LOGIN.md L2.
+#[tauri::command]
+fn hash_password(password: String) -> Result<String, String> {
+    hash_secret(&password)
+}
+
+/// Constant-time check of a password against a stored argon2 hash.
+#[tauri::command]
+fn verify_password(password: String, hash: String) -> Result<bool, String> {
+    Ok(verify_secret(&password, &hash))
+}
+
+#[cfg(test)]
+mod auth_tests {
+    use super::{hash_secret, verify_secret};
+
+    #[test]
+    fn password_roundtrip() {
+        let hash = hash_secret("secret123").expect("hash");
+        assert!(verify_secret("secret123", &hash));
+    }
+
+    #[test]
+    fn wrong_password_is_rejected() {
+        let hash = hash_secret("secret123").expect("hash");
+        assert!(!verify_secret("secret124", &hash));
+    }
+
+    #[test]
+    fn malformed_hash_is_rejected() {
+        assert!(!verify_secret("secret123", "not-a-hash"));
+    }
+
+    #[test]
+    fn two_hashes_differ_by_salt() {
+        assert_ne!(hash_secret("same").unwrap(), hash_secret("same").unwrap());
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -119,6 +166,8 @@ pub fn run() {    tauri::Builder::default()
             delete_secret,
             hash_pin,
             verify_pin,
+            hash_password,
+            verify_password,
             send_email
         ])
         .run(tauri::generate_context!())

@@ -35,3 +35,13 @@ export async function hashPin(pin: string): Promise<string> {
 export async function verifyPin(pin: string, hash: string): Promise<boolean> {
   return invoke<boolean>("verify_pin", { pin, hash });
 }
+
+/** argon2id hash of a member password (L2, docs/PLAN_LOGIN.md). */
+export async function hashPassword(password: string): Promise<string> {
+  return invoke<string>("hash_password", { password });
+}
+
+/** Constant-time check of a member password against a stored hash. */
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return invoke<boolean>("verify_password", { password, hash });
+}
