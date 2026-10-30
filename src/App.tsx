@@ -77,6 +77,7 @@ export default function App() {
               path="settings"
               element={
                 <Settings
+                  onLock={() => setPhase("lock")}
                   onReset={() => {
                     setUrl(null);
                     setPhase("setup");

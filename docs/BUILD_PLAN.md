@@ -123,3 +123,6 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   card surfaces, `.card/.btn/.input/.label` component classes applied across pages, refined
   tables and focus rings, Setup/Lock redesigned. No text, label or heading changes (selectors intact).
   (2026-10-30: all 158 unit/UI tests + 13 e2e green; tsc clean.)
+- [x] **T-10.3 Security settings** — Security card with Keychain status (PIN / connection / AI key, values
+  never shown), **Lock now**, **Change PIN** (current PIN checked, 4-6 digits, confirm), **Remove AI key**.
+  (2026-10-30: Settings.test.tsx 6 tests, full suite 164 green, tsc clean, e2e 13 passed.)

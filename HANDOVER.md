@@ -1,14 +1,14 @@
 # HANDOVER (keep under 60 lines — overwrite each time, history is in git)
 
-Last updated: 2026-10-30 23:12 by DeepSeek V4.1 Flash (OpenCode)
+Last updated: 2026-10-30 23:15 by DeepSeek V4.1 Flash (OpenCode)
 Tool: OpenCode
 
 ## Current task
-Phase 10 / T-10.1 (sales) — code, tests and DB migration DONE; awaiting ONE real purchase + sale
-to verify end-to-end (checkbox not ticked yet).
+Phase 10: T-10.1 (sales) awaiting ONE real purchase + sale; T-10.2 (UI) and T-10.3 (security)
+are DONE (T-10.1 checkbox not ticked yet).
 
 ## Status
-- [x] Sales feature built  ·  [x] T-10.2 UI polish  ·  [ ] T-10.1 real-DB verified  ·  [ ] T-6.2/T-6.3 missing
+- [x] Sales built  ·  [x] UI polish  ·  [x] Security settings  ·  [ ] T-10.1 real-DB verified  ·  [ ] T-6.2/T-6.3 missing
 
 ## Done this session
 - Keychain bug FIXED: DATABASE_URL/PIN_HASH re-created allow-all (`security ... -A`), verified silent
@@ -23,6 +23,9 @@ to verify end-to-end (checkbox not ticked yet).
 - T-10.2 UI polish: warm stone palette, dark grouped sidebar, card/button/input component classes
   applied across pages, refined tables + focus rings; Setup/Lock redesigned. No text/label/heading
   changes, so all test selectors still match.
+- T-10.3 Security settings: Keychain status card (PIN / connection / AI key, values never shown),
+  Lock now (back to lock screen without quitting), Change PIN (current PIN checked, 4-6 digits,
+  confirm), Remove AI key. `src/pages/Settings.test.tsx` 6 tests.
 
 ## In progress (exact point where work stopped)
 - File: —
@@ -38,10 +41,10 @@ Finish T-10.1 verification (then consider T-6.2/T-6.3).
 
 ## Files touched this session
 - src/App.tsx, src/App.css, src/components/Layout.tsx, src/db/{schema,sales}.ts, src/logic/sales.ts(+test)
-- src/pages/Sales.tsx(+test), docs/{BUILD_PLAN,DECISIONS}.md
+- src/pages/Sales.tsx(+test), src/pages/Settings.tsx(+test), docs/{BUILD_PLAN,DECISIONS}.md
 
 ## Tests
-- `npm test` → 158 passed / 0 failed (27 files)
+- `npm test` → 164 passed / 0 failed (28 files)
 - `npx tsc --noEmit` → clean
 - `npm run test:e2e` → 13 passed, 1 skipped (needs DATABASE_URL_TEST)
 - `cargo check` → not re-run (no Rust changes)
