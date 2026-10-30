@@ -17,7 +17,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   Acceptance: `npx drizzle-kit push` creates tables on `dev` branch.
   ⚠ 2026-10-30: 9 tables CREATED. But `drizzle-kit push` itself cannot run from this agent (non-TTY, `promptNamedWithSchemasConflict`); the identical generated DDL was applied in one additive transaction instead. ⚠ These tables live in the EXISTING app DB `SriDurgaHariHaraEnterprices` (public schema, next to 34 CamelCase tables) — NOT a separate dev branch. `drizzle.config.ts` has `schemaFilter: ["public"]` so drizzle ignores `sdhhe_fy2025`.
 - [x] **T-1.2 DB client** — src/db/client.ts: `getDb(url)` using neon-http driver. URL passed in, never imported from code. (+ client.test.ts: rejects empty URL, returns handle without connecting)
-- [ ] **T-1.3 Money/unit helpers** — src/logic/units.ts (+ test): toBase, fromBase, formatRupees, costPaise. Acceptance: tests in TESTING §A1.
+- [x] **T-1.3 Money/unit helpers** — src/logic/units.ts (+ test): toBase, fromBase, formatRupees, costPaise. Acceptance: tests in TESTING §A1. (13 tests green; all 5 §A1 cases covered)
+  Note: `costPaise(qtyBase, unitPricePaise, pricePer = "kg")` — the 3rd arg is the unit the PRICE is quoted in (qty is always base units). Pass `"pcs"` or `"l"` for those items.
 
 ## Phase 2 — Setup & security
 - [ ] **T-2.1 Secure storage** — Tauri plugin for OS keychain/stronghold; save/read `DATABASE_URL`, `PIN_HASH`.
