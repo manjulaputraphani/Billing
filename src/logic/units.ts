@@ -36,6 +36,13 @@ export function fromBase(base: number, unit: Unit): number {
   return base / baseFactor(unit);
 }
 
+/** Integer base units → human text, e.g. formatQuantity(1500, "kg") === "1.50 kg". */
+export function formatQuantity(base: number, unit: Unit): string {
+  if (!Number.isFinite(base)) throw new Error(`Invalid base quantity: ${base}`);
+  if (baseFactor(unit) === 1) return `${Math.round(base)} ${unit}`;
+  return `${(base / baseFactor(unit)).toFixed(2)} ${unit}`;
+}
+
 /** Integer paise → "₹22.00". Integer maths only, so no float drift. */
 export function formatRupees(paise: number): string {
   if (!Number.isFinite(paise)) throw new Error(`Invalid amount: ${paise}`);

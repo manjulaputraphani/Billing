@@ -11,7 +11,8 @@
     "test": "vitest run --reporter=dot",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "test:db": "vitest run --reporter=dot --config vitest.db.config.ts src/db"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
@@ -32,6 +33,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^6.0.2",

@@ -1,5 +1,314 @@
-import ComingSoon from "./ComingSoon";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  createItem,
+  deleteItem,
+  listItems,
+  parseItemInput,
+  updateItem,
+  type ItemRow,
+} from "../db/items";
+import { useDb } from "../lib/db-context";
+import { formatQuantity, toBase, type Unit } from "../logic/units";
+
+type FormState = {
+  id: number | null;
+  name: string;
+  unit: Unit;
+  category: string;
+  minStock: string;
+};
+
+const EMPTY_FORM: FormState = { id: null, name: "", unit: "kg", category: "", minStock: "0" };
 
 export default function Items() {
-  return <ComingSoon title="Items" />;
+  const db = useDb();
+  const [rows, setRows] = useState<ItemRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState | null>(null);
+  const [deleting, setDeleting] = useState<ItemRow | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setRows(await listItems(db));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  function openAdd() {
+    setError(null);
+    setForm({ ...EMPTY_FORM });
+  }
+
+  function openEdit(row: ItemRow) {
+    setError(null);
+    setForm({
+      id: row.id,
+      name: row.name,
+      unit: (row.unit as Unit) ?? "kg",
+      category: row.category ?? "",
+      minStock: String(row.minStockBase / 1000),
+    });
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!form) return;
+    setError(null);
+    setSaving(true);
+    try {
+      const input = parseItemInput({
+        name: form.name,
+        unit: form.unit,
+        category: form.category,
+        minStockBase: toBase(Number(form.minStock) || 0, form.unit),
+      });
+      if (form.id === null) {
+        await createItem(db, input);
+      } else {
+        await updateItem(db, form.id, input);
+      }
+      setForm(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    setError(null);
+    try {
+      await deleteItem(db, deleting.id);
+      setDeleting(null);
+      await load();
+    } catch (err) {
+      setDeleting(null);
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <header className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Items</h1>
+        <button
+          type="button"
+          className="rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white"
+          onClick={openAdd}
+        >
+          Add item
+        </button>
+      </header>
+
+      {error && (
+        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-gray-200 bg-gray-50 text-gray-600">
+            <tr>
+              <th className="px-3 py-2">Name</th>
+              <th className="px-3 py-2">Unit</th>
+              <th className="px-3 py-2">Category</th>
+              <th className="px-3 py-2 text-right">Stock left</th>
+              <th className="px-3 py-2 text-right">Min stock</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {loading && (
+              <tr>
+                <td className="px-3 py-4 text-gray-500" colSpan={6}>
+                  Loading…
+                </td>
+              </tr>
+            )}
+            {!loading && rows.length === 0 && (
+              <tr>
+                <td className="px-3 py-4 text-gray-500" colSpan={6}>
+                  No items yet. Add your first item.
+                </td>
+              </tr>
+            )}
+            {rows.map((row) => (
+              <tr key={row.id} className="border-b border-gray-100 last:border-0">
+                <td className="px-3 py-2 font-medium">{row.name}</td>
+                <td className="px-3 py-2">{row.unit}</td>
+                <td className="px-3 py-2 text-gray-600">{row.category ?? "—"}</td>
+                <td className="px-3 py-2 text-right">
+                  {formatQuantity(row.stockLeftBase, row.unit as Unit)}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  {formatQuantity(row.minStockBase, row.unit as Unit)}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <button
+                    type="button"
+                    className="mr-2 text-sm underline"
+                    onClick={() => openEdit(row)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="text-sm text-red-700 underline"
+                    onClick={() => setDeleting(row)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {form && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="item-form-title"
+          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+        >
+          <form
+            className="w-full max-w-sm space-y-4 rounded bg-white p-5 shadow-lg"
+            onSubmit={save}
+          >
+            <h2 id="item-form-title" className="text-lg font-semibold">
+              {form.id === null ? "Add item" : "Edit item"}
+            </h2>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium" htmlFor="item-name">
+                Name
+              </label>
+              <input
+                id="item-name"
+                className="w-full rounded border border-gray-300 px-3 py-2"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.currentTarget.value })}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium" htmlFor="item-unit">
+                Unit
+              </label>
+              <select
+                id="item-unit"
+                className="w-full rounded border border-gray-300 px-3 py-2"
+                value={form.unit}
+                onChange={(e) => setForm({ ...form, unit: e.currentTarget.value as Unit })}
+              >
+                <option value="kg">kg</option>
+                <option value="l">l</option>
+                <option value="pcs">pcs</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium" htmlFor="item-category">
+                Category
+              </label>
+              <input
+                id="item-category"
+                className="w-full rounded border border-gray-300 px-3 py-2"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.currentTarget.value })}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-sm font-medium" htmlFor="item-min">
+                Min stock ({form.unit})
+              </label>
+              <input
+                id="item-min"
+                type="number"
+                min="0"
+                step="any"
+                className="w-full rounded border border-gray-300 px-3 py-2"
+                value={form.minStock}
+                onChange={(e) => setForm({ ...form, minStock: e.currentTarget.value })}
+              />
+            </div>
+
+            {error && (
+              <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                onClick={() => setForm(null)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded bg-gray-900 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+                disabled={saving}
+              >
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {deleting && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-item-title"
+          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+        >
+          <div className="w-full max-w-sm space-y-4 rounded bg-white p-5 shadow-lg">
+            <h2 id="delete-item-title" className="text-lg font-semibold">
+              Delete {deleting.name}?
+            </h2>
+            <p className="text-sm text-gray-600">
+              This cannot be undone. Items that already have purchases cannot be deleted.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                onClick={() => setDeleting(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white"
+                onClick={confirmDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

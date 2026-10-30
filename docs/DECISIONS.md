@@ -9,3 +9,4 @@
 - 2026-10-30 · `keyring` crate for secrets (not a JS plugin / not stronghold) · native macOS Keychain & Windows Credential Manager, no extra vault file or password
 - 2026-10-30 · `argon2` crate for PIN hashing, argon2id + random salt · memory-hard, no plaintext PIN on disk
 - 2026-10-30 · `rand_core` added only to enable its `getrandom` feature · argon2 needs OsRng for the salt; reuses the version already in the tree
+- 2026-10-30 · `@types/node` (devDependency) · `src/db/test-utils.ts` reads `process.env.DATABASE_URL_TEST`; removes the old `@ts-expect-error` in vite.config.ts

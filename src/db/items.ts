@@ -1,0 +1,132 @@
+import { asc, eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import type { Db } from "./client";
+import { batches, items, purchases } from "./schema";
+
+export const ITEM_UNITS = ["kg", "l", "pcs"] as const;
+
+export const itemInputSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80, "Name is too long"),
+  unit: z.enum(ITEM_UNITS, { message: "Unit must be kg, l or pcs" }),
+  category: z.string().trim().max(60, "Category is too long").optional(),
+  minStockBase: z
+    .number({ message: "Min stock must be a number" })
+    .int("Min stock must be a whole number")
+    .min(0, "Min stock cannot be negative"),
+});
+
+export type ItemInput = z.infer<typeof itemInputSchema>;
+
+export type ItemRow = {
+  id: number;
+  name: string;
+  unit: string;
+  category: string | null;
+  minStockBase: number;
+  stockLeftBase: number;
+};
+
+/** Validate + normalise; throws a plain Error with a user-facing message. */
+export function parseItemInput(input: unknown): ItemInput {
+  const result = itemInputSchema.safeParse(input);
+  if (!result.success) {
+    throw new Error(result.error.issues[0]?.message ?? "Invalid item");
+  }
+  return result.data;
+}
+
+async function assertUniqueName(db: Db, name: string, excludeId?: number) {
+  const clash = await db
+    .select({ id: items.id })
+    .from(items)
+    .where(sql`lower(${items.name}) = lower(${name})`);
+  if (clash.some((row) => row.id !== excludeId)) {
+    throw new Error("An item with this name already exists");
+  }
+}
+
+/** Every item with its current stock (sum of remaining batch quantities). */
+export async function listItems(db: Db): Promise<ItemRow[]> {
+  const rows = await db
+    .select({
+      id: items.id,
+      name: items.name,
+      unit: items.unit,
+      category: items.category,
+      minStockBase: items.minStockBase,
+      stockLeftBase: sql<number>`coalesce(sum(${batches.qtyRemaining}), 0)`.mapWith(Number),
+    })
+    .from(items)
+    .leftJoin(batches, eq(batches.itemId, items.id))
+    .groupBy(items.id)
+    .orderBy(asc(items.name));
+  return rows;
+}
+
+export async function getItem(db: Db, id: number): Promise<ItemRow | null> {
+  const rows = await db
+    .select({
+      id: items.id,
+      name: items.name,
+      unit: items.unit,
+      category: items.category,
+      minStockBase: items.minStockBase,
+      stockLeftBase: sql<number>`coalesce(sum(${batches.qtyRemaining}), 0)`.mapWith(Number),
+    })
+    .from(items)
+    .leftJoin(batches, eq(batches.itemId, items.id))
+    .where(eq(items.id, id))
+    .groupBy(items.id);
+  return rows[0] ?? null;
+}
+
+export async function createItem(db: Db, input: unknown): Promise<ItemRow> {
+  const data = parseItemInput(input);
+  await assertUniqueName(db, data.name);
+  const [created] = await db
+    .insert(items)
+    .values({
+      name: data.name,
+      unit: data.unit,
+      category: data.category || null,
+      minStockBase: data.minStockBase,
+    })
+    .returning();
+  return { ...created, stockLeftBase: 0 };
+}
+
+export async function updateItem(db: Db, id: number, input: unknown): Promise<ItemRow> {
+  const data = parseItemInput(input);
+  await assertUniqueName(db, data.name, id);
+  const [updated] = await db
+    .update(items)
+    .set({
+      name: data.name,
+      unit: data.unit,
+      category: data.category || null,
+      minStockBase: data.minStockBase,
+    })
+    .where(eq(items.id, id))
+    .returning();
+  if (!updated) throw new Error("Item not found");
+  return { ...updated, stockLeftBase: await getStockLeft(db, id) };
+}
+
+export async function deleteItem(db: Db, id: number): Promise<void> {
+  const used = await db
+    .select({ id: purchases.id })
+    .from(purchases)
+    .where(eq(purchases.itemId, id))
+    .limit(1);
+  if (used.length > 0) throw new Error("Item has purchases");
+  await db.delete(items).where(eq(items.id, id));
+}
+
+/** Stock left = sum of remaining batches for the item. */
+export async function getStockLeft(db: Db, itemId: number): Promise<number> {
+  const [row] = await db
+    .select({ total: sql<number>`coalesce(sum(${batches.qtyRemaining}), 0)`.mapWith(Number) })
+    .from(batches)
+    .where(eq(batches.itemId, itemId));
+  return row?.total ?? 0;
+}

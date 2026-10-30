@@ -30,7 +30,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 
 ## Phase 3 — Items & Purchases
 - [x] **T-3.0 App layout** — src/components/Layout.tsx: sidebar (Dashboard, Items, Purchases, Add Purchase, Stock Check, Expenses, Reports, Settings) + react-router-dom, Tailwind, 1024px+. "Reset connection" moved from Home to Settings. (2026-10-30)
-- [ ] **T-3.1 Items CRUD** — src/pages/Items.tsx, src/db/items.ts. Validate with zod. Unique name.
+- [x] **T-3.1 Items CRUD** — src/pages/Items.tsx, src/db/items.ts. Validate with zod. Unique name.
+  (2026-10-30: listItems (stock left = SUM(batches.qty_remaining)), getItem, createItem, updateItem, deleteItem (blocked, "Item has purchases"), getStockLeft. zod: name required, unit kg|l|pcs, min stock int >= 0; unique name case-insensitive. formatQuantity() added to units.ts ("1.50 kg"). B5 integration test in src/db/items.int.test.ts — SKIPPED until DATABASE_URL_TEST is set.)
 - [ ] **T-3.2 Add Purchase** — src/pages/AddPurchase.tsx, src/db/purchases.ts. Transaction: purchase+batch+movement.
   Total auto-calc. Prefill last price. Acceptance: TESTING §B1.
 - [ ] **T-3.3 Purchases list** — filter by item/date, show batch remaining.

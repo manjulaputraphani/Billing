@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { baseFactor, costPaise, formatRupees, fromBase, toBase } from "./units";
+import { baseFactor, costPaise, formatQuantity, formatRupees, fromBase, toBase } from "./units";
 
 describe("units — docs/TESTING.md §A1", () => {
   it("kg→g: toBase(1.5,'kg') === 1500", () => {
@@ -77,6 +77,14 @@ describe("units — edge cases", () => {
 
   it("zero quantity costs nothing", () => {
     expect(costPaise(0, 12345)).toBe(0);
+  });
+
+  it("formatQuantity shows grams as kg with 2 decimals", () => {
+    expect(formatQuantity(1500, "kg")).toBe("1.50 kg");
+    expect(formatQuantity(2000, "kg")).toBe("2.00 kg");
+    expect(formatQuantity(0, "kg")).toBe("0.00 kg");
+    expect(formatQuantity(500, "l")).toBe("0.50 l");
+    expect(formatQuantity(3, "pcs")).toBe("3 pcs");
   });
 
   it("rejects negative quantity or price (money must never go negative by accident)", () => {

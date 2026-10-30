@@ -2,7 +2,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-// @ts-expect-error type error without @types/node package
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
@@ -36,5 +35,7 @@ export default defineConfig(() => ({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    // DB tests need a live database — run them with `npm run test:db`, never in the normal suite.
+    exclude: ["**/node_modules/**", "**/dist/**", "**/*.int.test.ts"],
   },
 }));
