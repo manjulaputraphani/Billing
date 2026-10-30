@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import AddPurchase from "./AddPurchase";
 import { DbProvider } from "../lib/db-context";
@@ -31,9 +32,11 @@ const RICE = {
 
 function renderPage() {
   return render(
-    <DbProvider url="postgresql://user:pass@localhost:5432/test">
-      <AddPurchase />
-    </DbProvider>,
+    <MemoryRouter>
+      <DbProvider url="postgresql://user:pass@localhost:5432/test">
+        <AddPurchase />
+      </DbProvider>
+    </MemoryRouter>,
   );
 }
 

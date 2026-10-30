@@ -57,7 +57,7 @@ async function unlock(page: Page) {
   await completeSetup(page);
   await page.getByLabel("PIN", { exact: true }).fill("1234");
   await page.getByRole("button", { name: "Unlock" }).click();
-  await expect(page.getByText("Dashboard coming soon")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 }
 
 test.describe("setup", () => {
@@ -112,7 +112,7 @@ test.describe("lock screen", () => {
 
     await page.getByLabel("PIN", { exact: true }).fill("1234");
     await page.getByRole("button", { name: "Unlock" }).click();
-    await expect(page.getByText("Dashboard coming soon")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 
     await page.reload();
     await expect(page.getByLabel("PIN", { exact: true })).toBeVisible();
@@ -162,16 +162,14 @@ test.describe("app shell", () => {
       ["Purchases", "Purchases"],
       ["Add Purchase", "Add Purchase"],
       ["Stock Check", "Stock Check"],
+      ["Expenses", "Expenses"],
       ["Settings", "Settings"],
     ] as const) {
       await page.getByRole("link", { name: link, exact: true }).click();
       await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     }
 
-    for (const [link, heading] of [
-      ["Expenses", "Expenses"],
-      ["Reports", "Reports"],
-    ] as const) {
+    for (const [link, heading] of [["Reports", "Reports"]] as const) {
       await page.getByRole("link", { name: link, exact: true }).click();
       await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
       await expect(page.getByText("Coming soon")).toBeVisible();

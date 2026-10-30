@@ -53,7 +53,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 ## Phase 5 — Expenses & Dashboard
 - [x] **T-5.1 Expenses CRUD** — src/pages/Expenses.tsx.
   (2026-10-30: src/db/expenses.ts listExpenses(month, category) + create/update/delete + listExpenseCategories + monthRange; zod category required, amountPaise int > 0, date required. Page: month picker, category filter, table (date/category/amount/payment/note), month total footer, add/edit modal with category datalist (presets + custom), delete confirm. 12 tests.)
-- [ ] **T-5.2 Dashboard** — month spend, stock value, low-stock list, last 5 purchases.
+- [x] **T-5.2 Dashboard** — month spend, stock value, low-stock list, last 5 purchases.
+  (2026-10-30: src/db/dashboard.ts getDashboard(db, month) — every sum in SQL: purchases, expenses, total, used cost (STOCK_CHECK+USAGE), wastage, stock value (round(sum(qty*price/factor))), low stock via HAVING, last 5 purchases/checks, price alerts via ROW_NUMBER window (>10%). src/pages/Dashboard.tsx: month picker, 6 cards, price alerts, low stock with links to /purchases/new?item=ID (AddPurchase now preselects from ?item=), empty state "Add your first item". Dashboard is the index route; Home.tsx removed. Tests: 4 UI, 3 int (SQL) SKIPPED, e2e main-flow SKIPPED until DATABASE_URL_TEST.)
 
 ## Phase 6 — Reports & Backup
 - [ ] **T-6.1 stats.ts** — daily usage, days left, price change %, monthly spend, overbuying (tests §A5).

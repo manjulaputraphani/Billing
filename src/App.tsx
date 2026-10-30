@@ -6,8 +6,8 @@ import { DbProvider } from "./lib/db-context";
 import { getSecret, SECRET_KEYS } from "./lib/secrets";
 import AddPurchase from "./pages/AddPurchase";
 import ComingSoon from "./pages/ComingSoon";
+import Dashboard from "./pages/Dashboard";
 import Expenses from "./pages/Expenses";
-import Home from "./pages/Home";
 import Items from "./pages/Items";
 import Lock from "./pages/Lock";
 import Purchases from "./pages/Purchases";
@@ -60,7 +60,7 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<Home />} />
+            <Route index element={<Dashboard />} />
             <Route path="items" element={<Items />} />
             <Route path="purchases" element={<Purchases />} />
             <Route path="purchases/new" element={<AddPurchase />} />

@@ -57,7 +57,7 @@ describe("App start flow", () => {
     await user.type(await screen.findByLabelText("PIN"), "1234");
     await user.click(screen.getByRole("button", { name: /unlock/i }));
 
-    expect(await screen.findByText("Dashboard coming soon")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
   });
 
   it("resets the connection through an in-app modal, not window.confirm", async () => {
@@ -68,7 +68,7 @@ describe("App start flow", () => {
 
     await user.type(await screen.findByLabelText("PIN"), "1234");
     await user.click(screen.getByRole("button", { name: /unlock/i }));
-    await screen.findByText("Dashboard coming soon");
+    await screen.findByRole("heading", { name: "Dashboard" });
 
     await user.click(screen.getByRole("link", { name: /settings/i }));
     await user.click(screen.getByRole("button", { name: /reset connection/i }));

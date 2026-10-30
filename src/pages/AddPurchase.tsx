@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { listItems, type ItemRow } from "../db/items";
 import {
   addPurchase,
@@ -20,6 +21,8 @@ function todayLocal(): string {
 
 export default function AddPurchase() {
   const db = useDb();
+  const [searchParams] = useSearchParams();
+  const preselect = searchParams.get("item");
   const [items, setItems] = useState<ItemRow[]>([]);
   const [suppliers, setSuppliers] = useState<string[]>([]);
   const [itemId, setItemId] = useState<number | "">("");
@@ -74,6 +77,15 @@ export default function AddPurchase() {
     },
     [db],
   );
+
+  // Deep link from the dashboard's low-stock list: /purchases/new?item=3
+  useEffect(() => {
+    if (!preselect || items.length === 0) return;
+    const id = Number(preselect);
+    if (!items.some((item) => item.id === id)) return;
+    setItemId(id);
+    void loadLastPrice(id);
+  }, [items, preselect, loadLastPrice]);
 
   async function onSelectItem(value: string) {
     setError(null);
