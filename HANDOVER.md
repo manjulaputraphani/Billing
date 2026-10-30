@@ -31,6 +31,8 @@ Tool: OpenCode
   restored to the exact batches.
 - In-app **View Bill** = the real invoice layout (same HTML as print). Verified on SD-2026-000002: header/GSTIN,
   buyer GSTIN+address, HSN 090111, CGST/SGST, amount in words, bank, terms, signature, watermark.
+- Multi-item bill tested end-to-end: SD-2026-000003, 6 lines (kg/l/pcs), ₹940 + ₹47 GST = ₹987;
+  per-line CGST/SGST + "6 items" total fixed; stock deducted per item; profit ₹125.
 - End-to-end proof on the real DB: bill SD-2026-000001 (₹75 + ₹3.75 GST = ₹78.75, cost ₹50, profit ₹25,
   FIFO batch 1000→500 g) then cancelled via Bills → cancelled=true, batch back to 1000 g, audit
   "Sale SD-2026-000001 cancelled; stock restored".

@@ -161,6 +161,9 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (2026-10-31: **Bills → View** now renders this same invoice inside the app (iframe with the exact
   print HTML: header, invoice boxes, buyer GSTIN, HSN table, words, bank, terms, signature, watermark),
   with Print / Save PDF and Cancel bill beneath it.)
+- [x] **Multi-item bill test** (6 lines, mixed units kg/l/pcs): SD-2026-000003 = ₹940 + 5% GST ₹47 =
+  ₹987, per-line CGST/SGST shares, HSN per line, total row shows "6 items" when units differ, stock
+  deducted per item (e.g. CHANA 10→8 kg, MATCH BOX 50→40 pcs), profit ₹125. 192 tests green.
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO

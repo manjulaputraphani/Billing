@@ -40,22 +40,29 @@ export function buildBillHtml(bill: SaleBillDetail, shop: ShopDetails): string {
   const mark = initials(shop.name || "Stock Tracker");
 
   const rows = bill.lines
-    .map(
-      (line, index) => `<tr>
+    .map((line, index) => {
+      const lineGst = Math.round((line.lineTotalPaise * (bill.gstRateBp || 0)) / 10_000);
+      const lineSplit = splitGst(lineGst);
+      return `<tr>
         <td class="c">${index + 1}</td>
         <td>${escapeHtml(line.itemName)}</td>
         <td class="c">${escapeHtml(line.hsnCode ?? "—")}</td>
         <td class="c">${escapeHtml(line.unit.toUpperCase())}</td>
         <td class="r">${formatQuantity(line.qtyBase, line.unit as Unit)}</td>
         <td class="r">${formatRupees(line.unitPricePaise)}</td>
-        <td class="c tax">${rateText(bill.gstRateBp)}%<br/><b>${formatRupees(cgstPaise)}</b></td>
-        <td class="c tax">${rateText(bill.gstRateBp)}%<br/><b>${formatRupees(sgstPaise)}</b></td>
+        <td class="c tax">${rateText(bill.gstRateBp)}%<br/><b>${formatRupees(lineSplit.cgstPaise)}</b></td>
+        <td class="c tax">${rateText(bill.gstRateBp)}%<br/><b>${formatRupees(lineSplit.sgstPaise)}</b></td>
         <td class="r">${formatRupees(line.lineTotalPaise)}</td>
-      </tr>`,
-    )
+      </tr>`;
+    })
     .join("");
 
   const totalQty = bill.lines.reduce((sum, line) => sum + line.qtyBase, 0);
+  const units = new Set(bill.lines.map((line) => line.unit));
+  const totalQtyText =
+    units.size === 1 && bill.lines[0]
+      ? formatQuantity(totalQty, bill.lines[0].unit as Unit)
+      : `${bill.lines.length} items`;
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(bill.billNo)}</title><style>
     @page{size:A4;margin:10mm}
@@ -152,7 +159,7 @@ export function buildBillHtml(bill: SaleBillDetail, shop: ShopDetails): string {
       <tbody>${rows}</tbody>
       <tfoot><tr>
         <td colspan="4">Total</td>
-        <td class="r">${formatQuantity(totalQty, bill.lines[0]?.unit as Unit)}</td>
+        <td class="r">${totalQtyText}</td>
         <td class="r">${formatRupees(taxablePaise)}</td>
         <td class="c">${formatRupees(cgstPaise)}</td>
         <td class="c">${formatRupees(sgstPaise)}</td>
