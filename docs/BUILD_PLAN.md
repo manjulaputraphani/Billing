@@ -188,3 +188,11 @@ Reconciliation with the interim work of 2026-10-30:
 - The interim `activity_log` (login/lock/create-update-delete summaries) is the base for V2-P14
   `audit_log` (adds user_name, before_json/after_json); migrate it in V2-P14, keep using it meanwhile.
 - The current app still points at the single production DB; all V2 migrations must go to a dev branch first.
+
+## LOGIN WORKSTREAM — see docs/PLAN_LOGIN.md (approved 2026-10-31)
+- [ ] **L1** `app_users` + `activity_log.user_id` schema/migration
+- [ ] **L2** argon2 `hash_password` / `verify_password` commands
+- [ ] **L3** phone normalization + password rules (min 6, tests first)
+- [ ] **L4** phone+password login screen, first-run owner setup, lock/logout, retire PIN
+- [ ] **L5** audit attribution (user id + name on every write) + user filter
+- [ ] **L6** Settings → Users (add / reset password / deactivate, Owner only)
