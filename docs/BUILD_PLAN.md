@@ -147,8 +147,11 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   applied, db/billing.ts create/cancel/list/get + createCustomer, Settings → Shop details (name,
   address, phone, GSTIN). **GST Billing screen done**: line entry, live GST (5/12/18/28%), discount,
   payment mode, credit-customer rule, F2 save, printable GST invoice (Print / Save as PDF) with
-  CGST/SGST split. Remaining: Sales list + cancel UI, Profit report, Dashboard cards, int test,
-  replay.ts SALE handling.)
+  CGST/SGST split. Remaining: Profit report, Dashboard cards, int test, replay.ts SALE handling.)
+  (2026-10-31: **Bills page** (`/bills`, nav "Bills"): issued + cancelled bills with status badges,
+  search/status filter, View (full bill + CGST/SGST + print), Cancel with in-app confirm → bill stays
+  visible as cancelled and the sold quantity is restored to its exact batches. Verified end-to-end:
+  SD-2026-000001 cancelled, batch 500 g → 1000 g, audit row written.)
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO
