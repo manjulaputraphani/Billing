@@ -87,18 +87,18 @@ export default function Suggestions() {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Suggestions</h1>
+        <h1 className="page-title">Suggestions</h1>
         <div className="flex gap-2">
           <button
             type="button"
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="input text-sm"
             onClick={() => void reload()}
           >
             Refresh
           </button>
           <button
             type="button"
-            className="rounded bg-gray-900 px-3 py-2 text-sm text-white disabled:opacity-50"
+            className="btn-primary"
             onClick={() => void refreshAi()}
             disabled={aiBusy}
           >
@@ -130,7 +130,7 @@ export default function Suggestions() {
           </h2>
           <ul className="space-y-2">
             {aiItems.map((item, index) => (
-              <li key={index} className="rounded border border-gray-200 bg-white p-3 text-sm">
+              <li key={index} className="card p-3 text-sm">
                 {item.message}
               </li>
             ))}

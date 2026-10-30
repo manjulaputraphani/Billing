@@ -121,16 +121,16 @@ export default function StockCheck() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Stock Check</h1>
+      <h1 className="page-title">Stock Check</h1>
 
-      <form className="max-w-2xl space-y-4 rounded border border-gray-200 bg-white p-4" onSubmit={save}>
+      <form className="max-w-2xl space-y-4 card p-4" onSubmit={save}>
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="stock-item">
+          <label className="label" htmlFor="stock-item">
             Item
           </label>
           <select
             id="stock-item"
-            className="w-full rounded border border-gray-300 px-3 py-2"
+            className="input w-full"
             value={itemId}
             onChange={(e) => {
               setItemId(e.currentTarget.value === "" ? "" : Number(e.currentTarget.value));
@@ -190,27 +190,27 @@ export default function StockCheck() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium" htmlFor="stock-input">
+            <label className="label" htmlFor="stock-input">
               {type === "STOCK_CHECK" ? `Stock left (${unit})` : `Quantity ${type === "USAGE" ? "used" : "wasted"} (${unit})`}
             </label>
             <input
               id="stock-input"
               type="number"
               step="any"
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="input w-full"
               value={input}
               onChange={(e) => setInput(e.currentTarget.value)}
             />
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium" htmlFor="stock-date">
+            <label className="label" htmlFor="stock-date">
               Date
             </label>
             <input
               id="stock-date"
               type="date"
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="input w-full"
               value={date}
               onChange={(e) => setDate(e.currentTarget.value)}
             />
@@ -218,12 +218,12 @@ export default function StockCheck() {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="stock-note">
+          <label className="label" htmlFor="stock-note">
             Note (optional)
           </label>
           <input
             id="stock-note"
-            className="w-full rounded border border-gray-300 px-3 py-2"
+            className="input w-full"
             value={note}
             onChange={(e) => setNote(e.currentTarget.value)}
           />
@@ -269,7 +269,7 @@ export default function StockCheck() {
 
         <button
           type="submit"
-          className="w-full rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full btn-primary"
           disabled={saving || !preview?.plan}
         >
           Confirm

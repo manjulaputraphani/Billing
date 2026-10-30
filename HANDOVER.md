@@ -1,6 +1,6 @@
 # HANDOVER (keep under 60 lines — overwrite each time, history is in git)
 
-Last updated: 2026-10-30 23:07 by DeepSeek V4.1 Flash (OpenCode)
+Last updated: 2026-10-30 23:12 by DeepSeek V4.1 Flash (OpenCode)
 Tool: OpenCode
 
 ## Current task
@@ -8,7 +8,7 @@ Phase 10 / T-10.1 (sales) — code, tests and DB migration DONE; awaiting ONE re
 to verify end-to-end (checkbox not ticked yet).
 
 ## Status
-- [x] Sales feature built  ·  [ ] T-10.1 real-DB verified  ·  [ ] T-6.2/T-6.3 (Reports/export) missing
+- [x] Sales feature built  ·  [x] T-10.2 UI polish  ·  [ ] T-10.1 real-DB verified  ·  [ ] T-6.2/T-6.3 missing
 
 ## Done this session
 - Keychain bug FIXED: DATABASE_URL/PIN_HASH re-created allow-all (`security ... -A`), verified silent
@@ -20,6 +20,9 @@ to verify end-to-end (checkbox not ticked yet).
   oversell reject). `src/db/sales.ts` saveSale (one tx: lock batches, FIFO take, movement + links,
   sales row) + listSales. `src/pages/Sales.tsx` (live revenue/left preview, sold-details table),
   route /sales, nav "Sales". Migration applied manually to Neon (additive only).
+- T-10.2 UI polish: warm stone palette, dark grouped sidebar, card/button/input component classes
+  applied across pages, refined tables + focus rings; Setup/Lock redesigned. No text/label/heading
+  changes, so all test selectors still match.
 
 ## In progress (exact point where work stopped)
 - File: —
@@ -34,7 +37,7 @@ Finish T-10.1 verification (then consider T-6.2/T-6.3).
   (read-only, never print the URL); tick T-10.1 when the numbers match.
 
 ## Files touched this session
-- src/App.tsx, src/components/Layout.tsx, src/db/{schema,sales}.ts, src/logic/sales.ts(+test)
+- src/App.tsx, src/App.css, src/components/Layout.tsx, src/db/{schema,sales}.ts, src/logic/sales.ts(+test)
 - src/pages/Sales.tsx(+test), docs/{BUILD_PLAN,DECISIONS}.md
 
 ## Tests

@@ -115,16 +115,16 @@ export default function Sales() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Sales</h1>
+      <h1 className="page-title">Sales</h1>
 
-      <form className="max-w-2xl space-y-4 rounded border border-gray-200 bg-white p-4" onSubmit={save}>
+      <form className="max-w-2xl space-y-4 card p-4" onSubmit={save}>
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="sale-item">
+          <label className="label" htmlFor="sale-item">
             Item
           </label>
           <select
             id="sale-item"
-            className="w-full rounded border border-gray-300 px-3 py-2"
+            className="input w-full"
             value={itemId}
             onChange={(e) => {
               setItemId(e.currentTarget.value === "" ? "" : Number(e.currentTarget.value));
@@ -151,41 +151,41 @@ export default function Sales() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="block text-sm font-medium" htmlFor="sale-qty">
+            <label className="label" htmlFor="sale-qty">
               Quantity sold ({unit})
             </label>
             <input
               id="sale-qty"
               type="number"
               step="any"
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="input w-full"
               value={qty}
               onChange={(e) => setQty(e.currentTarget.value)}
             />
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium" htmlFor="sale-price">
+            <label className="label" htmlFor="sale-price">
               Sale price (₹ per {unit})
             </label>
             <input
               id="sale-price"
               type="number"
               step="any"
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="input w-full"
               value={price}
               onChange={(e) => setPrice(e.currentTarget.value)}
             />
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium" htmlFor="sale-date">
+            <label className="label" htmlFor="sale-date">
               Date
             </label>
             <input
               id="sale-date"
               type="date"
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="input w-full"
               value={date}
               onChange={(e) => setDate(e.currentTarget.value)}
             />
@@ -193,12 +193,12 @@ export default function Sales() {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="sale-note">
+          <label className="label" htmlFor="sale-note">
             Note (optional)
           </label>
           <input
             id="sale-note"
-            className="w-full rounded border border-gray-300 px-3 py-2"
+            className="input w-full"
             value={note}
             onChange={(e) => setNote(e.currentTarget.value)}
           />
@@ -236,7 +236,7 @@ export default function Sales() {
 
         <button
           type="submit"
-          className="w-full rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full btn-primary"
           disabled={saving || !preview?.plan}
         >
           Save sale
@@ -248,7 +248,7 @@ export default function Sales() {
         {recent.length === 0 ? (
           <p className="text-sm text-gray-500">No sales yet.</p>
         ) : (
-          <table className="w-full rounded border border-gray-200 bg-white text-sm">
+          <table className="w-full card text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-gray-500">
                 <th className="px-3 py-2 font-medium">Date</th>

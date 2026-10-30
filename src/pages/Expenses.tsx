@@ -116,10 +116,10 @@ export default function Expenses() {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Expenses</h1>
+        <h1 className="page-title">Expenses</h1>
         <button
           type="button"
-          className="rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white"
+          className="btn-primary"
           onClick={() => {
             setError(null);
             setForm(emptyForm());
@@ -129,7 +129,7 @@ export default function Expenses() {
         </button>
       </header>
 
-      <div className="flex flex-wrap items-end gap-3 rounded border border-gray-200 bg-white p-3">
+      <div className="flex flex-wrap items-end gap-3 card p-3">
         <div className="space-y-1">
           <label className="block text-xs font-medium text-gray-600" htmlFor="expense-month">
             Month
@@ -137,7 +137,7 @@ export default function Expenses() {
           <input
             id="expense-month"
             type="month"
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="input text-sm"
             value={month}
             onChange={(e) => setMonth(e.currentTarget.value)}
           />
@@ -148,7 +148,7 @@ export default function Expenses() {
           </label>
           <select
             id="expense-category-filter"
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="input text-sm"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.currentTarget.value)}
           >
@@ -168,7 +168,7 @@ export default function Expenses() {
         </p>
       )}
 
-      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+      <div className="overflow-x-auto card">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-gray-600">
             <tr>
@@ -257,13 +257,13 @@ export default function Expenses() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-sm font-medium" htmlFor="expense-category">
+                <label className="label" htmlFor="expense-category">
                   Category
                 </label>
                 <input
                   id="expense-category"
                   list="expense-category-options"
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="input w-full"
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.currentTarget.value })}
                 />
@@ -275,14 +275,14 @@ export default function Expenses() {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-sm font-medium" htmlFor="expense-amount">
+                <label className="label" htmlFor="expense-amount">
                   Amount (₹)
                 </label>
                 <input
                   id="expense-amount"
                   type="number"
                   step="any"
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="input w-full"
                   value={form.amount}
                   onChange={(e) => setForm({ ...form, amount: e.currentTarget.value })}
                 />
@@ -291,25 +291,25 @@ export default function Expenses() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-sm font-medium" htmlFor="expense-date">
+                <label className="label" htmlFor="expense-date">
                   Date
                 </label>
                 <input
                   id="expense-date"
                   type="date"
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="input w-full"
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.currentTarget.value })}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block text-sm font-medium" htmlFor="expense-payment">
+                <label className="label" htmlFor="expense-payment">
                   Payment mode
                 </label>
                 <select
                   id="expense-payment"
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="input w-full"
                   value={form.paymentMode}
                   onChange={(e) => setForm({ ...form, paymentMode: e.currentTarget.value })}
                 >
@@ -323,12 +323,12 @@ export default function Expenses() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium" htmlFor="expense-note">
+              <label className="label" htmlFor="expense-note">
                 Note (optional)
               </label>
               <input
                 id="expense-note"
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="input w-full"
                 value={form.note}
                 onChange={(e) => setForm({ ...form, note: e.currentTarget.value })}
               />
@@ -343,7 +343,7 @@ export default function Expenses() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                className="btn-ghost"
                 onClick={() => setForm(null)}
                 disabled={busy}
               >
@@ -351,7 +351,7 @@ export default function Expenses() {
               </button>
               <button
                 type="submit"
-                className="rounded bg-gray-900 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+                className="btn-primary"
                 disabled={busy}
               >
                 Save
@@ -378,7 +378,7 @@ export default function Expenses() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                className="btn-ghost"
                 onClick={() => setDeleting(null)}
               >
                 Cancel

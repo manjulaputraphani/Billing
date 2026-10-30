@@ -119,3 +119,7 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   preview and a recent-sales list. Money integer paise, qty integer base units.
   Accept: logic/sales.test.ts + pages/Sales.test.tsx green, tsc clean, sale row visible in Neon.
   (2026-10-30: code + tests + migration done; waiting for one real purchase → sale to verify.)
+- [x] **T-10.2 UI polish** — warm stone palette (gray→stone via @theme), dark grouped sidebar,
+  card surfaces, `.card/.btn/.input/.label` component classes applied across pages, refined
+  tables and focus rings, Setup/Lock redesigned. No text, label or heading changes (selectors intact).
+  (2026-10-30: all 158 unit/UI tests + 13 e2e green; tsc clean.)

@@ -64,15 +64,21 @@ export default function Lock({ onUnlock }: { onUnlock: () => void }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-8">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Stock Tracker</h1>
-        <p className="text-sm text-gray-500">Enter your PIN to unlock.</p>
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f6f4] p-6">
+      <div className="card w-full max-w-sm p-6">
+      <header className="mb-6 flex items-center gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-semibold text-white">
+          ST
+        </span>
+        <span className="space-y-0.5">
+          <h1 className="text-lg font-semibold tracking-tight">Stock Tracker</h1>
+          <p className="text-sm text-gray-500">Enter your PIN to unlock.</p>
+        </span>
       </header>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="unlock-pin">
+          <label className="label" htmlFor="unlock-pin">
             PIN
           </label>
           <input
@@ -81,7 +87,7 @@ export default function Lock({ onUnlock }: { onUnlock: () => void }) {
             inputMode="numeric"
             autoComplete="current-password"
             autoFocus
-            className="w-full rounded border border-gray-300 px-3 py-2"
+            className="input w-full"
             placeholder="4-6 digits"
             value={pin}
             disabled={isLocked}
@@ -103,12 +109,13 @@ export default function Lock({ onUnlock }: { onUnlock: () => void }) {
 
         <button
           type="submit"
-          className="w-full rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full btn-primary"
           disabled={isLocked || busy}
         >
           Unlock
         </button>
       </form>
+      </div>
     </main>
   );
 }

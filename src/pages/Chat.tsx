@@ -56,7 +56,7 @@ export default function Chat() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Ask about your shop</h1>
+      <h1 className="page-title">Ask about your shop</h1>
       <p className="text-sm text-gray-500">
         The assistant can only read your data. It cannot add, change or delete anything.
       </p>
@@ -75,7 +75,7 @@ export default function Chat() {
         ))}
       </div>
 
-      <div className="min-h-48 space-y-2 rounded border border-gray-200 bg-white p-3">
+      <div className="min-h-48 space-y-2 card p-3">
         {bubbles.length === 0 && <p className="text-sm text-gray-400">Ask a question to start.</p>}
         {bubbles.map((bubble, index) => (
           <p
@@ -100,7 +100,7 @@ export default function Chat() {
 
       <form className="flex gap-2" onSubmit={onSubmit}>
         <input
-          className="flex-1 rounded border border-gray-300 px-3 py-2"
+          className="flex-1 input"
           placeholder="Ask about stock, prices or spending…"
           value={input}
           onChange={(e) => setInput(e.currentTarget.value)}
@@ -108,7 +108,7 @@ export default function Chat() {
         />
         <button
           type="submit"
-          className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="btn-primary"
           disabled={busy}
         >
           Send

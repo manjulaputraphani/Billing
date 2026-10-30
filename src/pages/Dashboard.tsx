@@ -32,7 +32,7 @@ function monthLabel(month: string): string {
 
 function Card({ label, value, tone }: { label: string; value: string; tone?: "warn" }) {
   return (
-    <div className="rounded border border-gray-200 bg-white p-4">
+    <div className="card p-4">
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
       <p className={`mt-1 text-xl font-semibold ${tone === "warn" ? "text-red-700" : ""}`}>
         {value}
@@ -69,7 +69,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <h1 className="page-title">Dashboard</h1>
           <p className="text-sm text-gray-500">{monthLabel(month)}</p>
         </div>
         <div className="space-y-1">
@@ -79,7 +79,7 @@ export default function Dashboard() {
           <input
             id="dashboard-month"
             type="month"
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="input text-sm"
             value={month}
             onChange={(e) => setMonth(e.currentTarget.value)}
           />
@@ -99,7 +99,7 @@ export default function Dashboard() {
           <p className="mb-3 text-gray-600">No items yet. Start by adding what you buy.</p>
           <Link
             to="/items"
-            className="inline-block rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+            className="inline-block btn-primary"
           >
             Add your first item
           </Link>
@@ -147,7 +147,7 @@ export default function Dashboard() {
                 {suggestions.slice(0, 3).map((suggestion) => (
                   <li
                     key={`${suggestion.type}:${suggestion.itemId ?? "all"}`}
-                    className="flex items-start justify-between gap-3 rounded border border-gray-200 bg-white p-3"
+                    className="flex items-start justify-between gap-3 card p-3"
                   >
                     <p className="text-sm">{suggestion.message}</p>
                     <button
@@ -168,7 +168,7 @@ export default function Dashboard() {
             {data.lowStock.length === 0 ? (
               <p className="text-sm text-gray-500">Everything is above its minimum.</p>
             ) : (
-              <ul className="divide-y divide-gray-100 rounded border border-gray-200 bg-white">
+              <ul className="divide-y divide-gray-100 card">
                 {data.lowStock.map((item) => (
                   <li key={item.id} className="flex items-center justify-between px-3 py-2 text-sm">
                     <span className="font-medium">{item.name}</span>
@@ -195,7 +195,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <section className="space-y-2">
               <h2 className="text-lg font-medium">Last purchases</h2>
-              <ul className="divide-y divide-gray-100 rounded border border-gray-200 bg-white text-sm">
+              <ul className="divide-y divide-gray-100 card text-sm">
                 {data.lastPurchases.length === 0 && (
                   <li className="px-3 py-3 text-gray-500">No purchases yet.</li>
                 )}
@@ -216,7 +216,7 @@ export default function Dashboard() {
 
             <section className="space-y-2">
               <h2 className="text-lg font-medium">Last stock entries</h2>
-              <ul className="divide-y divide-gray-100 rounded border border-gray-200 bg-white text-sm">
+              <ul className="divide-y divide-gray-100 card text-sm">
                 {data.lastChecks.length === 0 && (
                   <li className="px-3 py-3 text-gray-500">No stock checks yet.</li>
                 )}

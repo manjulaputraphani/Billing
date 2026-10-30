@@ -78,9 +78,9 @@ export default function Settings({ onReset }: { onReset: () => void }) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+      <h1 className="page-title">Settings</h1>
 
-      <section className="space-y-3 rounded border border-gray-200 bg-white p-4">
+      <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">Connection</h2>
           <p className="text-sm text-gray-500">
@@ -96,7 +96,7 @@ export default function Settings({ onReset }: { onReset: () => void }) {
         </button>
       </section>
 
-      <section className="space-y-3 rounded border border-gray-200 bg-white p-4">
+      <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">AI assistant</h2>
           <p className="text-sm text-gray-500">
@@ -115,12 +115,12 @@ export default function Settings({ onReset }: { onReset: () => void }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="block text-sm font-medium" htmlFor="ai-mode">
+            <label className="label" htmlFor="ai-mode">
               Mode
             </label>
             <select
               id="ai-mode"
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="input w-full"
               value={ai.mode}
               onChange={(e) =>
                 void persistAi({ ...ai, mode: e.currentTarget.value === "cloud" ? "cloud" : "local" })
@@ -132,12 +132,12 @@ export default function Settings({ onReset }: { onReset: () => void }) {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-sm font-medium" htmlFor="ai-model">
+            <label className="label" htmlFor="ai-model">
               Model
             </label>
             <input
               id="ai-model"
-              className="w-full rounded border border-gray-300 px-3 py-2"
+              className="input w-full"
               value={ai.model}
               onChange={(e) => setAi({ ...ai, model: e.currentTarget.value })}
               onBlur={() => void persistAi(ai)}
@@ -146,7 +146,7 @@ export default function Settings({ onReset }: { onReset: () => void }) {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="ai-key">
+          <label className="label" htmlFor="ai-key">
             Cloud API key
           </label>
           <div className="flex gap-2">
@@ -154,14 +154,14 @@ export default function Settings({ onReset }: { onReset: () => void }) {
               id="ai-key"
               type="password"
               autoComplete="off"
-              className="flex-1 rounded border border-gray-300 px-3 py-2"
+              className="flex-1 input"
               placeholder={aiKeySaved ? "Key saved — enter a new one to replace" : "Ollama cloud key"}
               value={keyInput}
               onChange={(e) => setKeyInput(e.currentTarget.value)}
             />
             <button
               type="button"
-              className="rounded border border-gray-300 px-3 py-2 text-sm"
+              className="input text-sm"
               onClick={() => void saveKey()}
             >
               Save key
@@ -173,7 +173,7 @@ export default function Settings({ onReset }: { onReset: () => void }) {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="rounded border border-gray-300 px-3 py-1 text-sm"
+            className="btn-ghost"
             onClick={() => void testAi()}
           >
             Test AI
@@ -210,7 +210,7 @@ export default function Settings({ onReset }: { onReset: () => void }) {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                className="btn-ghost"
                 onClick={() => setConfirming(false)}
                 disabled={busy}
               >

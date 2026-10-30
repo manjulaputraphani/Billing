@@ -65,18 +65,24 @@ export default function Setup({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-8">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Set up Stock Tracker</h1>
-        <p className="text-sm text-gray-500">
-          Connect your Neon database and choose a PIN. Both are stored in this computer's secure
-          storage.
-        </p>
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f6f4] p-6">
+      <div className="card w-full max-w-md p-6">
+      <header className="mb-6 flex items-center gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-sm font-semibold text-white">
+          ST
+        </span>
+        <span className="space-y-0.5">
+          <h1 className="text-lg font-semibold tracking-tight">Set up Stock Tracker</h1>
+          <p className="text-sm text-gray-500">
+            Connect your Neon database and choose a PIN. Both are stored in this computer's secure
+            storage.
+          </p>
+        </span>
       </header>
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="db-url">
+          <label className="label" htmlFor="db-url">
             Neon connection string
           </label>
           <input
@@ -84,14 +90,14 @@ export default function Setup({ onDone }: { onDone: () => void }) {
             type="password"
             autoComplete="off"
             spellCheck={false}
-            className="w-full rounded border border-gray-300 px-3 py-2 font-mono text-sm"
+            className="input w-full font-mono text-sm"
             placeholder="postgresql://user:pass@ep-xxx.neon.tech/db?sslmode=require"
             value={url}
             onChange={(e) => setUrl(e.currentTarget.value)}
           />
           <button
             type="button"
-            className="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50"
+            className="btn-ghost disabled:opacity-50"
             onClick={testConnection}
             disabled={busy}
           >
@@ -100,7 +106,7 @@ export default function Setup({ onDone }: { onDone: () => void }) {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="pin">
+          <label className="label" htmlFor="pin">
             PIN
           </label>
           <input
@@ -108,7 +114,7 @@ export default function Setup({ onDone }: { onDone: () => void }) {
             type="password"
             inputMode="numeric"
             autoComplete="new-password"
-            className="w-full rounded border border-gray-300 px-3 py-2"
+            className="input w-full"
             placeholder="4-6 digits"
             value={pin}
             onChange={(e) => setPin(e.currentTarget.value)}
@@ -116,7 +122,7 @@ export default function Setup({ onDone }: { onDone: () => void }) {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium" htmlFor="confirm-pin">
+          <label className="label" htmlFor="confirm-pin">
             Confirm PIN
           </label>
           <input
@@ -124,7 +130,7 @@ export default function Setup({ onDone }: { onDone: () => void }) {
             type="password"
             inputMode="numeric"
             autoComplete="new-password"
-            className="w-full rounded border border-gray-300 px-3 py-2"
+            className="input w-full"
             placeholder="Repeat PIN"
             value={confirmPin}
             onChange={(e) => setConfirmPin(e.currentTarget.value)}
@@ -144,12 +150,13 @@ export default function Setup({ onDone }: { onDone: () => void }) {
 
         <button
           type="submit"
-          className="w-full rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="w-full btn-primary"
           disabled={busy}
         >
           Save & continue
         </button>
       </form>
+      </div>
     </main>
   );
 }

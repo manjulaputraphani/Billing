@@ -103,10 +103,10 @@ export default function Items() {
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Items</h1>
+        <h1 className="page-title">Items</h1>
         <button
           type="button"
-          className="rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white"
+          className="btn-primary"
           onClick={openAdd}
         >
           Add item
@@ -119,7 +119,7 @@ export default function Items() {
         </p>
       )}
 
-      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+      <div className="overflow-x-auto card">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-gray-600">
             <tr>
@@ -195,24 +195,24 @@ export default function Items() {
             </h2>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium" htmlFor="item-name">
+              <label className="label" htmlFor="item-name">
                 Name
               </label>
               <input
                 id="item-name"
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="input w-full"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.currentTarget.value })}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium" htmlFor="item-unit">
+              <label className="label" htmlFor="item-unit">
                 Unit
               </label>
               <select
                 id="item-unit"
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="input w-full"
                 value={form.unit}
                 onChange={(e) => setForm({ ...form, unit: e.currentTarget.value as Unit })}
               >
@@ -223,19 +223,19 @@ export default function Items() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium" htmlFor="item-category">
+              <label className="label" htmlFor="item-category">
                 Category
               </label>
               <input
                 id="item-category"
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="input w-full"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.currentTarget.value })}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium" htmlFor="item-min">
+              <label className="label" htmlFor="item-min">
                 Min stock ({form.unit})
               </label>
               <input
@@ -243,7 +243,7 @@ export default function Items() {
                 type="number"
                 min="0"
                 step="any"
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="input w-full"
                 value={form.minStock}
                 onChange={(e) => setForm({ ...form, minStock: e.currentTarget.value })}
               />
@@ -258,7 +258,7 @@ export default function Items() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                className="btn-ghost"
                 onClick={() => setForm(null)}
                 disabled={saving}
               >
@@ -266,7 +266,7 @@ export default function Items() {
               </button>
               <button
                 type="submit"
-                className="rounded bg-gray-900 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+                className="btn-primary"
                 disabled={saving}
               >
                 Save
@@ -293,7 +293,7 @@ export default function Items() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                className="btn-ghost"
                 onClick={() => setDeleting(null)}
               >
                 Cancel

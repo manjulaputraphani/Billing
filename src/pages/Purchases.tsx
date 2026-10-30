@@ -133,16 +133,16 @@ export default function Purchases() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Purchases</h1>
+      <h1 className="page-title">Purchases</h1>
 
-      <div className="flex flex-wrap items-end gap-3 rounded border border-gray-200 bg-white p-3">
+      <div className="flex flex-wrap items-end gap-3 card p-3">
         <div className="space-y-1">
           <label className="block text-xs font-medium text-gray-600" htmlFor="filter-item">
             Item
           </label>
           <select
             id="filter-item"
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="input text-sm"
             value={itemId}
             onChange={(e) => setItemId(e.currentTarget.value === "" ? "" : Number(e.currentTarget.value))}
           >
@@ -162,7 +162,7 @@ export default function Purchases() {
           <input
             id="filter-from"
             type="date"
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="input text-sm"
             value={from}
             onChange={(e) => setFrom(e.currentTarget.value)}
           />
@@ -175,7 +175,7 @@ export default function Purchases() {
           <input
             id="filter-to"
             type="date"
-            className="rounded border border-gray-300 px-3 py-2 text-sm"
+            className="input text-sm"
             value={to}
             onChange={(e) => setTo(e.currentTarget.value)}
           />
@@ -183,7 +183,7 @@ export default function Purchases() {
 
         <button
           type="button"
-          className="rounded border border-gray-300 px-3 py-2 text-sm"
+          className="input text-sm"
           onClick={() => void load()}
         >
           Apply
@@ -196,7 +196,7 @@ export default function Purchases() {
         </p>
       )}
 
-      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
+      <div className="overflow-x-auto card">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-gray-600">
             <tr>
@@ -269,27 +269,27 @@ export default function Purchases() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-sm font-medium" htmlFor="edit-qty">
+                <label className="label" htmlFor="edit-qty">
                   Quantity ({editing.unit})
                 </label>
                 <input
                   id="edit-qty"
                   type="number"
                   step="any"
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="input w-full"
                   value={edit.qty}
                   onChange={(e) => setEdit({ ...edit, qty: e.currentTarget.value })}
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-sm font-medium" htmlFor="edit-price">
+                <label className="label" htmlFor="edit-price">
                   Unit price (₹ per {editing.unit})
                 </label>
                 <input
                   id="edit-price"
                   type="number"
                   step="any"
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="input w-full"
                   value={edit.price}
                   onChange={(e) => setEdit({ ...edit, price: e.currentTarget.value })}
                 />
@@ -298,24 +298,24 @@ export default function Purchases() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-sm font-medium" htmlFor="edit-date">
+                <label className="label" htmlFor="edit-date">
                   Date
                 </label>
                 <input
                   id="edit-date"
                   type="date"
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="input w-full"
                   value={edit.date}
                   onChange={(e) => setEdit({ ...edit, date: e.currentTarget.value })}
                 />
               </div>
               <div className="space-y-1">
-                <label className="block text-sm font-medium" htmlFor="edit-payment">
+                <label className="label" htmlFor="edit-payment">
                   Payment mode
                 </label>
                 <select
                   id="edit-payment"
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="input w-full"
                   value={edit.paymentMode}
                   onChange={(e) => setEdit({ ...edit, paymentMode: e.currentTarget.value })}
                 >
@@ -329,24 +329,24 @@ export default function Purchases() {
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium" htmlFor="edit-supplier">
+              <label className="label" htmlFor="edit-supplier">
                 Supplier (optional)
               </label>
               <input
                 id="edit-supplier"
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="input w-full"
                 value={edit.supplier}
                 onChange={(e) => setEdit({ ...edit, supplier: e.currentTarget.value })}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-medium" htmlFor="edit-note">
+              <label className="label" htmlFor="edit-note">
                 Note (optional)
               </label>
               <input
                 id="edit-note"
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="input w-full"
                 value={edit.note}
                 onChange={(e) => setEdit({ ...edit, note: e.currentTarget.value })}
               />
@@ -355,7 +355,7 @@ export default function Purchases() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                className="btn-ghost"
                 onClick={() => setEditing(null)}
                 disabled={busy}
               >
@@ -363,7 +363,7 @@ export default function Purchases() {
               </button>
               <button
                 type="submit"
-                className="rounded bg-gray-900 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+                className="btn-primary"
                 disabled={busy}
               >
                 Save changes
@@ -391,7 +391,7 @@ export default function Purchases() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded border border-gray-300 px-3 py-1 text-sm"
+                className="btn-ghost"
                 onClick={() => setDeleting(null)}
                 disabled={busy}
               >
