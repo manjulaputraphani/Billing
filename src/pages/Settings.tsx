@@ -43,6 +43,7 @@ export default function Settings({
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinStatus, setPinStatus] = useState<string | null>(null);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [activityFilter, setActivityFilter] = useState("");
   const [shop, setShop] = useState<ShopDetails>(DEFAULT_SHOP);
   const [emailCfg, setEmailCfg] = useState<EmailSettings>(DEFAULT_EMAIL);
   const [emailKeyInput, setEmailKeyInput] = useState("");
@@ -655,11 +656,33 @@ export default function Settings({
             Logins, locks and every change — stored in the database.
           </p>
         </div>
+        {activity.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label className="label" htmlFor="activity-filter">
+              Member
+            </label>
+            <select
+              id="activity-filter"
+              className="input"
+              value={activityFilter}
+              onChange={(e) => setActivityFilter(e.currentTarget.value)}
+            >
+              <option value="">All members</option>
+              {[...new Set(activity.map((row) => row.actor))].sort().map((actor) => (
+                <option key={actor} value={actor}>
+                  {actor}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {activity.length === 0 ? (
           <p className="text-sm text-gray-500">No activity recorded yet.</p>
         ) : (
           <ul className="divide-y divide-gray-100 text-sm">
-            {activity.map((row) => (
+            {activity
+              .filter((row) => !activityFilter || row.actor === activityFilter)
+              .map((row) => (
               <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
                 <span>{row.summary}</span>
                 <span className="text-xs text-gray-500">
@@ -668,6 +691,12 @@ export default function Settings({
               </li>
             ))}
           </ul>
+        )}
+        {activity.length > 0 && activityFilter && (
+          <p className="text-xs text-gray-500">
+            Showing {activity.filter((row) => row.actor === activityFilter).length} event(s) for{" "}
+            {activityFilter}.
+          </p>
         )}
       </section>
 

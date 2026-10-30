@@ -107,7 +107,7 @@ describe("Settings — security", () => {
     ]);
     renderPage();
     expect(await screen.findByText("Unlocked the app")).toBeInTheDocument();
-    expect(screen.getByText(/local$/)).toBeInTheDocument();
+    expect(screen.getByText(/· local$/)).toBeInTheDocument();
   });
 
   it("changes the PIN after checking the current one", async () => {
@@ -158,6 +158,34 @@ describe("Settings — security", () => {
     await user.type(screen.getByLabelText("Confirm new PIN"), "8765");
     await user.click(screen.getByRole("button", { name: "Update PIN" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("PINs do not match");
+  });
+
+  it("filters recent activity by member", async () => {
+    vi.mocked(listActivity).mockResolvedValue([
+      {
+        id: 1,
+        at: new Date("2026-10-31T05:00:00Z"),
+        actor: "Phani",
+        event: "login",
+        summary: "Phani signed in",
+      },
+      {
+        id: 2,
+        at: new Date("2026-10-31T05:01:00Z"),
+        actor: "Ravi",
+        event: "sale.create",
+        summary: "Sale SD-2026-000010",
+      },
+    ]);
+    renderPage();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText("Phani signed in")).toBeInTheDocument();
+    expect(screen.getByText("Sale SD-2026-000010")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Member"), "Ravi");
+    expect(screen.queryByText("Phani signed in")).not.toBeInTheDocument();
+    expect(screen.getByText("Sale SD-2026-000010")).toBeInTheDocument();
   });
 
   it("removes the saved AI key", async () => {

@@ -5,7 +5,7 @@ Tool: OpenCode
 
 ## Current task
 **Login workstream approved** (docs/PLAN_LOGIN.md) — NOT built yet. PIN login still works for now.
-Next: **L6 Users screen** (Owner adds/resets/deactivates members) + L5 activity user filter. L1–L4 DONE.
+Next: **L6 Users screen** (Owner adds/resets/deactivates members). L1–L5 DONE.
 
 ## Approved decisions (2026-10-31)
 - Login: type **phone + password** (min 6 chars, argon2id hash in DB).
@@ -16,7 +16,7 @@ Next: **L6 Users screen** (Owner adds/resets/deactivates members) + L5 activity 
 ## Status
 - [x] Billing / Bills / GST invoice / email / company settings migrated
 - [x] `sdhhe_fy2025` backed up + dropped; company details now in `settings`
-- [x] L1–L4 login workstream · [x] L5 attribution · [ ] L6 users screen + activity filter
+- [x] L1–L5 login workstream · [ ] L6 users screen
 - [ ] Profit report + dashboard cards · charts · V2-P11 credit · Funds
 
 ## Done recently
@@ -29,7 +29,7 @@ Next: **L6 Users screen** (Owner adds/resets/deactivates members) + L5 activity 
 ## Next exact step
 1. L1: add `app_users` + `activity_log.user_id` to schema.ts, additive SQL to the current DB.
 2. L2: Rust `hash_password`/`verify_password` (argon2id; keep `hash_pin`/`verify_pin` until L4 retires them).
-3. L6 (next): Settings → Users (owner): list, add, reset password, deactivate; activity user filter.
+3. L6 (next): Settings → Users (owner): list, add, reset password, deactivate.
 4. e2e login tests stay skipped until DATABASE_URL_TEST exists (login reads app_users).
 
 ## Notes / blockers
