@@ -25,6 +25,10 @@ Phase 3 (T-3.0 → T-3.3) DONE. Next: T-4.1 FIFO allocation.
 - T-3.3: src/pages/Purchases.tsx table + item/date filters, newest first, batch left.
 - Tooling: `@types/node` + tsconfig `types:["node"]`; vitest.db.config.ts;
   scripts `test` (excludes *.int.test.ts) and `test:db` (DB suite only).
+- E2E: `playwright.config.ts` + `e2e/app.spec.ts` (5 tests). Stubs `window.__TAURI_INTERNALS__`
+  in addInitScript, keeps "keychain" in localStorage so reload = restart. Covers first launch,
+  PIN mismatch, setup→lock→dashboard, reload asks PIN, 5-wrong lockout, sidebar nav.
+  UI only — does NOT cover the real keychain, argon2 or Neon.
 
 ## In progress (exact point where work stopped)
 - File: —
@@ -46,6 +50,7 @@ T-4.1  (FIFO: src/logic/fifo.ts + the BLUEPRINT §5 worked example as a test)
 
 ## Tests
 - Last run: `npm test` → 58 passed / 0 failed (12 files)
+- `npm run test:e2e` → 5 passed (Playwright, Chromium, Tauri IPC stubbed)
 - `npm run test:db` → 1 passed, 5 SKIPPED (needs DATABASE_URL_TEST)
 - `npm run typecheck` → clean
 
