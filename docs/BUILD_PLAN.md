@@ -72,7 +72,13 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   `--bundles app` produced src-tauri/target/release/bundle/macos/Stock Tracker.app (~4.1 MB).
   DMG step fails twice in this sandbox (hdiutil "couldn't unmount - Resource busy"). Windows
   .exe/.msi must be built on Windows or via the T-7.3 CI.)
-- [ ] **T-7.3 CI builds** — .github/workflows/release.yml using tauri-apps/tauri-action for windows/macos/ubuntu + run `npm test`.
+- [x] **T-7.3 CI builds** — .github/workflows/release.yml using tauri-apps/tauri-action for windows/macos/ubuntu + run `npm test`.
+  (2026-10-30: release.yml on tags "v*" + workflow_dispatch; matrix windows-latest, macos-latest
+  aarch64 + x86_64, ubuntu-22.04; Rust stable + mac targets; Linux webkit/appindicator/rsvg/patchelf;
+  npm ci → npm test → tauri-action (tagName v__VERSION__, releaseName "Stock Tracker v__VERSION__",
+  releaseDraft true); permissions contents: write. test.yml runs typecheck + unit tests on every
+  push/PR (ubuntu-22.04). docs/RELEASE.md documents the bump/tag/publish flow. NOT yet run on
+  GitHub — no remote configured.)
 
 ## Phase 8 — AI suggestions
 - [ ] **T-8.1 Rule suggestions** — src/logic/rules.ts: low stock, price up >10%, spend up >15%, overbuying. No AI.
