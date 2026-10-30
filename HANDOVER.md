@@ -4,51 +4,37 @@ Last updated: 2026-10-30 17:50 by DeepSeek V4.1 Flash (OpenCode)
 Tool: OpenCode
 
 ## Current task
-T-0.5 — Neon project + `dev` branch (needs the human). Bootstrap T-0.1→T-0.4 is DONE.
+T-1.1 — Schema (BLOCKED on missing `.env`). T-0.1→T-0.5 done.
 
 ## Status
-- [x] done
+- [ ] blocked  (code written + validated offline; `db:push` cannot run)
 
 ## Done this session
-- Bootstrap steps 2–14 run end to end.
-- Tauri 2 + React 19 + TS + Vite 8 scaffolded (was app-tmp, renamed).
-- Renamed: package.json `stock-tracker`, tauri.conf.json productName `Stock Tracker` / identifier `com.stocktracker.app`, Cargo package `stock-tracker` (lib kept `app_tmp_lib`).
-- Installed base deps + drizzle-orm, @neondatabase/serverless, zod, recharts, xlsx, jspdf, react-router-dom, drizzle-kit, vitest, RTL, jsdom, tailwindcss, @tailwindcss/vite, dotenv.
-- Scripts added: test, test:watch, typecheck, db:push.
-- vite.config.ts: tailwindcss plugin + `test` block (jsdom, globals, setupFiles). `/// <reference types="vitest/config" />` first line.
-- src/test/setup.ts, src/test/smoke.test.ts, src/App.css = `@import "tailwindcss";`.
-- Folders src/db|logic|pages|components|ai with .gitkeep.
-- .env.example created; .gitignore has `.env` + added `!.env.example` (`.env.*` was swallowing the example).
-- git init + commit `T-0.1 to T-0.3: Tauri React TS project + kit + test setup`.
+- T-1.1 code: `src/db/schema.ts` (all 9 tables per BLUEPRINT §4, FKs, uniques, checks) + `drizzle.config.ts` (dotenv, throws a clear error if DATABASE_URL missing).
+- Schema validated OFFLINE: `drizzle-kit generate` with a dummy URL emitted correct SQL (items, suppliers, purchases, batches, stock_movements, movement_batch_links, expenses, settings, ai_suggestions). Temp `drizzle/` migration deleted again (project uses `push`).
+- typecheck clean, tests 1/1.
 
 ## In progress (exact point where work stopped)
-- File: —
-- What was half-done: nothing; bootstrap finished.
+- File: src/db/schema.ts, drizzle.config.ts
+- What was half-done: T-1.1 NOT ticked. Only acceptance test `npm run db:push` is missing.
 
 ## Next task
-T-0.5  (after it: T-1.1)
+T-1.1 finish → then T-1.2 (client.ts) → T-1.3 (units.ts + tests)
 
 ## Next exact step (one action the next session does first)
-- Human: create Neon project (Singapore) + `dev` branch, paste dev URL into `.env` as DATABASE_URL. Then agent starts T-1.1.
+- Human: create `.env` in the project root (`cp .env.example .env`) and paste the Neon dev URL as DATABASE_URL. Then agent runs `npm run db:push`.
 
 ## Files touched this session
-- package.json, vite.config.ts, src-tauri/tauri.conf.json, src-tauri/Cargo.toml
-- .gitignore, .env.example, src/App.css
-- src/test/setup.ts, src/test/smoke.test.ts
-- src/{db,logic,pages,components,ai}/.gitkeep
-- docs/BUILD_PLAN.md, HANDOVER.md
+- src/db/schema.ts (new), drizzle.config.ts (new), HANDOVER.md
 
 ## Tests
-- Last run: `npm test` → 1 passed / 0 failed (smoke)
-- `npm run typecheck` → clean; `npm run build` → OK (dist 221 kB js)
+- Last run: `npm test` → 1 passed / 0 failed
+- `npm run typecheck` → clean
 
 ## Blockers / errors (paste only the key error line)
-- `ollama -v` → `command not found`. Not needed until the opencode.json model is used; T-0.1 ticked with this caveat.
-- `npm audit`: xlsx has a high-severity advisory (prototype pollution / ReDoS), **no fix available** on npm. Revisit in T-? (csv/xlsx export) — consider SheetJS CDN build.
+- `npm run db:push` → `DATABASE_URL is not set — copy .env.example to .env and paste the Neon dev URL.`
+- Root cause: **no `.env` file exists** (only `.env.example`). Checked `.env`, `../.env`, `../../.env`, `~/.env` — all absent. T-0.5 is NOT actually done.
 
 ## Notes for next session
-- `npm run tauri dev` WAS run and verified: Rust build 1m06s, `target/debug/stock-tracker` running, webkit WebContent ESTABLISHED to :1420, React rendered OK (temp render test passed, then deleted).
-- Not verified end-to-end: the Rust `greet` IPC round-trip inside the real window (only mocked in jsdom).
-- GitHub push not done (human: `git remote add origin <url>` + `git push -u origin main`).
-- Vite 8 / TS 6 / Rust edition 2024 — newer than docs may assume.
-- Window title in tauri.conf.json still "app-tmp" (cosmetic, untouched).
+- Deliberate deviations from §4 (all additive, no columns changed): composite PK on movement_batch_links(movement_id, batch_id); NOT NULL on core columns the spec left implicit (batches.qty* , unit_price_paise, purchase_date, etc.).
+- Do NOT create `.env` yourself — the human pastes the URL.
