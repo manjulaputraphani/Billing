@@ -2,13 +2,14 @@
 Each task: Files · Steps · Acceptance. Do ONE task per session if context is small.
 
 ## Phase 0 — Setup
-- [ ] **T-0.1 Install tools** — Follow docs/SETUP.md. Acceptance: `node -v`(20+), `rustc --version`, `git --version`, `ollama -v` work.
-- [ ] **T-0.2 Create project** — `npm create tauri-app@latest stock-tracker` (React, TypeScript, npm). Copy this kit's files into it.
-  Acceptance: `npm run tauri dev` opens a window.
-- [ ] **T-0.3 Install libs** — `npm i drizzle-orm @neondatabase/serverless zod recharts xlsx jspdf react-router-dom`
+- [x] **T-0.1 Install tools** — Follow docs/SETUP.md. Acceptance: `node -v`(20+), `rustc --version`, `git --version`, `ollama -v` work.
+  ⚠ 2026-10-30: node 20.20.2, rustc/cargo 1.99.1, git 2.54.0 OK. **`ollama` NOT installed** — install it + `ollama signin` before using opencode.json models.
+- [x] **T-0.2 Create project** — `npm create tauri-app@latest stock-tracker` (React, TypeScript, npm). Copy this kit's files into it.
+  Acceptance: `npm run tauri dev` opens a window. (⚠ window not yet seen — human runs `npm run tauri dev` once.)
+- [x] **T-0.3 Install libs** — `npm i drizzle-orm @neondatabase/serverless zod recharts xlsx jspdf react-router-dom`
   `npm i -D drizzle-kit vitest @testing-library/react @testing-library/jest-dom jsdom tailwindcss @tailwindcss/vite`
   Add scripts: `"test":"vitest run --reporter=dot"`, `"typecheck":"tsc --noEmit"`. Acceptance: `npm test` runs (0 tests ok).
-- [ ] **T-0.4 Git + GitHub** — `git init`, .gitignore (from kit), first commit, push to private GitHub repo.
+- [x] **T-0.4 Git + GitHub** — `git init`, .gitignore (from kit), first commit, push to private GitHub repo. (⚠ local git done; GitHub push is for the human.)
 - [ ] **T-0.5 Neon** — Create project (region Singapore), create branch `dev`. Copy dev URL into local `.env` as `DATABASE_URL` (dev only, gitignored).
 
 ## Phase 1 — Database
