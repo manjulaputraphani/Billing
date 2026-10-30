@@ -3,6 +3,7 @@ import {
   createExpense,
   deleteExpense,
   EXPENSE_CATEGORIES,
+  getExpenseBill,
   listExpenses,
   listExpenseCategories,
   parseExpenseInput,
@@ -14,14 +15,31 @@ import { useDb } from "../lib/db-context";
 import { rupeesToPaise } from "../logic/purchase";
 import { formatRupees } from "../logic/units";
 
+type BillFile = { filename: string; mime: string; sizeBytes: number; dataBase64: string };
+
 type FormState = {
   id: number | null;
   category: string;
   amount: string;
   date: string;
   paymentMode: string;
+  paidTo: string;
   note: string;
+  bill: BillFile | null;
+  billName: string;
 };
+
+const MAX_BILL_BYTES = 4 * 1024 * 1024;
+
+function toBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 function todayLocal(): string {
   const d = new Date();
@@ -33,7 +51,17 @@ function currentMonth(): string {
 }
 
 function emptyForm(): FormState {
-  return { id: null, category: "", amount: "", date: todayLocal(), paymentMode: "Cash", note: "" };
+  return {
+    id: null,
+    category: "",
+    amount: "",
+    date: todayLocal(),
+    paymentMode: "Cash",
+    paidTo: "",
+    note: "",
+    bill: null,
+    billName: "",
+  };
 }
 
 export default function Expenses() {
@@ -71,6 +99,39 @@ export default function Expenses() {
 
   const totalPaise = rows.reduce((sum, row) => sum + row.amountPaise, 0);
 
+  async function downloadBill(expenseId: number) {
+    setError(null);
+    try {
+      const bill = await getExpenseBill(db, expenseId);
+      if (!bill) return;
+      const link = document.createElement("a");
+      link.href = `data:${bill.mime};base64,${bill.dataBase64}`;
+      link.download = bill.filename;
+      link.click();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function attachBill(file: File | undefined) {
+    if (!file || !form) return;
+    if (file.size > MAX_BILL_BYTES) {
+      setError("Bill file must be 4 MB or smaller");
+      return;
+    }
+    try {
+      const bill: BillFile = {
+        filename: file.name,
+        mime: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        dataBase64: toBase64(await file.arrayBuffer()),
+      };
+      setForm({ ...form, bill, billName: file.name });
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!form) return;
@@ -82,7 +143,9 @@ export default function Expenses() {
         amountPaise: rupeesToPaise(form.amount),
         date: form.date,
         paymentMode: form.paymentMode as (typeof PAYMENT_MODES)[number],
+        paidTo: form.paidTo,
         note: form.note,
+        bill: form.bill ?? undefined,
       });
       if (form.id === null) {
         await createExpense(db, input);
@@ -174,8 +237,10 @@ export default function Expenses() {
             <tr>
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Category</th>
+              <th className="px-3 py-2">Paid to</th>
               <th className="px-3 py-2 text-right">Amount</th>
               <th className="px-3 py-2">Payment</th>
+              <th className="px-3 py-2">Bill</th>
               <th className="px-3 py-2">Note</th>
               <th className="px-3 py-2" />
             </tr>
@@ -183,14 +248,14 @@ export default function Expenses() {
           <tbody>
             {loading && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={6}>
+                <td className="px-3 py-4 text-gray-500" colSpan={8}>
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={6}>
+                <td className="px-3 py-4 text-gray-500" colSpan={8}>
                   No expenses this month.
                 </td>
               </tr>
@@ -199,8 +264,23 @@ export default function Expenses() {
               <tr key={row.id} className="border-b border-gray-100 last:border-0">
                 <td className="px-3 py-2">{row.date}</td>
                 <td className="px-3 py-2 font-medium">{row.category}</td>
+                <td className="px-3 py-2 text-gray-600">{row.paidTo ?? "—"}</td>
                 <td className="px-3 py-2 text-right">{formatRupees(row.amountPaise)}</td>
                 <td className="px-3 py-2 text-gray-600">{row.paymentMode ?? "—"}</td>
+                <td className="px-3 py-2">
+                  {row.billId ? (
+                    <button
+                      type="button"
+                      className="text-sm underline"
+                      onClick={() => void downloadBill(row.id)}
+                      title={row.billFilename ?? "Bill"}
+                    >
+                      Save bill
+                    </button>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-gray-600">{row.note ?? "—"}</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   <button
@@ -214,7 +294,10 @@ export default function Expenses() {
                         amount: String(row.amountPaise / 100),
                         date: row.date,
                         paymentMode: row.paymentMode ?? "Cash",
+                        paidTo: row.paidTo ?? "",
                         note: row.note ?? "",
+                        bill: null,
+                        billName: row.billFilename ?? "",
                       });
                     }}
                   >
@@ -233,11 +316,11 @@ export default function Expenses() {
           </tbody>
           <tfoot className="border-t border-gray-200 bg-gray-50">
             <tr>
-              <td className="px-3 py-2 font-medium" colSpan={2}>
+              <td className="px-3 py-2 font-medium" colSpan={3}>
                 Month total
               </td>
               <td className="px-3 py-2 text-right font-semibold">{formatRupees(totalPaise)}</td>
-              <td colSpan={3} />
+              <td colSpan={4} />
             </tr>
           </tfoot>
         </table>
@@ -250,7 +333,7 @@ export default function Expenses() {
           aria-labelledby="expense-form-title"
           className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
         >
-          <form className="w-full max-w-md space-y-3 rounded bg-white p-5 shadow-lg" onSubmit={save}>
+          <form className="w-full max-w-md space-y-3 card p-5" onSubmit={save}>
             <h2 id="expense-form-title" className="text-lg font-semibold">
               {form.id === null ? "Add expense" : "Edit expense"}
             </h2>
@@ -320,6 +403,33 @@ export default function Expenses() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="label" htmlFor="expense-paid-to">
+                Paid to (vendor)
+              </label>
+              <input
+                id="expense-paid-to"
+                className="input w-full"
+                placeholder="Who was paid?"
+                value={form.paidTo}
+                onChange={(e) => setForm({ ...form, paidTo: e.currentTarget.value })}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="label" htmlFor="expense-bill">
+                Bill photo / invoice (max 4 MB)
+              </label>
+              <input
+                id="expense-bill"
+                type="file"
+                accept="image/*,application/pdf"
+                className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm"
+                onChange={(e) => void attachBill(e.currentTarget.files?.[0])}
+              />
+              {form.billName && <p className="text-xs text-gray-500">Attached: {form.billName}</p>}
             </div>
 
             <div className="space-y-1">

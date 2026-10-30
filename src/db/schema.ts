@@ -133,7 +133,31 @@ export const expenses = pgTable("expenses", {
   amountPaise: integer("amount_paise").notNull(),
   expenseDate: date("expense_date").notNull(),
   paymentMode: text("payment_mode"),
+  paidTo: text("paid_to"),
   note: text("note"),
+});
+
+export const expenseBills = pgTable("expense_bills", {
+  id: serial("id").primaryKey(),
+  expenseId: integer("expense_id")
+    .notNull()
+    .references(() => expenses.id, { onDelete: "cascade" }),
+  filename: text("filename").notNull(),
+  mime: text("mime").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  dataBase64: text("data_base64").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Who did what, when — login/lock plus every create/update/delete. */
+export const activityLog = pgTable("activity_log", {
+  id: serial("id").primaryKey(),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  actor: text("actor").notNull().default("local"),
+  event: text("event").notNull(),
+  summary: text("summary").notNull(),
+  entity: text("entity"),
+  entityId: integer("entity_id"),
 });
 
 export const settings = pgTable("settings", {

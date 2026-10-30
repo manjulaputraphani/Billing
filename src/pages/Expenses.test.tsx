@@ -32,7 +32,10 @@ const ROWS = [
     amountPaise: 50000,
     date: "2026-10-05",
     paymentMode: "Cash",
+    paidTo: "Landlord",
     note: null,
+    billId: 3,
+    billFilename: "rent-oct.pdf",
   },
   {
     id: 2,
@@ -40,7 +43,10 @@ const ROWS = [
     amountPaise: 2500,
     date: "2026-10-06",
     paymentMode: "UPI",
+    paidTo: "Ravi Transport",
     note: "Delivery",
+    billId: null,
+    billFilename: null,
   },
 ];
 
@@ -116,6 +122,30 @@ describe("Expenses page", () => {
         category: "Electricity",
         amountPaise: 123450,
         paymentMode: "Cash",
+      }),
+    );
+  });
+
+  it("saves the vendor and the attached bill", async () => {
+    renderPage();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Add expense" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Category"), "Electricity");
+    await user.type(within(dialog).getByLabelText("Amount (₹)"), "500");
+    await user.type(within(dialog).getByLabelText(/paid to/i), "TNEB");
+    await user.upload(
+      within(dialog).getByLabelText(/bill photo/i),
+      new File(["bill-bytes"], "bill.jpg", { type: "image/jpeg" }),
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(createExpense).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        paidTo: "TNEB",
+        bill: expect.objectContaining({ filename: "bill.jpg", mime: "image/jpeg" }),
       }),
     );
   });

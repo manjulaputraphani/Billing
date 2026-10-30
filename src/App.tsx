@@ -4,6 +4,8 @@ import "./App.css";
 import Layout from "./components/Layout";
 import { DbProvider } from "./lib/db-context";
 import { getSecret, SECRET_KEYS } from "./lib/secrets";
+import { getDb } from "./db/client";
+import { logActivity } from "./db/activity";
 import AddPurchase from "./pages/AddPurchase";
 import Chat from "./pages/Chat";
 import ComingSoon from "./pages/ComingSoon";
@@ -46,6 +48,18 @@ export default function App() {
     void bootstrap();
   }, [bootstrap]);
 
+  /** Successful PIN entry → record the login, then show the app. */
+  const unlock = useCallback(async () => {
+    try {
+      if (url) {
+        await logActivity(getDb(url), { event: "login", summary: "Unlocked the app" });
+      }
+    } catch {
+      // Audit logging must never block a login.
+    }
+    setPhase("home");
+  }, [url]);
+
   if (phase === "loading") {
     return <main className="p-8 text-sm text-gray-500">Loading…</main>;
   }
@@ -55,7 +69,7 @@ export default function App() {
   }
 
   if (phase === "lock") {
-    return <Lock onUnlock={() => setPhase("home")} />;
+    return <Lock onUnlock={() => void unlock()} />;
   }
 
   return (

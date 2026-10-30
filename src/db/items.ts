@@ -2,6 +2,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "./client";
 import { batches, items, purchases } from "./schema";
+import { logActivity } from "./activity";
 
 export const ITEM_UNITS = ["kg", "l", "pcs"] as const;
 
@@ -92,6 +93,12 @@ export async function createItem(db: Db, input: unknown): Promise<ItemRow> {
       minStockBase: data.minStockBase,
     })
     .returning();
+  await logActivity(db, {
+    event: "item.create",
+    summary: `Item created: ${data.name} (${data.unit})`,
+    entity: "item",
+    entityId: created.id,
+  });
   return { ...created, stockLeftBase: 0 };
 }
 
@@ -109,6 +116,12 @@ export async function updateItem(db: Db, id: number, input: unknown): Promise<It
     .where(eq(items.id, id))
     .returning();
   if (!updated) throw new Error("Item not found");
+  await logActivity(db, {
+    event: "item.update",
+    summary: `Item edited: ${data.name}`,
+    entity: "item",
+    entityId: id,
+  });
   return { ...updated, stockLeftBase: await getStockLeft(db, id) };
 }
 
@@ -120,6 +133,12 @@ export async function deleteItem(db: Db, id: number): Promise<void> {
     .limit(1);
   if (used.length > 0) throw new Error("Item has purchases");
   await db.delete(items).where(eq(items.id, id));
+  await logActivity(db, {
+    event: "item.delete",
+    summary: `Item deleted: #${id}`,
+    entity: "item",
+    entityId: id,
+  });
 }
 
 /** Stock left = sum of remaining batches for the item. */

@@ -4,6 +4,7 @@ import { chat } from "../ai/ollama";
 import { DEFAULT_AI_CONFIG, getAiConfig, saveAiConfig, type AiConfig } from "../db/settings";
 import { useDb } from "../lib/db-context";
 import { deleteSecret, getSecret, hashPin, saveSecret, SECRET_KEYS, verifyPin } from "../lib/secrets";
+import { listActivity, logActivity, type ActivityRow } from "../db/activity";
 
 const PIN_RE = /^\d{4,6}$/;
 
@@ -30,6 +31,13 @@ export default function Settings({
   const [pinBusy, setPinBusy] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinStatus, setPinStatus] = useState<string | null>(null);
+  const [activity, setActivity] = useState<ActivityRow[]>([]);
+
+  useEffect(() => {
+    listActivity(db)
+      .then(setActivity)
+      .catch(() => setActivity([]));
+  }, [db]);
 
   useEffect(() => {
     void (async () => {
@@ -99,12 +107,29 @@ export default function Settings({
     try {
       await deleteSecret(SECRET_KEYS.DATABASE_URL);
       await deleteSecret(SECRET_KEYS.PIN_HASH);
+      try {
+        await logActivity(db, {
+          event: "reset",
+          summary: "Connection and PIN removed from this computer",
+        });
+      } catch {
+        // Logging must not block the reset.
+      }
       onReset();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
+  }
+
+  async function lockNow() {
+    try {
+      await logActivity(db, { event: "lock", summary: "Locked the app" });
+    } catch {
+      // Never block locking on a logging failure.
+    }
+    onLock();
   }
 
   async function changePin() {
@@ -175,7 +200,7 @@ export default function Settings({
             AI cloud key: {stored ? (stored.aiKey ? "saved" : "not saved") : "checking…"}
           </li>
         </ul>
-        <button type="button" className="btn-ghost" onClick={onLock}>
+        <button type="button" className="btn-ghost" onClick={() => void lockNow()}>
           Lock now
         </button>
       </section>
@@ -361,6 +386,29 @@ export default function Settings({
       </section>
 
       <p className="text-sm text-gray-500">More settings coming soon.</p>
+
+      <section className="space-y-3 card p-4">
+        <div>
+          <h2 className="text-sm font-medium">Recent activity</h2>
+          <p className="text-sm text-gray-500">
+            Logins, locks and every change — stored in the database.
+          </p>
+        </div>
+        {activity.length === 0 ? (
+          <p className="text-sm text-gray-500">No activity recorded yet.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100 text-sm">
+            {activity.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
+                <span>{row.summary}</span>
+                <span className="text-xs text-gray-500">
+                  {new Date(row.at).toLocaleString()} · {row.actor}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <p className="text-xs text-gray-400">Stock Tracker v{version ?? "—"}</p>
 

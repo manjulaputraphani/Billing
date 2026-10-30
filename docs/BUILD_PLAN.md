@@ -126,3 +126,15 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 - [x] **T-10.3 Security settings** — Security card with Keychain status (PIN / connection / AI key, values
   never shown), **Lock now**, **Change PIN** (current PIN checked, 4-6 digits, confirm), **Remove AI key**.
   (2026-10-30: Settings.test.tsx 6 tests, full suite 164 green, tsc clean, e2e 13 passed.)
+
+## Phase 11 — Audit & accountability (added 2026-10-30 on request)
+- [x] **T-11.1 Activity log** — `activity_log` table (at, actor, event, summary, entity, entity_id).
+  Records login (PIN unlock), lock (Lock now), reset, and every create/update/delete: item, purchase,
+  stock check/usage/wastage, sale, expense. Log rows share the data's transaction where one exists and
+  never block the user action. Settings → "Recent activity" lists the last 25 with time + actor.
+  (2026-10-30: App.tsx logs login; Settings logs lock/reset; db/*.ts logs every mutation.)
+- [x] **T-11.2 Expense vendor** — `expenses.paid_to` ("Paid to (vendor)") captured in the form, listed
+  in the expenses table, included in the audit summary.
+- [x] **T-11.3 Bill attachment** — `expense_bills` table (file stored base64 in Postgres, 4 MB cap,
+  image/* or PDF). Attach/replace in the expense form; "Save bill" downloads it.
+  (2026-10-30: migration applied additively; full suite 166 green, tsc clean.)

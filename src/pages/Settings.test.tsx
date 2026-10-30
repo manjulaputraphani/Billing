@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import Settings from "./Settings";
 import { DbProvider } from "../lib/db-context";
 import { deleteSecret, getSecret, hashPin, saveSecret, verifyPin } from "../lib/secrets";
+import { listActivity, logActivity } from "../db/activity";
 
 vi.mock("../db/client", () => ({
   getDb: vi.fn(() => ({})),
@@ -29,6 +30,10 @@ vi.mock("../lib/secrets", async (importOriginal) => {
 });
 vi.mock("@tauri-apps/api/app", () => ({ getVersion: vi.fn(async () => "1.0.0") }));
 vi.mock("../ai/ollama", () => ({ chat: vi.fn() }));
+vi.mock("../db/activity", () => ({
+  listActivity: vi.fn(async () => []),
+  logActivity: vi.fn(async () => {}),
+}));
 
 const URL = "postgresql://user:pass@localhost:5432/test";
 
@@ -49,6 +54,8 @@ beforeEach(() => {
   vi.mocked(deleteSecret).mockReset().mockResolvedValue(undefined);
   vi.mocked(hashPin).mockReset().mockResolvedValue("$argon2id$new-hash");
   vi.mocked(verifyPin).mockReset().mockResolvedValue(true);
+  vi.mocked(listActivity).mockReset().mockResolvedValue([]);
+  vi.mocked(logActivity).mockReset().mockResolvedValue(undefined);
 });
 
 describe("Settings — security", () => {
@@ -64,7 +71,26 @@ describe("Settings — security", () => {
     const onLock = renderPage();
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Lock now" }));
+    expect(logActivity).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ event: "lock" }),
+    );
     expect(onLock).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists recent activity with who and when", async () => {
+    vi.mocked(listActivity).mockResolvedValue([
+      {
+        id: 1,
+        at: new Date("2026-10-30T18:40:00Z"),
+        actor: "local",
+        event: "login",
+        summary: "Unlocked the app",
+      },
+    ]);
+    renderPage();
+    expect(await screen.findByText("Unlocked the app")).toBeInTheDocument();
+    expect(screen.getByText(/local$/)).toBeInTheDocument();
   });
 
   it("changes the PIN after checking the current one", async () => {

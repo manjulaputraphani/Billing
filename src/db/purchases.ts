@@ -2,8 +2,9 @@ import { asc, desc, eq, gte, inArray, lte, and, sql } from "drizzle-orm";
 import { z } from "zod";
 import { withTransaction, type Db, type TxDb } from "./client";
 import { batches, items, movementBatchLinks, purchases, stockMovements, suppliers } from "./schema";
-import { baseFactor, costPaise, toBase, type Unit } from "../logic/units";
+import { baseFactor, costPaise, formatQuantity, formatRupees, toBase, type Unit } from "../logic/units";
 import { replayItem, type ReplayMovement } from "../logic/replay";
+import { logActivity } from "./activity";
 
 export const PAYMENT_MODES = ["Cash", "UPI", "Card", "Credit"] as const;
 
@@ -108,6 +109,15 @@ export async function addPurchase(db: Db, input: unknown): Promise<AddPurchaseRe
 
   const row = rowsOf<{ purchase_id: number; batch_id: number; movement_id: number }>(result)[0];
   if (!row) throw new Error("Purchase was not saved");
+
+  await logActivity(db, {
+    event: "purchase.create",
+    summary: `Purchase: ${formatQuantity(qtyBase, unit)} for ${formatRupees(totalPaise)}${
+      supplier ? ` from ${supplier}` : ""
+    }`,
+    entity: "purchase",
+    entityId: Number(row.purchase_id),
+  });
 
   return {
     purchaseId: Number(row.purchase_id),
@@ -363,6 +373,13 @@ export async function updatePurchase(
     }
 
     await replayAndWriteBack(tx, row.itemId, factor);
+
+    await logActivity(tx, {
+      event: "purchase.update",
+      summary: `Purchase edited: ${formatQuantity(qtyBase, unit)} for ${formatRupees(totalPaise)}`,
+      entity: "purchase",
+      entityId: purchaseId,
+    });
   });
 }
 
@@ -412,5 +429,12 @@ export async function deletePurchase(url: string, purchaseId: number): Promise<v
     );
 
     await replayAndWriteBack(tx, row.itemId, factor);
+
+    await logActivity(tx, {
+      event: "purchase.delete",
+      summary: `Purchase deleted: #${purchaseId} (${formatQuantity(row.qtyBase, item.unit as Unit)})`,
+      entity: "purchase",
+      entityId: purchaseId,
+    });
   });
 }

@@ -15,3 +15,5 @@
 - 2026-10-30 · Sales = `sales` table + `SALE` stock movement with FIFO batch links · stock left stays one source of truth (sum of open batches), no duplicate counters
 - 2026-10-30 · Sale price stored as paise per display unit (kg/l/pcs), total = round(qty × price / factor) · matches batch costing and avoids float money
 - 2026-10-30 · keychain items DATABASE_URL/PIN_HASH re-created allow-all on this dev Mac (`security ... -A`) · ad-hoc dev binaries change code signature on every Rust rebuild, so macOS re-prompted forever; app still uses keyring, revert by deleting the items + redoing Setup
+- 2026-10-30 · Audit trail in `activity_log` (actor 'local') · single-user desktop app; rows answer who did what and when, share the data transaction, and travel with the DB backup
+- 2026-10-30 · Expense bills stored as base64 inside Postgres (`expense_bills`, 4 MB cap) · no bucket or local file paths to sync; one backup keeps the paperwork, small enough for the HTTP driver

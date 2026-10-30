@@ -1,8 +1,10 @@
 import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "./client";
-import { expenses } from "./schema";
+import { logActivity } from "./activity";
+import { expenseBills, expenses } from "./schema";
 import { PAYMENT_MODES } from "./purchases";
+import { formatRupees } from "../logic/units";
 
 export const EXPENSE_CATEGORIES = [
   "Rent",
@@ -14,6 +16,18 @@ export const EXPENSE_CATEGORIES = [
   "Other",
 ] as const;
 
+/** Bill photo / paid invoice stored with the expense (max 4 MB). */
+export const expenseBillSchema = z.object({
+  filename: z.string().trim().min(1, "Bill file is missing a name").max(200),
+  mime: z.string().trim().min(1).max(100),
+  sizeBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(4 * 1024 * 1024, "Bill file must be 4 MB or smaller"),
+  dataBase64: z.string().min(1, "Bill file is empty"),
+});
+
 export const expenseInputSchema = z.object({
   category: z.string().trim().min(1, "Category is required").max(60, "Category is too long"),
   amountPaise: z
@@ -22,7 +36,9 @@ export const expenseInputSchema = z.object({
     .positive("Amount must be more than 0"),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date"),
   paymentMode: z.enum(PAYMENT_MODES).optional(),
+  paidTo: z.string().trim().max(120, "Paid to is too long").optional(),
   note: z.string().trim().max(200, "Note is too long").optional(),
+  bill: expenseBillSchema.optional(),
 });
 
 export type ExpenseInput = z.infer<typeof expenseInputSchema>;
@@ -33,7 +49,10 @@ export type ExpenseRow = {
   amountPaise: number;
   date: string;
   paymentMode: string | null;
+  paidTo: string | null;
   note: string | null;
+  billId: number | null;
+  billFilename: string | null;
 };
 
 export function parseExpenseInput(input: unknown): ExpenseInput {
@@ -71,11 +90,26 @@ export async function listExpenses(
       amountPaise: expenses.amountPaise,
       date: expenses.expenseDate,
       paymentMode: expenses.paymentMode,
+      paidTo: expenses.paidTo,
       note: expenses.note,
+      billId: expenseBills.id,
+      billFilename: expenseBills.filename,
     })
     .from(expenses)
+    .leftJoin(expenseBills, eq(expenseBills.expenseId, expenses.id))
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(expenses.expenseDate), desc(expenses.id));
+}
+
+function summaryOf(data: ExpenseInput, verb: string): string {
+  const who = data.paidTo ? ` to ${data.paidTo}` : "";
+  return `Expense ${verb}: ${data.category} ${formatRupees(data.amountPaise)}${who}`;
+}
+
+async function replaceBill(db: Db, expenseId: number, bill: ExpenseInput["bill"]): Promise<void> {
+  if (!bill) return;
+  await db.delete(expenseBills).where(eq(expenseBills.expenseId, expenseId));
+  await db.insert(expenseBills).values({ expenseId, ...bill });
 }
 
 export async function createExpense(db: Db, input: unknown): Promise<ExpenseRow> {
@@ -87,16 +121,29 @@ export async function createExpense(db: Db, input: unknown): Promise<ExpenseRow>
       amountPaise: data.amountPaise,
       expenseDate: data.date,
       paymentMode: data.paymentMode ?? null,
+      paidTo: data.paidTo?.trim() || null,
       note: data.note?.trim() || null,
     })
     .returning();
+
+  await replaceBill(db, created.id, data.bill);
+  await logActivity(db, {
+    event: "expense.create",
+    summary: summaryOf(data, "added"),
+    entity: "expense",
+    entityId: created.id,
+  });
+
   return {
     id: created.id,
     category: created.category,
     amountPaise: created.amountPaise,
     date: created.expenseDate,
     paymentMode: created.paymentMode,
+    paidTo: created.paidTo,
     note: created.note,
+    billId: null,
+    billFilename: data.bill?.filename ?? null,
   };
 }
 
@@ -109,23 +156,43 @@ export async function updateExpense(db: Db, id: number, input: unknown): Promise
       amountPaise: data.amountPaise,
       expenseDate: data.date,
       paymentMode: data.paymentMode ?? null,
+      paidTo: data.paidTo?.trim() || null,
       note: data.note?.trim() || null,
     })
     .where(eq(expenses.id, id))
     .returning();
   if (!updated) throw new Error("Expense not found");
+
+  await replaceBill(db, id, data.bill);
+  await logActivity(db, {
+    event: "expense.update",
+    summary: summaryOf(data, "edited"),
+    entity: "expense",
+    entityId: id,
+  });
+
   return {
     id: updated.id,
     category: updated.category,
     amountPaise: updated.amountPaise,
     date: updated.expenseDate,
     paymentMode: updated.paymentMode,
+    paidTo: updated.paidTo,
     note: updated.note,
+    billId: null,
+    billFilename: data.bill?.filename ?? null,
   };
 }
 
 export async function deleteExpense(db: Db, id: number): Promise<void> {
+  await db.delete(expenseBills).where(eq(expenseBills.expenseId, id));
   await db.delete(expenses).where(eq(expenses.id, id));
+  await logActivity(db, {
+    event: "expense.delete",
+    summary: `Expense deleted: #${id}`,
+    entity: "expense",
+    entityId: id,
+  });
 }
 
 /** Categories already used, for the dropdown, oldest first. */
@@ -135,4 +202,21 @@ export async function listExpenseCategories(db: Db): Promise<string[]> {
     .from(expenses)
     .orderBy(asc(expenses.category));
   return rows.map((r) => r.category);
+}
+
+export type ExpenseBill = { filename: string; mime: string; dataBase64: string };
+
+/** The latest bill attached to an expense (for viewing/downloading). */
+export async function getExpenseBill(db: Db, expenseId: number): Promise<ExpenseBill | null> {
+  const [row] = await db
+    .select({
+      filename: expenseBills.filename,
+      mime: expenseBills.mime,
+      dataBase64: expenseBills.dataBase64,
+    })
+    .from(expenseBills)
+    .where(eq(expenseBills.expenseId, expenseId))
+    .orderBy(desc(expenseBills.id))
+    .limit(1);
+  return row ?? null;
 }

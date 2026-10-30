@@ -3,7 +3,8 @@ import { z } from "zod";
 import { withTransaction } from "./client";
 import { batches, items, movementBatchLinks, stockMovements } from "./schema";import { allocateFifo } from "../logic/fifo";
 import { computeUsage } from "../logic/stockCheck";
-import { baseFactor, type Unit } from "../logic/units";
+import { baseFactor, formatQuantity, type Unit } from "../logic/units";
+import { logActivity } from "./activity";
 import type { Db } from "./client";
 
 export const STOCK_ENTRY_TYPES = ["STOCK_CHECK", "USAGE", "WASTAGE"] as const;
@@ -166,6 +167,16 @@ export async function saveStockEntry(url: string, input: unknown): Promise<Stock
         })),
       );
     }
+
+    await logActivity(tx, {
+      event: `stock.${data.type.toLowerCase()}`,
+      summary: `${data.type === "STOCK_CHECK" ? "Stock check" : data.type === "USAGE" ? "Used" : "Wastage"}: ${formatQuantity(
+        plan.used,
+        item.unit as Unit,
+      )}`,
+      entity: "item",
+      entityId: data.itemId,
+    });
 
     return { movementId: movement.id, used: plan.used, costPaise: plan.totalCostPaise };
   });

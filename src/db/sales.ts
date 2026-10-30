@@ -3,7 +3,8 @@ import { z } from "zod";
 import { withTransaction } from "./client";
 import { batches, items, movementBatchLinks, sales, stockMovements } from "./schema";
 import { planSale } from "../logic/sales";
-import { baseFactor, type Unit } from "../logic/units";
+import { baseFactor, formatQuantity, formatRupees, type Unit } from "../logic/units";
+import { logActivity } from "./activity";
 import type { Db } from "./client";
 
 export const saleSchema = z.object({
@@ -111,6 +112,15 @@ export async function saveSale(url: string, input: unknown): Promise<SaleSaveRes
         note,
       })
       .returning({ id: sales.id });
+
+    await logActivity(tx, {
+      event: "sale.create",
+      summary: `Sale: ${formatQuantity(data.qty, item.unit as Unit)} for ${formatRupees(
+        plan.revenuePaise,
+      )}`,
+      entity: "sale",
+      entityId: sale.id,
+    });
 
     return {
       saleId: sale.id,
