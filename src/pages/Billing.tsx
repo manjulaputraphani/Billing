@@ -20,6 +20,7 @@ type Line = {
   unit: Unit;
   qtyBase: number;
   unitPricePaise: number;
+  hsnCode: string | null;
   lineTotalPaise: number;
 };
 
@@ -37,9 +38,12 @@ export default function Billing() {
   const [date, setDate] = useState(todayLocal);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerGstin, setCustomerGstin] = useState("");
   const [draftItemId, setDraftItemId] = useState<number | "">("");
   const [draftQty, setDraftQty] = useState("");
   const [draftPrice, setDraftPrice] = useState("");
+  const [draftHsn, setDraftHsn] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [discount, setDiscount] = useState("");
   const [gstRateBp, setGstRateBp] = useState("500");
@@ -96,11 +100,13 @@ export default function Billing() {
         unit: draftUnit,
         qtyBase,
         unitPricePaise,
+        hsnCode: draftHsn.trim() || null,
         lineTotalPaise,
       },
     ]);
     setDraftQty("");
     setDraftPrice("");
+    setDraftHsn("");
   }
 
   async function save() {
@@ -118,7 +124,12 @@ export default function Billing() {
     try {
       let customerId: number | undefined;
       if (customerName.trim()) {
-        const customer = await createCustomer(db, { name: customerName, phone: customerPhone });
+        const customer = await createCustomer(db, {
+          name: customerName,
+          phone: customerPhone,
+          address: customerAddress,
+          gstin: customerGstin,
+        });
         customerId = customer.id;
       }
       const created = await createSaleBill(url, {
@@ -128,10 +139,12 @@ export default function Billing() {
         paidPaise: paid.trim() ? rupeesToPaise(paid) : undefined,
         discountPaise: totals.discountPaise,
         gstPaise: totals.gstPaise,
+        gstRateBp: Number(gstRateBp) || 0,
         lines: lines.map((line) => ({
           itemId: line.itemId,
           qtyBase: line.qtyBase,
           unitPricePaise: line.unitPricePaise,
+          hsnCode: line.hsnCode ?? undefined,
         })),
       });
       setSuccess(`Saved ${created.billNo} — ${formatRupees(created.totalPaise)}`);
@@ -142,6 +155,8 @@ export default function Billing() {
       setPaid("");
       setCustomerName("");
       setCustomerPhone("");
+      setCustomerAddress("");
+      setCustomerGstin("");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -217,7 +232,33 @@ export default function Billing() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr_auto]">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1 sm:col-span-2">
+            <label className="label" htmlFor="bill-address">
+              Billing address
+            </label>
+            <input
+              id="bill-address"
+              className="input w-full"
+              placeholder="Street, city, state, PIN"
+              value={customerAddress}
+              onChange={(e) => setCustomerAddress(e.currentTarget.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="bill-gstin">
+              Customer GSTIN
+            </label>
+            <input
+              id="bill-gstin"
+              className="input w-full uppercase"
+              value={customerGstin}
+              onChange={(e) => setCustomerGstin(e.currentTarget.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
           <div className="space-y-1">
             <label className="label" htmlFor="bill-item">
               Item
@@ -272,6 +313,17 @@ export default function Billing() {
                   addLine();
                 }
               }}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="bill-hsn">
+              HSN
+            </label>
+            <input
+              id="bill-hsn"
+              className="input w-full"
+              value={draftHsn}
+              onChange={(e) => setDraftHsn(e.currentTarget.value)}
             />
           </div>
           <div className="flex items-end">

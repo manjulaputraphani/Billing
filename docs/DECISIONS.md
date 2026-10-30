@@ -25,3 +25,4 @@
 - 2026-10-31 · P10 billing tables pushed additively to the current DB (customers/sale_bills/sale_items) · dev branch still missing; additive CREATE only, existing screens unaffected (dev-branch rule remains for future changes)
 - 2026-10-31 · GST bill printing via a hidden iframe + system Print dialog (Save as PDF) · no extra PDF dependency yet; shop name/address/phone/GSTIN read from Settings (`shop_*` keys)
 - 2026-10-31 · GST math in `src/logic/gst.ts` (basis points, rounded paise, exact CGST/SGST split) · one source for bill totals and the future GST report
+- 2026-10-31 · Invoice layout follows the SDHHE sample PDF (docs/PLAN_V2.md phase note): HSN per sale line, buyer GSTIN/address on `customers`, shop email + bank details in settings, DD-MM-YYYY on print · user asked for the same design/details; bill number stays `SD-YYYY-NNNNNN` per the V2 spec (the sample's `SDHHE/25-26/16` style was not adopted until asked)

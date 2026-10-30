@@ -19,7 +19,17 @@ vi.mock("../db/settings", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../db/settings")>();
   return {
     ...actual,
-    getShopDetails: vi.fn(async () => ({ name: "SDHHE", address: "", phone: "", gstin: "36ABCDE1234F1Z5" })),
+    getShopDetails: vi.fn(async () => ({
+      name: "SDHHE",
+      address: "",
+      phone: "",
+      email: "",
+      gstin: "36ABCDE1234F1Z5",
+      bankName: "",
+      bankAccount: "",
+      bankIfsc: "",
+      bankBranch: "",
+    })),
   };
 });
 vi.mock("../lib/printBill", () => ({ printBill: vi.fn() }));
@@ -55,10 +65,13 @@ const DETAIL = {
   saleDate: "2026-10-30",
   customerName: null,
   customerPhone: null,
+  customerAddress: null,
+  customerGstin: null,
   paymentMode: "Cash",
   subtotalPaise: 7500,
   discountPaise: 0,
   gstPaise: 375,
+  gstRateBp: 500,
   totalPaise: 7875,
   paidPaise: 7875,
   cancelled: false,
@@ -68,6 +81,7 @@ const DETAIL = {
       unit: "kg",
       qtyBase: 500,
       unitPricePaise: 15000,
+      hsnCode: "090111",
       lineTotalPaise: 7500,
       costPaise: 5000,
       profitPaise: 2500,

@@ -344,6 +344,65 @@ export default function Settings({
               onChange={(e) => setShop({ ...shop, gstin: e.currentTarget.value })}
             />
           </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-email">
+              Email
+            </label>
+            <input
+              id="shop-email"
+              className="input w-full"
+              value={shop.email}
+              onChange={(e) => setShop({ ...shop, email: e.currentTarget.value })}
+            />
+          </div>
+        </div>
+
+        <p className="pt-1 text-[13px] font-medium text-stone-700">Bank details (printed on the bill)</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-bank-name">
+              Bank name
+            </label>
+            <input
+              id="shop-bank-name"
+              className="input w-full"
+              value={shop.bankName}
+              onChange={(e) => setShop({ ...shop, bankName: e.currentTarget.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-bank-account">
+              Account number
+            </label>
+            <input
+              id="shop-bank-account"
+              className="input w-full"
+              value={shop.bankAccount}
+              onChange={(e) => setShop({ ...shop, bankAccount: e.currentTarget.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-bank-ifsc">
+              IFSC
+            </label>
+            <input
+              id="shop-bank-ifsc"
+              className="input w-full uppercase"
+              value={shop.bankIfsc}
+              onChange={(e) => setShop({ ...shop, bankIfsc: e.currentTarget.value })}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="shop-bank-branch">
+              Branch
+            </label>
+            <input
+              id="shop-bank-branch"
+              className="input w-full"
+              value={shop.bankBranch}
+              onChange={(e) => setShop({ ...shop, bankBranch: e.currentTarget.value })}
+            />
+          </div>
         </div>
         {shopStatus && (
           <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">

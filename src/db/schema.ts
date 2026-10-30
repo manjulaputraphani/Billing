@@ -167,6 +167,7 @@ export const customers = pgTable("customers", {
   name: text("name").notNull(),
   phone: text("phone"),
   address: text("address"),
+  gstin: text("gstin"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -180,6 +181,7 @@ export const saleBills = pgTable(
     subtotalPaise: integer("subtotal_paise").notNull(),
     discountPaise: integer("discount_paise").notNull().default(0),
     gstPaise: integer("gst_paise").notNull().default(0),
+    gstRateBp: integer("gst_rate_bp").notNull().default(0),
     totalPaise: integer("total_paise").notNull(),
     paymentMode: text("payment_mode").notNull(),
     paidPaise: integer("paid_paise").notNull(),
@@ -210,6 +212,7 @@ export const saleItems = pgTable(
     movementId: integer("movement_id").references(() => stockMovements.id),
     qtyBase: integer("qty_base").notNull(),
     unitPricePaise: integer("unit_price_paise").notNull(),
+    hsnCode: text("hsn_code"),
     lineTotalPaise: integer("line_total_paise").notNull(),
     costPaise: integer("cost_paise").notNull(),
     profitPaise: integer("profit_paise").notNull(),

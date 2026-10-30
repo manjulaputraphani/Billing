@@ -7,12 +7,37 @@ export type ShopDetails = {
   name: string;
   address: string;
   phone: string;
+  email: string;
   gstin: string;
+  bankName: string;
+  bankAccount: string;
+  bankIfsc: string;
+  bankBranch: string;
 };
 
-export const DEFAULT_SHOP: ShopDetails = { name: "", address: "", phone: "", gstin: "" };
+export const DEFAULT_SHOP: ShopDetails = {
+  name: "",
+  address: "",
+  phone: "",
+  email: "",
+  gstin: "",
+  bankName: "",
+  bankAccount: "",
+  bankIfsc: "",
+  bankBranch: "",
+};
 
-const SHOP_KEYS = ["shop_name", "shop_address", "shop_phone", "shop_gstin"] as const;
+const SHOP_KEYS = [
+  "shop_name",
+  "shop_address",
+  "shop_phone",
+  "shop_email",
+  "shop_gstin",
+  "shop_bank_name",
+  "shop_bank_account",
+  "shop_bank_ifsc",
+  "shop_bank_branch",
+] as const;
 
 /** Shop header printed on GST bills (Settings → Shop details). */
 export async function getShopDetails(db: Db): Promise<ShopDetails> {
@@ -25,7 +50,12 @@ export async function getShopDetails(db: Db): Promise<ShopDetails> {
     name: map.get("shop_name") ?? DEFAULT_SHOP.name,
     address: map.get("shop_address") ?? DEFAULT_SHOP.address,
     phone: map.get("shop_phone") ?? DEFAULT_SHOP.phone,
+    email: map.get("shop_email") ?? DEFAULT_SHOP.email,
     gstin: map.get("shop_gstin") ?? DEFAULT_SHOP.gstin,
+    bankName: map.get("shop_bank_name") ?? DEFAULT_SHOP.bankName,
+    bankAccount: map.get("shop_bank_account") ?? DEFAULT_SHOP.bankAccount,
+    bankIfsc: map.get("shop_bank_ifsc") ?? DEFAULT_SHOP.bankIfsc,
+    bankBranch: map.get("shop_bank_branch") ?? DEFAULT_SHOP.bankBranch,
   };
 }
 
@@ -34,7 +64,12 @@ export async function saveShopDetails(db: Db, shop: ShopDetails): Promise<void> 
     [SHOP_KEYS[0], shop.name.trim()],
     [SHOP_KEYS[1], shop.address.trim()],
     [SHOP_KEYS[2], shop.phone.trim()],
-    [SHOP_KEYS[3], shop.gstin.trim().toUpperCase()],
+    [SHOP_KEYS[3], shop.email.trim()],
+    [SHOP_KEYS[4], shop.gstin.trim().toUpperCase()],
+    [SHOP_KEYS[5], shop.bankName.trim()],
+    [SHOP_KEYS[6], shop.bankAccount.trim()],
+    [SHOP_KEYS[7], shop.bankIfsc.trim().toUpperCase()],
+    [SHOP_KEYS[8], shop.bankBranch.trim()],
   ];
   for (const [key, value] of pairs) {
     await db

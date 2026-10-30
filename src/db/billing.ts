@@ -21,6 +21,7 @@ export const saleLineSchema = z.object({
   itemId: z.number({ message: "Choose an item" }).int().positive("Choose an item"),
   qtyBase: z.number({ message: "Enter a quantity" }).int().positive("Quantity must be positive"),
   unitPricePaise: z.number().int().nonnegative("Price cannot be negative"),
+  hsnCode: z.string().trim().max(20, "HSN is too long").optional(),
 });
 
 export const saleBillSchema = z
@@ -31,6 +32,7 @@ export const saleBillSchema = z
     paidPaise: z.number().int().nonnegative().optional(),
     discountPaise: z.number().int().nonnegative("Discount cannot be negative").default(0),
     gstPaise: z.number().int().nonnegative("GST cannot be negative").default(0),
+    gstRateBp: z.number().int().min(0).max(10_000).optional(),
     note: z.string().trim().max(200, "Note is too long").optional(),
     lines: z.array(saleLineSchema).min(1, "Add at least one item"),
   })
@@ -94,6 +96,7 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
       movementId: number;
       qtyBase: number;
       unitPricePaise: number;
+      hsnCode: string | null;
       lineTotalPaise: number;
       costPaise: number;
       profitPaise: number;
@@ -169,6 +172,7 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
         movementId: movement.id,
         qtyBase: line.qtyBase,
         unitPricePaise: line.unitPricePaise,
+        hsnCode: line.hsnCode?.trim() || null,
         lineTotalPaise: plan.revenuePaise,
         costPaise: plan.totalCostPaise,
         profitPaise: lineProfit(plan.revenuePaise, plan.totalCostPaise),
@@ -190,6 +194,7 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
         subtotalPaise,
         discountPaise: data.discountPaise,
         gstPaise: data.gstPaise,
+        gstRateBp: data.gstRateBp ?? 0,
         totalPaise,
         paymentMode: data.paymentMode,
         paidPaise,
@@ -294,6 +299,8 @@ export async function cancelSaleBill(url: string, saleId: number): Promise<{ res
 export const customerSchema = z.object({
   name: z.string().trim().min(1, "Customer name is required").max(80, "Customer name is too long"),
   phone: z.string().trim().max(20, "Phone is too long").optional(),
+  address: z.string().trim().max(200, "Address is too long").optional(),
+  gstin: z.string().trim().max(20, "GSTIN is too long").optional(),
 });
 
 export type CustomerInput = z.infer<typeof customerSchema>;
@@ -310,7 +317,12 @@ export async function createCustomer(
   const data = parsed.data;
   const [created] = await db
     .insert(customers)
-    .values({ name: data.name, phone: data.phone?.trim() || null })
+    .values({
+      name: data.name,
+      phone: data.phone?.trim() || null,
+      address: data.address?.trim() || null,
+      gstin: data.gstin?.trim().toUpperCase() || null,
+    })
     .returning({ id: customers.id, name: customers.name, phone: customers.phone });
   await logActivity(db, {
     event: "customer.create",
@@ -326,6 +338,7 @@ export type SaleBillLineDetail = {
   unit: string;
   qtyBase: number;
   unitPricePaise: number;
+  hsnCode: string | null;
   lineTotalPaise: number;
   costPaise: number;
   profitPaise: number;
@@ -337,10 +350,13 @@ export type SaleBillDetail = {
   saleDate: string;
   customerName: string | null;
   customerPhone: string | null;
+  customerAddress: string | null;
+  customerGstin: string | null;
   paymentMode: string;
   subtotalPaise: number;
   discountPaise: number;
   gstPaise: number;
+  gstRateBp: number;
   totalPaise: number;
   paidPaise: number;
   cancelled: boolean;
@@ -356,10 +372,13 @@ export async function getSaleBill(db: Db, id: number): Promise<SaleBillDetail | 
       saleDate: saleBills.saleDate,
       customerName: customers.name,
       customerPhone: customers.phone,
+      customerAddress: customers.address,
+      customerGstin: customers.gstin,
       paymentMode: saleBills.paymentMode,
       subtotalPaise: saleBills.subtotalPaise,
       discountPaise: saleBills.discountPaise,
       gstPaise: saleBills.gstPaise,
+      gstRateBp: saleBills.gstRateBp,
       totalPaise: saleBills.totalPaise,
       paidPaise: saleBills.paidPaise,
       cancelled: saleBills.cancelled,
@@ -375,6 +394,7 @@ export async function getSaleBill(db: Db, id: number): Promise<SaleBillDetail | 
       unit: items.unit,
       qtyBase: saleItems.qtyBase,
       unitPricePaise: saleItems.unitPricePaise,
+      hsnCode: saleItems.hsnCode,
       lineTotalPaise: saleItems.lineTotalPaise,
       costPaise: saleItems.costPaise,
       profitPaise: saleItems.profitPaise,

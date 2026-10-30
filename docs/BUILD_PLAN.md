@@ -152,6 +152,12 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   search/status filter, View (full bill + CGST/SGST + print), Cancel with in-app confirm → bill stays
   visible as cancelled and the sold quantity is restored to its exact batches. Verified end-to-end:
   SD-2026-000001 cancelled, batch 500 g → 1000 g, audit row written.)
+- [x] **V2-P10 invoice design** — printed bill rebuilt to match the SDHHE sample PDF: logo monogram, shop
+  name/GSTIN/address/phone/email, invoice no/date/payment box, Billed-To with customer GSTIN + address,
+  HSN per line, CGST/SGST rate + amount columns, total row, amount in words, bank details, taxable/tax/
+  invoice totals, terms & conditions, authorised signatory, diagonal SDHHE watermark, DD-MM-YYYY dates.
+  Data added: `customers.gstin`, `sale_bills.gst_rate_bp`, `sale_items.hsn_code`; Settings holds email +
+  bank details. Amount-in-words in `src/logic/moneyWords.ts` (tests). 192 tests green.
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO

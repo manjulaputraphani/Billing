@@ -17,7 +17,17 @@ vi.mock("../db/settings", () => ({
   DEFAULT_SHOP: { name: "", address: "", phone: "", gstin: "" },
   getAiConfig: vi.fn(async () => ({ enabled: false, mode: "local", model: "glm-5.3-flash:cloud" })),
   saveAiConfig: vi.fn(async () => {}),
-  getShopDetails: vi.fn(async () => ({ name: "SDHHE", address: "", phone: "", gstin: "" })),
+  getShopDetails: vi.fn(async () => ({
+    name: "SDHHE",
+    address: "",
+    phone: "",
+    email: "",
+    gstin: "36ABCDE1234F1Z5",
+    bankName: "",
+    bankAccount: "",
+    bankIfsc: "",
+    bankBranch: "",
+  })),
   saveShopDetails: vi.fn(async () => {}),
 }));
 vi.mock("../lib/secrets", async (importOriginal) => {

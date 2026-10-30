@@ -13,6 +13,10 @@ Tool: OpenCode
 - [ ] Charts/Funds/Investors  ·  [ ] V2-P11 … P17
 
 ## Done this session (2026-10-31)
+- Invoice redesigned to the SDHHE sample: logo monogram, GSTIN/address/phone/email header, invoice boxes,
+  buyer GSTIN+address, HSN per line, CGST/SGST rate+amount, amount in words, bank, terms, signature,
+  watermark, DD-MM-YYYY. New columns: customers.gstin, sale_bills.gst_rate_bp, sale_items.hsn_code.
+  Settings holds email + bank details. 192 tests green, tsc clean.
 - P10 logic (tests first): profit.ts, billNumber.ts (SD-YYYY-NNNNNN), gst.ts (basis points, exact
   CGST/SGST split). 187 tests / 33 files green, tsc clean.
 - Tables applied additively: customers, sale_bills, sale_items (movement_id for exact cancel).
