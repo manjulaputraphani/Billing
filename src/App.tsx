@@ -1,51 +1,60 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useCallback, useEffect, useState } from "react";
 import "./App.css";
+import Setup from "./pages/Setup";
+import Lock from "./pages/Lock";
+import Home from "./pages/Home";
+import { DbProvider } from "./lib/db-context";
+import { getSecret, SECRET_KEYS } from "./lib/secrets";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+type Phase = "loading" | "setup" | "lock" | "home";
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+export default function App() {
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [url, setUrl] = useState<string | null>(null);
+
+  /** No saved connection → setup. Saved connection → ask for the PIN. */
+  const bootstrap = useCallback(async () => {
+    try {
+      const savedUrl = await getSecret(SECRET_KEYS.DATABASE_URL);
+      const savedHash = await getSecret(SECRET_KEYS.PIN_HASH);
+      if (savedUrl && savedHash) {
+        setUrl(savedUrl);
+        setPhase("lock");
+      } else {
+        setUrl(null);
+        setPhase("setup");
+      }
+    } catch {
+      // Keychain unreachable → let the user set things up again.
+      setUrl(null);
+      setPhase("setup");
+    }
+  }, []);
+
+  useEffect(() => {
+    void bootstrap();
+  }, [bootstrap]);
+
+  if (phase === "loading") {
+    return <main className="p-8 text-sm text-gray-500">Loading…</main>;
+  }
+
+  if (phase === "setup") {
+    return <Setup onDone={() => void bootstrap()} />;
+  }
+
+  if (phase === "lock") {
+    return <Lock onUnlock={() => setPhase("home")} />;
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
+    <DbProvider url={url}>
+      <Home
+        onReset={() => {
+          setUrl(null);
+          setPhase("setup");
         }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+      />
+    </DbProvider>
   );
 }
-
-export default App;

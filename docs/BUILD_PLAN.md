@@ -25,7 +25,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (2026-10-30: `keyring` 3 + `argon2` 0.5 in Rust; commands save_secret/get_secret/delete_secret/hash_pin/verify_pin, service "stock-tracker"; typed wrappers in src/lib/secrets.ts. `cargo check` clean. Note: the scaffold `greet` command was removed.)
 - [x] **T-2.2 Setup screen** — first launch: enter Neon URL, test connection, set PIN. Acceptance: restart → asks PIN, not URL.
   (2026-10-30: src/pages/Setup.tsx — URL field, "Test connection" via `pingDb` (`select 1`), PIN + confirm (4-6 digits), errors "Cannot connect - check the connection string" / "PINs do not match", saves DATABASE_URL + PIN_HASH, shows ONLY the host (src/lib/url.ts). CSP set in tauri.conf.json: strict `csp` + `devCsp` with https://*.neon.tech in connect-src. The "restart → asks PIN" half is wired in T-2.3.)
-- [ ] **T-2.3 PIN lock** — wrong PIN 5× → wait 60 s. Tests TESTING §C.
+- [x] **T-2.3 PIN lock** — wrong PIN 5× → wait 60 s. Tests TESTING §C.
+  (2026-10-30: src/pages/Lock.tsx (countdown, input+button disabled while locked), src/pages/Home.tsx (placeholder + "Reset connection" in-app modal, deletes both secrets), src/App.tsx flow loading→Setup|Lock→Home, src/lib/db-context.tsx (`DbProvider`/`useDb`, db built only after unlock). 31 tests green; `tauri dev` accepts the CSP and boots.)
 
 ## Phase 3 — Items & Purchases
 - [ ] **T-3.1 Items CRUD** — src/pages/Items.tsx, src/db/items.ts. Validate with zod. Unique name.
