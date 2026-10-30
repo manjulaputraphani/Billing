@@ -1,56 +1,53 @@
 # HANDOVER (keep under 60 lines — overwrite each time, history is in git)
 
-Last updated: 2026-10-30 23:24 by DeepSeek V4.1 Flash (OpenCode)
+Last updated: 2026-10-31 00:05 by DeepSeek V4.1 Flash (OpenCode)
 Tool: OpenCode
 
 ## Current task
-V2-P10 Sales + Profit — IN PROGRESS. Done: `src/logic/profit.ts` (+5 tests). Next: schema/migration,
-sale+cancel transactions, screens. BLOCKED on the Neon dev branch (`DATABASE_URL_TEST`).
+**V2-P10 Sales + Profit — in progress.** Done: profit + bill-number logic (tests), schema, DB layer
+(create/cancel/list). Remaining: push to DEV, integration test, 3 screens + dashboard cards.
+Then: charts (approved plan in docs/PLAN_ANALYTICS.md) → V2-P11 → Funds tab.
 
 ## Status
-- [x] Interim v1 work (see below)  ·  [~] V2-P10 (profit logic done, DB/screens pending)
-  ·  [ ] V2-P11 … V2-P17
+- [x] Interim v1  ·  [~] V2-P10 (logic+schema+DB done; screens/DB-verify pending)  ·  [ ] later phases
 
-## Done this session (2026-10-30)
-- Keychain bug FIXED: DATABASE_URL/PIN_HASH re-created allow-all (`security ... -A`); cause was ad-hoc
-  dev binaries changing signature on every Rust rebuild. Trade-off/revert in DECISIONS.md.
-- Interim sales (SUPERSEDED by V2-P10): logic/sales.ts planSale (FIFO, revenue, oversell), db/sales.ts,
-  Sales page, `/sales` route — the interim `sales` table is EMPTY.
-- UI polish: stone palette, dark grouped sidebar, `.card/.btn/.input` classes, Setup/Lock redesigned.
-- Security settings: keychain status (no values), Lock now, Change PIN, Remove AI key.
-- Audit: `activity_log` (login/lock/reset + item/purchase/stock/sale/expense changes, same transaction
-  when one exists). `expenses.paid_to` vendor + `expense_bills` attachments (base64, 4 MB, image/PDF).
-- V2 spec stored in docs/PLAN_V2.md; checklist + reconciliation in docs/BUILD_PLAN.md.
-- V2-P10 progress: `src/logic/profit.ts` lineProfit/billProfit/marginPct + `profit.test.ts` (5 tests,
-  FIFO example ₹30 − ₹22 = ₹8). No schema/DB work yet (dev branch missing).
+## Done this session (2026-10-31)
+- Approved analytics plan saved: docs/PLAN_ANALYTICS.md (Recharts, Dashboard tabs, actual-cash funds,
+  order P10 → charts → P11 → funds).
+- V2-P10 logic, tests first: `src/logic/profit.ts` (lineProfit/billProfit/marginPct) and
+  `src/logic/billNumber.ts` (SD-YYYY-NNNNNN) with tests.
+- Schema (additive, interim `sales` untouched): `customers`, `sale_bills`, `sale_items`
+  (`sale_items.movement_id` for exact cancel reversal).
+- `src/db/billing.ts`: createSaleBill (one transaction; per-line FIFO with locked batches, SALE
+  movement + links, cost/profit per line, bill no, totals, credit-needs-customer, audit log),
+  cancelSaleBill (restores exact batch qty from links, marks cancelled, audit), listSaleBills.
+- `drizzle/0000_violet_the_fury.sql` baseline captured with `drizzle-kit pull` (current DB state).
+  New tables are NOT pushed yet (no dev branch).
 
 ## In progress (exact point where work stopped)
 - File: —
-- What was half-done: nothing.
+- What was half-done: nothing; last green state.
 
 ## Next task
-**V2-P10 — Sales + Profit** (read docs/PLAN_V2.md §PHASE 10).
+Finish V2-P10.
 
 ## Next exact step (one action the next session does first)
-1. **USER ACTION:** create a Neon DEV branch and set `DATABASE_URL_TEST` in `.env` (gitignored).
-   Without it: no V2 migration may be pushed (spec) and db/*.int.test.ts stay skipped.
-2. Then V2-P10 schema: `customers`, new `sales` bill header (bill_no SD-YYYY-NNNNNN, totals, payment,
-   paid, cancelled), `sale_items` (qty_base, unit_price_paise, line_total_paise, cost_paise,
-   profit_paise). `drizzle-kit generate` → push to the DEV branch → run int tests.
-3. Replace the EMPTY interim `sales` table in that migration; keep `activity_log` until V2-P14.
-4. DB layer: createSale (one tx: bill no sequence, per-line allocateFifo, SALE movement + links,
-   sale_items), cancelSale (reverse links → restore batch qty, mark cancelled, no hard delete).
-5. Screens: New Sale (Enter = add line, F2 = save), Sales list (filters + cancel modal), Profit report;
-   Dashboard cards (today's sales/profit, month profit). data-testid + e2e per V2 rules.
+1. **USER ACTION:** create a Neon DEV branch → set `DATABASE_URL_TEST` in `.env`.
+2. Push the 3 new tables to the DEV branch (`drizzle-kit push`; `generate` currently needs an
+   interactive TTY — see DECISIONS 2026-10-31), then write/run the int test:
+   Rice 1kg@₹10 + 3kg@₹12, sell 2kg @₹15 → cost 2200, profit 800; cancel → batches 1kg + 3kg.
+3. Screens with data-testid + e2e: New Sale (Enter line, F2 save), Sales list (filters + cancel modal),
+   Profit report; Dashboard cards (today sales/profit, month profit). Wire nav + routes.
+4. Only after int tests + suite green: push same schema to the main DB; tick V2-P10.
 
 ## Files / tests
-- Last commits: 57fe68f (audit+bills), 8095f4f (security), af2e79b (UI), 3816cb3 (interim sales)
-- `npm test` → 171 passed (29 files) · `npx tsc --noEmit` → clean · e2e 13 passed / 1 skipped · cargo not re-run
+- New: src/logic/{profit,billNumber}.ts(+tests), src/db/billing.ts, drizzle/ (baseline)
+- `npm test` → billNumber 4 + profit 5 new; full suite expected 175 (run before commit)
+- `npx tsc --noEmit` → clean · e2e not re-run (no UI change)
 
 ## Blockers / notes
-- ⚠ No dev branch / `DATABASE_URL_TEST` yet → V2 DB work cannot start until the user creates it.
-- App points at the shared production DB; any test rows are REAL.
-- Keychain items are allow-all on this Mac — do NOT re-add ACLs (would re-break dev).
-- `ollama` is not installed — AI phases (P13 photo OCR, P17 bill reader) need it.
-- Spec conflicts to respect: interim sales → replaced by V2-P10; `activity_log` → base for V2-P14
-  `audit_log`; interim audit already records login/lock, keep logging until P14 migrates it.
+- ⚠ No `DATABASE_URL_TEST` yet → cannot push/verify billing tables (spec: dev first).
+- Keychain items are allow-all on this Mac — do NOT re-add ACLs.
+- Interim `sales` table/page still active; V2 screens will replace them, then drop the old table.
+- Spec rule still open: replay.ts must replay SALE movements (edit of old purchase recomputing sale
+  cost/profit) — NOT done yet; include when the screens land.

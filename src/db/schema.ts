@@ -160,6 +160,63 @@ export const activityLog = pgTable("activity_log", {
   entityId: integer("entity_id"),
 });
 
+// V2-P10 billing. NOTE: named sale_bills so the interim `sales` table keeps working
+// until the New Sale / Sales list screens replace it (see docs/BUILD_PLAN.md).
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  address: text("address"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const saleBills = pgTable(
+  "sale_bills",
+  {
+    id: serial("id").primaryKey(),
+    billNo: text("bill_no").notNull().unique(),
+    customerId: integer("customer_id").references(() => customers.id),
+    saleDate: date("sale_date").notNull(),
+    subtotalPaise: integer("subtotal_paise").notNull(),
+    discountPaise: integer("discount_paise").notNull().default(0),
+    gstPaise: integer("gst_paise").notNull().default(0),
+    totalPaise: integer("total_paise").notNull(),
+    paymentMode: text("payment_mode").notNull(),
+    paidPaise: integer("paid_paise").notNull(),
+    note: text("note"),
+    cancelled: boolean("cancelled").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      "sale_bills_payment_mode_valid",
+      sql`${t.paymentMode} in ('Cash','UPI','Card','Credit')`,
+    ),
+    check("sale_bills_paid_non_negative", sql`${t.paidPaise} >= 0`),
+  ],
+);
+
+export const saleItems = pgTable(
+  "sale_items",
+  {
+    id: serial("id").primaryKey(),
+    saleId: integer("sale_id")
+      .notNull()
+      .references(() => saleBills.id, { onDelete: "cascade" }),
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => items.id),
+    /** SALE movement for this line — needed to reverse stock exactly on cancel. */
+    movementId: integer("movement_id").references(() => stockMovements.id),
+    qtyBase: integer("qty_base").notNull(),
+    unitPricePaise: integer("unit_price_paise").notNull(),
+    lineTotalPaise: integer("line_total_paise").notNull(),
+    costPaise: integer("cost_paise").notNull(),
+    profitPaise: integer("profit_paise").notNull(),
+  },
+  (t) => [check("sale_items_qty_positive", sql`${t.qtyBase} > 0`)],
+);
+
 export const settings = pgTable("settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),

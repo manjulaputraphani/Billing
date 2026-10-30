@@ -143,6 +143,9 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 > ONE phase per session. Every DB change: `drizzle-kit generate` + push to a DEV branch first.
 > PREREQUISITE: create a Neon dev branch + `DATABASE_URL_TEST` before any V2 DB work.
 - [ ] **V2-P10** Sales + Profit (customers, bill no, sale_items, cancel, profit report, dashboard cards)
+  (2026-10-31: profit.ts + billNumber.ts (tests), customers/sale_bills/sale_items schema,
+  db/billing.ts createSaleBill + cancelSaleBill + listSaleBills done. Remaining: push to DEV branch,
+  integration test (FIFO + cancel), New Sale / Sales list / Profit report screens, Dashboard cards.)
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO

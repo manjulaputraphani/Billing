@@ -17,3 +17,8 @@
 - 2026-10-30 · keychain items DATABASE_URL/PIN_HASH re-created allow-all on this dev Mac (`security ... -A`) · ad-hoc dev binaries change code signature on every Rust rebuild, so macOS re-prompted forever; app still uses keyring, revert by deleting the items + redoing Setup
 - 2026-10-30 · Audit trail in `activity_log` (actor 'local') · single-user desktop app; rows answer who did what and when, share the data transaction, and travel with the DB backup
 - 2026-10-30 · Expense bills stored as base64 inside Postgres (`expense_bills`, 4 MB cap) · no bucket or local file paths to sync; one backup keeps the paperwork, small enough for the HTTP driver
+- 2026-10-31 · Analytics: Recharts + Dashboard tabs (Overview/Graphs/Funds/Investors) · user-approved plan (docs/PLAN_ANALYTICS.md); basic BAR + PIE always on, other charts selectable and remembered
+- 2026-10-31 · "Funds with us" = actual cash position (investments + money received − money paid out) · stock value and receivables shown separately as utilised; avoids counting unpaid revenue as cash
+- 2026-10-31 · Execution order: V2-P10 → charts → V2-P11 credit → Funds tab · charts need real sales, funds need credit/payments data
+- 2026-10-31 · V2-P10 tables named `sale_bills` / `sale_items` (interim `sales` kept until the new screens replace it), `sale_items.movement_id` added · exact batch restore on cancel needs the SALE movement link
+- 2026-10-31 · Migration workflow: `drizzle-kit pull` baseline committed under `drizzle/`; `generate` needs an interactive TTY, so new tables go to the DEV branch via push first (once DATABASE_URL_TEST exists)
