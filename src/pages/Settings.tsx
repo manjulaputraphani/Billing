@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { deleteSecret, SECRET_KEYS } from "../lib/secrets";
 
 export default function Settings({ onReset }: { onReset: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    getVersion()
+      .then(setVersion)
+      .catch(() => setVersion(null));
+  }, []);
 
   async function resetConnection() {
     setBusy(true);
@@ -41,6 +49,8 @@ export default function Settings({ onReset }: { onReset: () => void }) {
       </section>
 
       <p className="text-sm text-gray-500">More settings coming soon.</p>
+
+      <p className="text-xs text-gray-400">Stock Tracker v{version ?? "—"}</p>
 
       {error && (
         <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">

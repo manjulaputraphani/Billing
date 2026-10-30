@@ -62,7 +62,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 - [ ] **T-6.3 Export** — Excel (xlsx) + PDF; full backup JSON export & import into a fresh Neon branch (§D).
 
 ## Phase 7 — Packaging
-- [ ] **T-7.1 Icon/name** — tauri.conf.json productName "Stock Tracker", icons via `npx tauri icon`.
+- [x] **T-7.1 Icon/name** — tauri.conf.json productName "Stock Tracker", icons via `npx tauri icon`.
+  (2026-10-30: version 1.0.0 (tauri + package.json), productName "Stock Tracker", identifier com.stocktracker.app, window title "Stock Tracker" 1280x800, min 1024x700. Version shown in Settings via getVersion(). app-icon.png (1024², generated) → `npx tauri icon` wrote all sizes incl. .icns/.ico. Windows bundle: targets ["nsis","msi"], nsis installMode "currentUser" + startMenuFolder "Stock Tracker" (NSIS also creates the desktop shortcut by default).)
 - [ ] **T-7.2 Local build** — `npm run tauri build`. Acceptance: installer runs on your OS (§E).
 - [ ] **T-7.3 CI builds** — .github/workflows/release.yml using tauri-apps/tauri-action for windows/macos/ubuntu + run `npm test`.
 
