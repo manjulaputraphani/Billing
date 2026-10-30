@@ -37,3 +37,6 @@ dist-ssr
 test-results/
 playwright-report/
 blob-report/
+
+# web worker secrets (never commit)
+web-worker/.dev.vars

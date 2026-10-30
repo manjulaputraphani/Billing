@@ -1,0 +1,7 @@
+name = "sdhhe-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Secrets (set with `wrangler secret put`, never committed):
+#   DATABASE_URL  — Neon connection string
+#   SESSION_SECRET — signing key for login sessions

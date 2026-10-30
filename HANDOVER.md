@@ -5,7 +5,7 @@ Tool: OpenCode
 
 ## Current task
 **Login workstream approved** (docs/PLAN_LOGIN.md) — NOT built yet. PIN login still works for now.
-Next: **W1 web edition** (Cloudflare Worker scaffold) per docs/PLAN_WEB.md. Login stream L1–L6 complete.
+Next: **W2 auth API** (login/logout, argon2 verify via hash-wasm, HttpOnly session). W1 DONE and verified.
 
 ## Approved decisions (2026-10-31)
 - Login: type **phone + password** (min 6 chars, argon2id hash in DB).
@@ -16,7 +16,7 @@ Next: **W1 web edition** (Cloudflare Worker scaffold) per docs/PLAN_WEB.md. Logi
 ## Status
 - [x] Billing / Bills / GST invoice / email / company settings migrated
 - [x] `sdhhe_fy2025` backed up + dropped; company details now in `settings`
-- [x] L1–L6 login COMPLETE · [ ] Web edition W1–W6 (Cloudflare)
+- [x] L1–L6 login COMPLETE · [x] W1 worker scaffold · [ ] W2–W6 web edition
 - [ ] Profit report + dashboard cards · charts · V2-P11 credit · Funds
 
 ## Done recently
@@ -29,7 +29,7 @@ Next: **W1 web edition** (Cloudflare Worker scaffold) per docs/PLAN_WEB.md. Logi
 ## Next exact step
 1. L1: add `app_users` + `activity_log.user_id` to schema.ts, additive SQL to the current DB.
 2. L2: Rust `hash_password`/`verify_password` (argon2id; keep `hash_pin`/`verify_pin` until L4 retires them).
-3. W1 (next): create web-worker/ with wrangler, /api/health, DATABASE_URL secret; test with `wrangler dev`.
+3. W2 (next): auth routes in web-worker; local secrets in web-worker/.dev.vars (DATABASE_URL, SESSION_SECRET); verify login with curl + wrong password; reuse logic/auth.ts rules.
 4. e2e login tests stay skipped until DATABASE_URL_TEST exists (login reads app_users).
 
 ## Notes / blockers

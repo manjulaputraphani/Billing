@@ -198,7 +198,7 @@ Reconciliation with the interim work of 2026-10-30:
 - [x] **L6** Settings → Users (add / reset password / deactivate, Owner only) — 2026-10-31: members card (list, add, reset, deactivate/enable), role-aware (owner only), 3 new tests. Login stream complete.
 
 ## WEB EDITION — Cloudflare (see docs/PLAN_WEB.md, proposed 2026-10-31)
-- [ ] **W1** Worker scaffold + /api/health + DATABASE_URL secret (wrangler dev)
+- [x] **W1** Worker scaffold + /api/health (verified locally with wrangler dev: 200 JSON). Node 22 needed for wrangler 4/deploy; wrangler 3 used for local dev.
 - [ ] **W2** Auth API (phone+password, argon2 verify via hash-wasm, HttpOnly session, rate limit)
 - [ ] **W3** API port of the db modules (actor from session)
 - [ ] **W4** Web UI (Pages) + lib/platform.ts (fetch API, print, opener)
