@@ -98,7 +98,10 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   db/settings.ts stores enabled/mode/model; key in keychain (OLLAMA_API_KEY). Suggestions page gained
   "Refresh AI suggestions" + once-per-day auto-refresh (shouldAutoRefresh) + cached in ai_suggestions.
   8 tests.)
-- [ ] **T-8.3 Chat with tools** — read-only tools only (get_item_usage, get_price_history, get_low_stock_items, get_spending_by_category, get_supplier_comparison).
+- [x] **T-8.3 Chat with tools** — read-only tools only (get_item_usage, get_price_history, get_low_stock_items, get_spending_by_category, get_supplier_comparison).
+  (2026-10-30: ai/tools.ts — six SELECT-only tools (also get_stock_value), unknown names refused; no
+  write tool exists. ai/chat.ts loop, max 5 rounds, only the last 10 messages sent. pages/Chat.tsx with
+  example chips, Thinking…, read-only notice. 5 tests incl. "delete all data" → no DB call.)
 - [ ] **T-8.4 AI settings** — on/off, cloud/local model, API key in secure storage, refresh max once/day.
 
 ## Phase 9 — Real-use

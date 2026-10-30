@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import { DbProvider } from "./lib/db-context";
 import { getSecret, SECRET_KEYS } from "./lib/secrets";
 import AddPurchase from "./pages/AddPurchase";
+import Chat from "./pages/Chat";
 import ComingSoon from "./pages/ComingSoon";
 import Dashboard from "./pages/Dashboard";
 import Expenses from "./pages/Expenses";
@@ -64,6 +65,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="items" element={<Items />} />
             <Route path="suggestions" element={<Suggestions />} />
+            <Route path="chat" element={<Chat />} />
             <Route path="purchases" element={<Purchases />} />
             <Route path="purchases/new" element={<AddPurchase />} />
             <Route path="stock-check" element={<StockCheck />} />
