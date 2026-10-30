@@ -1,69 +1,64 @@
 # HANDOVER (keep under 60 lines — overwrite each time, history is in git)
 
-Last updated: 2026-10-30 18:20 by DeepSeek V4.1 Flash (OpenCode)
+Last updated: 2026-10-30 18:32 by DeepSeek V4.1 Flash (OpenCode)
 Tool: OpenCode
 
 ## Current task
-Phase 3 (T-3.0 → T-3.3) DONE. Next: T-4.1 FIFO allocation.
+Phase 4 (T-4.1 → T-4.5) DONE. Next: T-5.1 Expenses + Dashboard.
 
 ## Status
-- [x] done  (DB integration tests written but SKIPPED — no DATABASE_URL_TEST)
+- [x] done  (DB integration tests still SKIPPED — no DATABASE_URL_TEST)
 
 ## Done this session
-- T-3.0: src/components/Layout.tsx sidebar + react-router-dom (HashRouter in App.tsx),
-  ComingSoon page, Settings page (Reset connection moved off Home).
-- T-3.1: src/db/items.ts listItems/getItem/createItem/updateItem/deleteItem/getStockLeft;
-  zod (name required, unit kg|l|pcs, minStockBase int>=0), unique name case-insensitive;
-  "Item has purchases" guard. src/pages/Items.tsx table + add/edit modal + delete confirm.
-  units.ts gained formatQuantity ("1.50 kg").
-- T-3.2: src/db/purchases.ts addPurchase = ONE statement with data-modifying CTEs
-  (purchase → batch → PURCHASE movement; supplier find-or-create in the same statement).
-  Also getLastPurchase, listSuppliers, listPurchases, parsePurchaseInput.
-  src/logic/purchase.ts computeTotalPaise / rupeesToPaise / formatPriceChange (+tests).
-  src/pages/AddPurchase.tsx: live total, last-price prefill + "Last price: ₹X (date)",
-  "+20% vs last time" after save.
-- T-3.3: src/pages/Purchases.tsx table + item/date filters, newest first, batch left.
-- Tooling: `@types/node` + tsconfig `types:["node"]`; vitest.db.config.ts;
-  scripts `test` (excludes *.int.test.ts) and `test:db` (DB suite only).
-- E2E: `playwright.config.ts` + `e2e/app.spec.ts` (5 tests). Stubs `window.__TAURI_INTERNALS__`
-  in addInitScript, keeps "keychain" in localStorage so reload = restart. Covers first launch,
-  PIN mismatch, setup→lock→dashboard, reload asks PIN, 5-wrong lockout, sidebar nav.
-  UI only — does NOT cover the real keychain, argon2 or Neon.
+- T-4.1 `src/logic/fifo.ts` allocateFifo(batches, qtyUsed, factor) + `errors.ts`
+  (ValidationError, InsufficientStockError, StockLeftTooHighError, ReplayConflictError).
+  13 tests incl. worked example 2200 / B left 2000.
+- T-4.2 `stockCheck.ts` computeUsage, `average.ts` weightedAverage/averageCost (1150, 2300),
+  `replay.ts` replayItem(batches, movements, factor) — replays STOCK_CHECK/USAGE/WASTAGE in
+  date order from qty_original, throws ReplayConflictError with the offending date. 20 tests.
+- T-4.3 `client.ts` getTxDb(url) + withTransaction(url, fn) (Pool/neon-serverless, pool closed
+  in finally); `wss://*.neon.tech` added to csp + devCsp. `db/stock.ts` planStockEntry (PURE,
+  shared by preview and save) + saveStockEntry/stockCheck: SELECT…FOR UPDATE → computeUsage →
+  allocateFifo → UPDATE batches → INSERT movement → INSERT links, ONE transaction.
+  `pages/StockCheck.tsx`: current stock + open batches, live preview, friendly
+  "Stock left is more than current stock (N). Did you miss a purchase?".
+- T-4.4 mode toggle Stock left | Used | Wastage on the same page; qty_change = −used.
+- T-4.5 `updatePurchase` / `deletePurchase` + replayAndWriteBack (loads all batches+movements
+  of the item, replayItem, writes back qty_remaining/costs, rebuilds movement_batch_links).
+  Purchases page: Edit modal + Delete confirm; ReplayConflictError → rollback + date in message.
+- e2e updated: Stock Check is a real page now (no longer "Coming soon"). Verified 13 pass.
 
 ## In progress (exact point where work stopped)
 - File: —
 - What was half-done: nothing.
 
 ## Next task
-T-4.1  (FIFO: src/logic/fifo.ts + the BLUEPRINT §5 worked example as a test)
+T-5.1  (Expenses + Dashboard per BUILD_PLAN Phase 5)
 
 ## Next exact step (one action the next session does first)
-- Read BUILD_PLAN T-4.1, write src/logic/fifo.test.ts from TESTING §A2 first, then fifo.ts.
+- Read BUILD_PLAN Phase 5, then TESTING §A5/B6 before writing code.
 
 ## Files touched this session
-- src/components/Layout.tsx, src/pages/{Home,Settings,ComingSoon,Items,AddPurchase,Purchases}.tsx
-- src/pages/{Items,AddPurchase,Purchases}.test.tsx
-- src/db/{items,purchases,test-utils}.ts + items.test.ts, *.int.test.ts
-- src/logic/{units.ts,units.test.ts,purchase.ts,purchase.test.ts}
-- src/App.tsx, src/App.test.tsx, vite.config.ts, vitest.db.config.ts, tsconfig.json,
-  package.json, .env.example, docs/*
+- src/logic/{fifo,stockCheck,average,replay,errors}.ts + 4 test files
+- src/db/{client,stock,purchases,test-utils}.ts, src/db/{stock,*.int}.test.ts
+- src/pages/{StockCheck,Purchases}.tsx + tests
+- src/lib/db-context.tsx (added useDbUrl), src/App.tsx, src-tauri/tauri.conf.json
+- vite.config.ts (exclude e2e), e2e/app.spec.ts, docs/*
 
 ## Tests
-- Last run: `npm test` → 58 passed / 0 failed (12 files)
-- `npm run test:e2e` → 13 passed (Playwright, Chromium, Tauri IPC stubbed)
-- `npm run test:db` → 1 passed, 5 SKIPPED (needs DATABASE_URL_TEST)
+- `npm test` → 103 passed / 0 failed (18 files)
+- `npm run test:e2e` → 13 passed
+- `npm run test:db` → 1 passed, 10 SKIPPED (needs DATABASE_URL_TEST)
 - `npm run typecheck` → clean
 
 ## Blockers / errors (paste only the key error line)
-- No DATABASE_URL_TEST configured → B1/B5 never actually executed. Add a line to `.env`
-  pointing at a SEPARATE dev branch, then `npm run test:db`.
+- No DATABASE_URL_TEST → §B1/B2/B3/B4/B5 have NEVER executed against a real DB. This is the
+  biggest untested area: SQL, FOR UPDATE, and replay write-back.
 
 ## Notes for next session
-- `test:db` uses vitest.db.config.ts; CLI --exclude only APPENDS to config exclude, so the
-  plain command silently skipped the int tests — do not "simplify" it back.
-- test-utils.ts refuses to run if DATABASE_URL_TEST === DATABASE_URL, or if the target has
-  Users/Invoices/StockLedger/__EFMigrationsHistory. Keep that guard.
-- ⚠ Still pointing at the shared production DB `SriDurgaHariHaraEnterprices`. T-3 writes REAL
-  rows now. A dev branch is overdue. Password still needs resetting in Neon.
-- App flow: Setup → Lock → Layout(Home/Items/Purchases/AddPurchase/…). HashRouter (Tauri-safe).
+- Vitest must keep excluding `e2e/**` (Playwright specs otherwise get collected and fail).
+- Replay is the risky part: replayAndWriteBack matches the PURCHASE movement by
+  (item, type, old date, old qtyChange). If a purchase is edited twice, verify matching.
+- `wss://*.neon.tech` is now in CSP — a packaged build needs it too.
+- ⚠ App still points at the shared production DB; T-3/T-4 write REAL rows. Dev branch overdue.
 - Still open: `ollama` not installed; GitHub push; window title "app-tmp".
