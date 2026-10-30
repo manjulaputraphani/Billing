@@ -57,3 +57,8 @@ export async function setupTestDb(): Promise<Db | null> {
 export async function resetAll(db: Db): Promise<void> {
   await db.execute(sql.raw(`TRUNCATE ${OUR_TABLES.join(", ")} RESTART IDENTITY CASCADE`));
 }
+
+/** The raw test URL, for flows that need a transactional client. */
+export function testDbUrl(): string | null {
+  return process.env.DATABASE_URL_TEST?.trim() || null;
+}

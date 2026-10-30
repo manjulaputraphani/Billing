@@ -12,6 +12,7 @@ import Lock from "./pages/Lock";
 import Purchases from "./pages/Purchases";
 import Settings from "./pages/Settings";
 import Setup from "./pages/Setup";
+import StockCheck from "./pages/StockCheck";
 type Phase = "loading" | "setup" | "lock" | "home";
 
 export default function App() {
@@ -62,7 +63,7 @@ export default function App() {
             <Route path="items" element={<Items />} />
             <Route path="purchases" element={<Purchases />} />
             <Route path="purchases/new" element={<AddPurchase />} />
-            <Route path="stock-check" element={<ComingSoon title="Stock Check" />} />
+            <Route path="stock-check" element={<StockCheck />} />
             <Route path="expenses" element={<ComingSoon title="Expenses" />} />
             <Route path="reports" element={<ComingSoon title="Reports" />} />
             <Route

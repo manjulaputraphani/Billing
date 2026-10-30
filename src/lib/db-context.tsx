@@ -6,17 +6,31 @@ import { getDb, type Db } from "../db/client";
  * The URL only exists after the PIN has been accepted, so the db is never
  * constructed before unlock.
  */
-const DbContext = createContext<Db | null>(null);
+type DbContextValue = { db: Db | null; url: string | null };
+
+const DbContext = createContext<DbContextValue>({ db: null, url: null });
 
 export function DbProvider({ url, children }: { url: string | null; children: ReactNode }) {
-  const db = useMemo(() => (url ? getDb(url) : null), [url]);
-  return <DbContext.Provider value={db}>{children}</DbContext.Provider>;
+  const value = useMemo<DbContextValue>(
+    () => ({ db: url ? getDb(url) : null, url }),
+    [url],
+  );
+  return <DbContext.Provider value={value}>{children}</DbContext.Provider>;
 }
 
 export function useDb(): Db {
-  const db = useContext(DbContext);
+  const { db } = useContext(DbContext);
   if (!db) {
     throw new Error("useDb() must be used inside <DbProvider> after unlock");
   }
   return db;
+}
+
+/** The connection URL, for flows that need a transactional (WebSocket) client. */
+export function useDbUrl(): string {
+  const { url } = useContext(DbContext);
+  if (!url) {
+    throw new Error("useDbUrl() must be used inside <DbProvider> after unlock");
+  }
+  return url;
 }
