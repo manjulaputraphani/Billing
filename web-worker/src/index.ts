@@ -11,7 +11,11 @@ import { listItems } from "../../src/db/items";
 import { getSaleBill, listSaleBills } from "../../src/db/billing";
 import { listExpenses } from "../../src/db/expenses";
 import { listActivity } from "../../src/db/activity";
-import { getShopDetails } from "../../src/db/settings";
+import { getShopDetails, saveShopDetails } from "../../src/db/settings";
+import { createItem, deleteItem } from "../../src/db/items";
+import { createCustomer } from "../../src/db/billing";
+import { createExpense, deleteExpense, updateExpense } from "../../src/db/expenses";
+import { setAuditActor, type AuditActor } from "../../src/db/activity";
 
 export interface Env {
   DATABASE_URL?: string;
@@ -26,6 +30,22 @@ const ATTEMPT_WINDOW_MS = 15 * 60_000;
 type Session = { uid: number; name: string; role: "owner" | "staff"; exp: number };
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
+
+// Writes in one isolate are serialized so the audit actor cannot leak between requests.
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+function asActor<T>(actor: AuditActor, fn: () => Promise<T>): Promise<T> {
+  const run = writeQueue.then(async () => {
+    setAuditActor(actor);
+    try {
+      return await fn();
+    } finally {
+      setAuditActor(null);
+    }
+  });
+  writeQueue = run.catch(() => {});
+  return run;
+}
 
 function json(data: unknown, init: ResponseInit = {}): Response {
   return Response.json(data, init);
@@ -264,6 +284,49 @@ export default {
 
       if (url.pathname === "/api/shop" && request.method === "GET") {
         return json({ shop: await getShopDetails(db) });
+      }
+
+      // ---- W3b writes (session actor threaded per request) ----
+      const actor: AuditActor = { userId: session.uid, name: session.name, role: session.role };
+      const body = ["POST", "PUT"].includes(request.method)
+        ? await request.json().catch(() => ({}))
+        : {};
+
+      if (url.pathname === "/api/items" && request.method === "POST") {
+        return json({ item: await asActor(actor, () => createItem(db, body)) });
+      }
+
+      if (url.pathname.startsWith("/api/items/") && request.method === "DELETE") {
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid item id" }, { status: 400 });
+        await asActor(actor, () => deleteItem(db, id));
+        return json({ ok: true });
+      }
+
+      if (url.pathname === "/api/customers" && request.method === "POST") {
+        return json({ customer: await asActor(actor, () => createCustomer(db, body)) });
+      }
+
+      if (url.pathname === "/api/expenses" && request.method === "POST") {
+        return json({ expense: await asActor(actor, () => createExpense(db, body)) });
+      }
+
+      if (url.pathname.startsWith("/api/expenses/") && request.method === "PUT") {
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid expense id" }, { status: 400 });
+        return json({ expense: await asActor(actor, () => updateExpense(db, id, body)) });
+      }
+
+      if (url.pathname.startsWith("/api/expenses/") && request.method === "DELETE") {
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid expense id" }, { status: 400 });
+        await asActor(actor, () => deleteExpense(db, id));
+        return json({ ok: true });
+      }
+
+      if (url.pathname === "/api/shop" && request.method === "PUT") {
+        await asActor(actor, () => saveShopDetails(db, body));
+        return json({ ok: true });
       }
     } catch (err) {
       console.error("api error:", err);
