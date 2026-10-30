@@ -158,6 +158,9 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   invoice totals, terms & conditions, authorised signatory, diagonal SDHHE watermark, DD-MM-YYYY dates.
   Data added: `customers.gstin`, `sale_bills.gst_rate_bp`, `sale_items.hsn_code`; Settings holds email +
   bank details. Amount-in-words in `src/logic/moneyWords.ts` (tests). 192 tests green.
+  (2026-10-31: **Bills → View** now renders this same invoice inside the app (iframe with the exact
+  print HTML: header, invoice boxes, buyer GSTIN, HSN table, words, bank, terms, signature, watermark),
+  with Print / Save PDF and Cancel bill beneath it.)
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO

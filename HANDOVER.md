@@ -29,6 +29,8 @@ Tool: OpenCode
 - UI: **Bills** (`/bills`): issued + cancelled with badges, search + status filter, View (lines,
   CGST/SGST, total/paid, print), Cancel with in-app confirm → stays visible as cancelled and stock is
   restored to the exact batches.
+- In-app **View Bill** = the real invoice layout (same HTML as print). Verified on SD-2026-000002: header/GSTIN,
+  buyer GSTIN+address, HSN 090111, CGST/SGST, amount in words, bank, terms, signature, watermark.
 - End-to-end proof on the real DB: bill SD-2026-000001 (₹75 + ₹3.75 GST = ₹78.75, cost ₹50, profit ₹25,
   FIFO batch 1000→500 g) then cancelled via Bills → cancelled=true, batch back to 1000 g, audit
   "Sale SD-2026-000001 cancelled; stock restored".

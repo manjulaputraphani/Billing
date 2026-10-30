@@ -8,9 +8,8 @@ import {
 } from "../db/billing";
 import { getShopDetails, type ShopDetails } from "../db/settings";
 import { useDb, useDbUrl } from "../lib/db-context";
-import { printBill } from "../lib/printBill";
-import { splitGst } from "../logic/gst";
-import { formatQuantity, formatRupees, type Unit } from "../logic/units";
+import { printBill, buildBillHtml } from "../lib/printBill";
+import { formatRupees } from "../logic/units";
 
 export default function Bills() {
   const db = useDb();
@@ -194,41 +193,32 @@ export default function Bills() {
       </div>
 
       {detail && (
-        <section data-testid="bills-detail" className="max-w-3xl space-y-3 card p-4">
+        <section data-testid="bills-detail" className="max-w-3xl space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold tracking-tight">{detail.billNo}</h2>
-            {detail.cancelled ? (
-              <span className="badge badge-bad">Cancelled</span>
-            ) : (
-              <span className="badge badge-ok">Issued</span>
-            )}
+            <h2 className="text-lg font-semibold tracking-tight">Bill preview</h2>
+            <div className="flex items-center gap-2">
+              {detail.cancelled ? (
+                <span className="badge badge-bad">Cancelled</span>
+              ) : (
+                <span className="badge badge-ok">Issued</span>
+              )}
+              <button
+                type="button"
+                className="text-sm text-gray-600 underline"
+                onClick={() => setDetail(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
-          <p className="text-sm text-gray-600">
-            {detail.saleDate} · {detail.customerName ?? "Walk-in"}
-            {detail.customerPhone ? ` · ${detail.customerPhone}` : ""} · {detail.paymentMode}
-          </p>
 
-          <ul className="space-y-0.5 text-sm text-gray-700">
-            {detail.lines.map((line, index) => (
-              <li key={`${line.itemName}-${index}`}>
-                {line.itemName} · {formatQuantity(line.qtyBase, line.unit as Unit)} ·{" "}
-                {formatRupees(line.unitPricePaise)} → {formatRupees(line.lineTotalPaise)}
-              </li>
-            ))}
-          </ul>
-
-          <div className="rounded-xl bg-stone-50 px-3 py-2 text-sm">
-            Subtotal {formatRupees(detail.subtotalPaise)}
-            {detail.discountPaise > 0 && ` − Discount ${formatRupees(detail.discountPaise)}`}
-            {detail.gstPaise > 0 && (
-              <>
-                {" "}
-                · CGST {formatRupees(splitGst(detail.gstPaise).cgstPaise)} · SGST{" "}
-                {formatRupees(splitGst(detail.gstPaise).sgstPaise)}
-              </>
-            )}{" "}
-            · <span className="font-semibold">Total {formatRupees(detail.totalPaise)}</span> · Paid{" "}
-            {formatRupees(detail.paidPaise)}
+          <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+            <iframe
+              title={`Bill ${detail.billNo}`}
+              data-testid="bill-preview-iframe"
+              className="h-[1080px] w-full"
+              srcDoc={shop ? buildBillHtml(detail, shop) : ""}
+            />
           </div>
 
           <div className="flex flex-wrap gap-2">

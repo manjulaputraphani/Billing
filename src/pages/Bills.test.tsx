@@ -32,7 +32,10 @@ vi.mock("../db/settings", async (importOriginal) => {
     })),
   };
 });
-vi.mock("../lib/printBill", () => ({ printBill: vi.fn() }));
+vi.mock("../lib/printBill", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/printBill")>();
+  return { ...actual, printBill: vi.fn() };
+});
 
 const URL = "postgresql://user:pass@localhost:5432/test";
 
@@ -120,9 +123,12 @@ describe("Bills list", () => {
     await user.click(viewButton);
 
     const detail = await screen.findByTestId("bills-detail");
-    expect(detail).toHaveTextContent("ROBUSTA P BERRY");
-    expect(detail).toHaveTextContent("CGST ₹1.87");
-    expect(detail).toHaveTextContent("Total ₹78.75");
+    const html = screen.getByTestId("bill-preview-iframe").getAttribute("srcdoc") ?? "";
+    expect(html).toContain("ROBUSTA P BERRY");
+    expect(html).toContain("CGST");
+    expect(html).toContain("₹78.75");
+    expect(html).toContain("Amount in words:");
+    expect(detail).toBeInTheDocument();
     expect(screen.getByTestId("bills-print")).toBeInTheDocument();
     expect(screen.getByTestId("bills-cancel")).toBeInTheDocument();
   });
