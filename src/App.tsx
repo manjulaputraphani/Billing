@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
-import Setup from "./pages/Setup";
-import Lock from "./pages/Lock";
-import Home from "./pages/Home";
+import Layout from "./components/Layout";
 import { DbProvider } from "./lib/db-context";
 import { getSecret, SECRET_KEYS } from "./lib/secrets";
-
+import AddPurchase from "./pages/AddPurchase";
+import ComingSoon from "./pages/ComingSoon";
+import Home from "./pages/Home";
+import Items from "./pages/Items";
+import Lock from "./pages/Lock";
+import Purchases from "./pages/Purchases";
+import Settings from "./pages/Settings";
+import Setup from "./pages/Setup";
 type Phase = "loading" | "setup" | "lock" | "home";
 
 export default function App() {
@@ -49,12 +55,31 @@ export default function App() {
 
   return (
     <DbProvider url={url}>
-      <Home
-        onReset={() => {
-          setUrl(null);
-          setPhase("setup");
-        }}
-      />
+      <HashRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="items" element={<Items />} />
+            <Route path="purchases" element={<Purchases />} />
+            <Route path="purchases/new" element={<AddPurchase />} />
+            <Route path="stock-check" element={<ComingSoon title="Stock Check" />} />
+            <Route path="expenses" element={<ComingSoon title="Expenses" />} />
+            <Route path="reports" element={<ComingSoon title="Reports" />} />
+            <Route
+              path="settings"
+              element={
+                <Settings
+                  onReset={() => {
+                    setUrl(null);
+                    setPhase("setup");
+                  }}
+                />
+              }
+            />
+            <Route path="*" element={<ComingSoon title="Not found" />} />
+          </Route>
+        </Routes>
+      </HashRouter>
     </DbProvider>
   );
 }

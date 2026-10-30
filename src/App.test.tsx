@@ -70,6 +70,7 @@ describe("App start flow", () => {
     await user.click(screen.getByRole("button", { name: /unlock/i }));
     await screen.findByText("Dashboard coming soon");
 
+    await user.click(screen.getByRole("link", { name: /settings/i }));
     await user.click(screen.getByRole("button", { name: /reset connection/i }));
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(confirmSpy).not.toHaveBeenCalled();

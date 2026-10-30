@@ -29,6 +29,7 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (2026-10-30: src/pages/Lock.tsx (countdown, input+button disabled while locked), src/pages/Home.tsx (placeholder + "Reset connection" in-app modal, deletes both secrets), src/App.tsx flow loading→Setup|Lock→Home, src/lib/db-context.tsx (`DbProvider`/`useDb`, db built only after unlock). 31 tests green; `tauri dev` accepts the CSP and boots.)
 
 ## Phase 3 — Items & Purchases
+- [x] **T-3.0 App layout** — src/components/Layout.tsx: sidebar (Dashboard, Items, Purchases, Add Purchase, Stock Check, Expenses, Reports, Settings) + react-router-dom, Tailwind, 1024px+. "Reset connection" moved from Home to Settings. (2026-10-30)
 - [ ] **T-3.1 Items CRUD** — src/pages/Items.tsx, src/db/items.ts. Validate with zod. Unique name.
 - [ ] **T-3.2 Add Purchase** — src/pages/AddPurchase.tsx, src/db/purchases.ts. Transaction: purchase+batch+movement.
   Total auto-calc. Prefill last price. Acceptance: TESTING §B1.
