@@ -45,7 +45,8 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (2026-10-30: computeUsage (4000/2000→2000, 4000/4000→0, 6000→StockLeftTooHighError, -1→ValidationError); weightedAverage + averageCost (1150 paise/kg, 2000g→2300); replay.ts replayItem(batches, movements, factor) replaying STOCK_CHECK/USAGE/WASTAGE in date order from qty_original, throwing ReplayConflictError with the offending date. B3 as a pure test: price ₹10→₹11 gives 2300. 20 tests.)
 - [x] **T-4.3 Stock Check screen** — preview used qty & cost → confirm → transaction (BLUEPRINT §6). Acceptance §B2.
   (2026-10-30: src/db/client.ts `getTxDb(url)` + `withTransaction(url, fn)` over Pool/neon-serverless (WebSocket, pool closed in `finally`); `wss://*.neon.tech` added to CSP. src/db/stock.ts: `planStockEntry` (pure, shared by preview and save) + `saveStockEntry`/`stockCheck` doing SELECT ... FOR UPDATE → computeUsage → allocateFifo → UPDATE batches → INSERT movement → INSERT links in ONE transaction. src/pages/StockCheck.tsx shows current stock + open batches, live preview "Used 2.00 kg · Cost ₹22.00 · From: … · Left … worth …". §B2 + §B4 tests written in src/db/stock.int.test.ts — SKIPPED until DATABASE_URL_TEST is set.)
-- [ ] **T-4.4 Wastage/Usage entry** — same allocation, type WASTAGE/USAGE.
+- [x] **T-4.4 Wastage/Usage entry** — same allocation, type WASTAGE/USAGE.
+  (2026-10-30: mode toggle Stock left | Used | Wastage on StockCheck.tsx; Used/Wastage take a quantity directly and record qty_change = −used with the same FIFO allocation inside the same transaction. Tests: live preview 1.5 kg → ₹16.00, wastage 0.3 kg → type WASTAGE, qty 300.)
 - [ ] **T-4.5 Edit/delete purchase** — replay later movements. Acceptance §B3.
 
 ## Phase 5 — Expenses & Dashboard

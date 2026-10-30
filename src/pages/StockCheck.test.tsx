@@ -95,4 +95,21 @@ describe("StockCheck screen", () => {
 
     expect(await screen.findByText(/Used 1\.50 kg · Cost ₹16\.00/)).toBeInTheDocument();
   });
+
+  it("saves wastage with type WASTAGE and the given quantity", async () => {
+    vi.mocked(saveStockEntry).mockResolvedValue({ movementId: 11, used: 300, costPaise: 300 });
+    renderPage();
+    const user = await chooseRice();
+
+    await user.click(screen.getByRole("button", { name: "Wastage" }));
+    await user.type(screen.getByLabelText(/quantity wasted/i), "0.3");
+    expect(await screen.findByText(/Used 0\.30 kg · Cost ₹3\.00/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(saveStockEntry).toHaveBeenCalledWith(
+      "postgresql://user:pass@localhost:5432/test",
+      expect.objectContaining({ itemId: 1, type: "WASTAGE", qty: 300, enteredLeft: null }),
+    );
+  });
 });
