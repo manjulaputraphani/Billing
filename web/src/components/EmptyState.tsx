@@ -15,12 +15,13 @@ function Illustration({ kind }: { kind: EmptyIllustration }) {
     strokeLinejoin: "round" as const,
   };
   return (
-    <svg viewBox="0 0 96 96" className="h-24 w-24 shrink-0 text-primary" aria-hidden="true" focusable="false">
+    <svg viewBox="0 0 96 96" className="h-20 w-20 shrink-0 text-primary" aria-hidden="true" focusable="false">
       <circle cx="48" cy="48" r="44" fill="currentColor" opacity="0.08" />
       {kind === "expenses" && (
         <g {...common}>
           <path d="M30 20h36v52l-6-4-6 4-6-4-6 4-6-4-6 4Z" />
-          <path d="M48 32v24M42 38h6a3 3 0 0 1 0 6h-4a3 3 0 0 0 0 6h6" />
+          {/* Clear ₹ glyph instead of a hand-drawn squiggle. */}
+          <text x="48" y="57" textAnchor="middle" fontSize="28" fontWeight="600" fill="currentColor" stroke="none">₹</text>
         </g>
       )}
       {kind === "items" && (
@@ -72,8 +73,8 @@ export default function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-2 text-center ${
-        compact ? "max-h-40 py-4" : "py-10"
+      className={`flex flex-col items-center justify-center gap-3 text-center ${
+        compact ? "min-h-40 pt-6 pb-6" : "py-10"
       }`}
     >
       <Illustration kind={illustration} />
