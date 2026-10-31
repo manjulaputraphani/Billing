@@ -191,6 +191,14 @@ export default function App() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerMsg, setCustomerMsg] = useState<string | null>(null);
   const [pickedCustomer, setPickedCustomer] = useState<Customer | null>(null);
+  const [customerForm, setCustomerForm] = useState<{
+    id: number | null;
+    name: string;
+    phone: string;
+    email: string;
+    gstin: string;
+    address: string;
+  } | null>(null);
   const [finYears, setFinYears] = useState<string[]>([]);
   const [finYear, setFinYear] = useState("");
   const [report, setReport] = useState<FinYearReport | null>(null);
@@ -491,6 +499,32 @@ export default function App() {
     const r = await api.investments();
     setInvestments(r.investments);
     setInvestTotal(r.totalPaise);
+  }
+
+  /** Save a customer into the master (new or edited). */
+  async function saveCustomerNow() {
+    if (!customerForm) return;
+    setCustomerMsg(null);
+    const body = {
+      name: customerForm.name.trim(),
+      phone: customerForm.phone.trim(),
+      email: customerForm.email.trim(),
+      gstin: customerForm.gstin.trim(),
+      address: customerForm.address.trim(),
+    };
+    try {
+      if (customerForm.id === null) {
+        await api.saveCustomer(body);
+        setCustomerMsg(`${body.name} saved to the customer master`);
+      } else {
+        await api.updateCustomer(customerForm.id, body);
+        setCustomerMsg(`${body.name} updated`);
+      }
+      setCustomerForm(null);
+      setCustomers((await api.customers(customerSearch)).customers);
+    } catch (err) {
+      setCustomerMsg(err instanceof Error ? err.message : String(err));
+    }
   }
 
   async function addExpenseNow() {
@@ -1143,13 +1177,40 @@ export default function App() {
                 <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Customers</h1>
                 <p className="text-sm text-muted">Saved client details — picked by name when you bill.</p>
               </div>
-              <input
-                className="input max-w-60"
-                placeholder="Search name, phone, GSTIN…"
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.currentTarget.value)}
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  className="input max-w-52"
+                  placeholder="Search name, phone, GSTIN…"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.currentTarget.value)}
+                />
+                <button
+                  className="btn btn-primary whitespace-nowrap"
+                  onClick={() => setCustomerForm({ id: null, name: "", phone: "", email: "", gstin: "", address: "" })}
+                >
+                  <span className="flex items-center gap-1.5"><IconPlus size={15} /> Add customer</span>
+                </button>
+              </div>
             </div>
+            {customerForm && (
+              <div className="card max-w-3xl space-y-3 p-4">
+                <h2 className="text-sm font-medium">{customerForm.id === null ? "Add customer" : "Edit customer"}</h2>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input className="input" placeholder="Customer name *" value={customerForm.name} onChange={(e) => setCustomerForm({ ...customerForm, name: e.currentTarget.value })} />
+                  <input className="input" placeholder="Phone" value={customerForm.phone} onChange={(e) => setCustomerForm({ ...customerForm, phone: e.currentTarget.value })} />
+                  <input className="input" placeholder="Email" value={customerForm.email} onChange={(e) => setCustomerForm({ ...customerForm, email: e.currentTarget.value })} />
+                  <input className="input" placeholder="GSTIN" value={customerForm.gstin} onChange={(e) => setCustomerForm({ ...customerForm, gstin: e.currentTarget.value.toUpperCase() })} />
+                  <input className="input sm:col-span-2" placeholder="Address" value={customerForm.address} onChange={(e) => setCustomerForm({ ...customerForm, address: e.currentTarget.value })} />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button className="btn btn-primary" onClick={() => void saveCustomerNow()}>Save</button>
+                  <button className="btn-mini" onClick={() => setCustomerForm(null)}>Cancel</button>
+                  <span className="text-xs text-muted">
+                    Saved clients are matched by phone or GSTIN — saving again updates the same record.
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="card overflow-x-auto">
               {customers.length === 0 ? (
                 <EmptyState
@@ -1187,21 +1248,38 @@ export default function App() {
                         <td className="px-3 py-2 text-right">{customer.billCount}</td>
                         <td className="px-3 py-2 text-right">{money(customer.billedPaise)}</td>
                         <td className="px-3 py-2 text-right">
-                          <button
-                            className="btn-mini btn-mini-danger"
-                            onClick={async () => {
-                              if (!window.confirm(`Remove ${customer.name} from the customer master?`)) return;
-                              try {
-                                await api.deleteCustomer(customer.id);
-                                setCustomers((await api.customers(customerSearch)).customers);
-                                setCustomerMsg(`${customer.name} removed`);
-                              } catch (err) {
-                                setCustomerMsg(err instanceof Error ? err.message : String(err));
+                          <span className="flex justify-end gap-2">
+                            <button
+                              className="btn-mini"
+                              onClick={() =>
+                                setCustomerForm({
+                                  id: customer.id,
+                                  name: customer.name,
+                                  phone: customer.phone ?? "",
+                                  email: customer.email ?? "",
+                                  gstin: customer.gstin ?? "",
+                                  address: customer.address ?? "",
+                                })
                               }
-                            }}
-                          >
-                            Delete
-                          </button>
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="btn-mini btn-mini-danger"
+                              onClick={async () => {
+                                if (!window.confirm(`Remove ${customer.name} from the customer master?`)) return;
+                                try {
+                                  await api.deleteCustomer(customer.id);
+                                  setCustomers((await api.customers(customerSearch)).customers);
+                                  setCustomerMsg(`${customer.name} removed`);
+                                } catch (err) {
+                                  setCustomerMsg(err instanceof Error ? err.message : String(err));
+                                }
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </span>
                         </td>
                       </tr>
                     ))}
