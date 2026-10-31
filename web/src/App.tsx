@@ -120,6 +120,7 @@ export default function App() {
   const [investTotal, setInvestTotal] = useState(0);
   const [investment, setInvestment] = useState({ name: "", amount: "", date: new Date().toISOString().slice(0, 10), note: "" });
   const [investmentMsg, setInvestmentMsg] = useState<string | null>(null);
+  const [activityFilter, setActivityFilter] = useState("");
   const [expense, setExpense] = useState({ category: "", amount: "", paidTo: "", note: "" });
   const [expenseMsg, setExpenseMsg] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
@@ -1074,23 +1075,66 @@ export default function App() {
           </section>
         )}
 
-        {view === "activity" && (
-          <section className="space-y-4">
-            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Activity</h1>
-            <div className="card p-4">
-              <ul className="divide-y divide-stone-100 text-sm">
-                {activity.map((row) => (
-                  <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
-                    <span>{row.summary}</span>
-                    <span className="text-xs text-stone-500">
-                      {new Date(row.at).toLocaleString("en-IN")} · {row.actor}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
+        {view === "activity" && (() => {
+          const actors = [...new Set(activity.map((row) => row.actor))].sort();
+          const shown = activity.filter((row) => !activityFilter || row.actor === activityFilter);
+          const days = shown.reduce<Record<string, ActivityRow[]>>((acc, row) => {
+            const day = new Date(row.at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+            (acc[day] ??= []).push(row);
+            return acc;
+          }, {});
+          const dot = (event: string) =>
+            event.startsWith("sale")
+              ? "bg-emerald-500"
+              : event.startsWith("purchase")
+                ? "bg-amber-500"
+                : event.startsWith("expense")
+                  ? "bg-rose-500"
+                  : event.startsWith("user")
+                    ? "bg-indigo-500"
+                    : event.startsWith("investment")
+                      ? "bg-teal-500"
+                      : event.startsWith("item")
+                        ? "bg-stone-400"
+                        : "bg-stone-300";
+          return (
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Activity</h1>
+                  <p className="text-sm text-stone-500">{shown.length} events · who did what, when</p>
+                </div>
+                <select className="input max-w-52" value={activityFilter} onChange={(e) => setActivityFilter(e.currentTarget.value)}>
+                  <option value="">All members</option>
+                  {actors.map((actor) => (
+                    <option key={actor} value={actor}>{actor}</option>
+                  ))}
+                </select>
+              </div>
+              {Object.entries(days).map(([day, rows]) => (
+                <div key={day} className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">{day}</p>
+                  <div className="card divide-y divide-stone-100">
+                    {rows.map((row) => (
+                      <div key={row.id} className="flex items-start gap-3 p-3">
+                        <span className={`mt-1.5 size-2 shrink-0 rounded-full ${dot(row.event)}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-stone-800">{row.summary}</p>
+                          <p className="mt-0.5 text-xs text-stone-500">
+                            {new Date(row.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                            <span className="mx-1.5">·</span>
+                            <span className="inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">{row.actor}</span>
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {shown.length === 0 && <p className="text-sm text-stone-500">No activity yet.</p>}
+            </section>
+          );
+        })()}
       </main>
     </div>
   );
