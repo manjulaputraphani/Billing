@@ -27,6 +27,7 @@ export interface Env {
   SESSION_SECRET?: string;
   RESEND_API_KEY?: string;
   MAIL_FROM?: string;
+  ASSETS?: { fetch: typeof fetch };
 }
 
 const COOKIE = "sdhhe_session";
@@ -226,6 +227,10 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    if (!url.pathname.startsWith("/api/") && env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
 
     if (url.pathname === "/api/health" && request.method === "GET") {
       return json({
