@@ -29,6 +29,10 @@ Both editions share the coffee theme, the weighted-average costing, FY reports a
   member's name); per-member sessions, active time and last login in web *Team → Usage*.
   `src/db/sessions.ts`. The Activity list now **refetches when the tab is opened** (it used to load
   once at sign-in, so a colleague's sign-in stayed invisible) and has a Refresh button.
+  **Session length = 12 h** (`SESSION_MAX_SECONDS`, shared by the worker and the metrics): the web
+  token/cookie expires after 12 h, a new sign-in closes the previous session, and an open session is
+  capped at 12 h so it never shows as "still active" forever. The desktop app has no timeout — it
+  stays signed in until Settings → Lock now (or the app is closed).
 - DB migrated additively (new columns + `user_sessions`); cost pools backfilled from open batches.
   Required test case verified: avg ₹102.33/kg, gross ₹153.33, net ₹113.33, 280 kg left.
 

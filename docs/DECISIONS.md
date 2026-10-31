@@ -46,3 +46,4 @@
 - 2026-10-31 · FY report figures exclude GST and subtract discounts (turnover = Σ subtotal − discount) · GST is collected for the government, not turnover
 - 2026-10-31 · Sale lines store a cost snapshot (`sale_items.avg_cost_paise` + `cost_paise`) · later purchases must not change the profit of past deals
 - 2026-10-31 · Login sessions in a `user_sessions` table (started/ended/duration) + `user.login` / `user.logout` in the activity log · the user asked for "who logged in, when they logged out, how long they were in and overall metrics"
+- 2026-10-31 · A sign-in lasts 12 hours (web token + cookie), shared as `SESSION_MAX_SECONDS` · the desktop app has no timeout (it locks on request); a new sign-in closes the previous session and any open session is capped at 12 h, so "still active" never sticks around and the usage numbers stay honest

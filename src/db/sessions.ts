@@ -11,6 +11,13 @@ import { activityLog, appUsers, userSessions } from "./schema";
 
 export type SessionSource = "web" | "desktop";
 
+/**
+ * How long a sign-in stays valid (the web token/cookie expires after this).
+ * A session that is never closed explicitly is closed after this long, so the
+ * usage metrics never count a session as "still active" forever.
+ */
+export const SESSION_MAX_SECONDS = 12 * 60 * 60;
+
 export type SessionRow = {
   id: number;
   userId: number;
@@ -44,6 +51,10 @@ export async function startSession(
   source: SessionSource,
   name?: string,
 ): Promise<number> {
+  // A new sign-in means the previous one is over: close it so the usage
+  // numbers are right even when nobody pressed "sign out".
+  await closeOpenSessions(db, userId, source);
+
   const [created] = await db
     .insert(userSessions)
     .values({ userId, source, startedAt: new Date() })
@@ -58,6 +69,43 @@ export async function startSession(
     entityId: userId,
   });
   return created.id;
+}
+
+/**
+ * Close the sessions that are still open for a user.
+ * The active time is capped at SESSION_MAX_SECONDS (a session cannot live
+ * longer than the sign-in itself).
+ */
+async function closeOpenSessions(db: Db, userId: number, source?: SessionSource): Promise<void> {
+  const open = await db
+    .select({ id: userSessions.id, startedAt: userSessions.startedAt })
+    .from(userSessions)
+    .where(
+      and(
+        eq(userSessions.userId, userId),
+        isNull(userSessions.endedAt),
+        source ? eq(userSessions.source, source) : undefined,
+      ),
+    );
+
+  for (const session of open) {
+    const startedAt = new Date(session.startedAt).getTime();
+    const elapsed = Math.round((Date.now() - startedAt) / 1000);
+    const duration = Math.min(Math.max(0, elapsed), SESSION_MAX_SECONDS);
+    const endedAt = new Date(startedAt + duration * 1000);
+    await db
+      .update(userSessions)
+      .set({ endedAt, durationSeconds: duration })
+      .where(eq(userSessions.id, session.id));
+    await db.insert(activityLog).values({
+      userId,
+      actor: await userName(db, userId),
+      event: "user.logout",
+      summary: `Session ended after ${formatDuration(duration)}`,
+      entity: "user",
+      entityId: userId,
+    });
+  }
 }
 
 /** The member's name — used as the actor on the activity rows. */
@@ -94,7 +142,8 @@ export async function endSession(db: Db, userId: number, source?: SessionSource)
   const actor = await userName(db, userId);
   for (const session of open) {
     const endedAt = new Date();
-    const duration = Math.max(0, Math.round((endedAt.getTime() - new Date(session.startedAt).getTime()) / 1000));
+    const elapsed = Math.round((endedAt.getTime() - new Date(session.startedAt).getTime()) / 1000);
+    const duration = Math.min(Math.max(0, elapsed), SESSION_MAX_SECONDS);
     seconds += duration;
     await db
       .update(userSessions)
@@ -154,8 +203,12 @@ export async function userUsageMetrics(db: Db): Promise<UserUsage[]> {
       phone: appUsers.phone,
       role: appUsers.role,
       sessions: sql<number>`count(${userSessions.id})`.mapWith(Number),
-      activeSeconds: sql<number>`coalesce(sum(${userSessions.durationSeconds}), 0)`.mapWith(Number),
-      openSessions: sql<number>`count(${userSessions.id}) filter (where ${userSessions.endedAt} is null)`.mapWith(Number),
+      // An open session counts up to the cap (it is assumed to have ended when
+      // the sign-in expired), so a forgotten tab never shows as "still active".
+      activeSeconds:
+        sql<number>`coalesce(sum(coalesce(${userSessions.durationSeconds}, least(extract(epoch from (now() - ${userSessions.startedAt})), ${SESSION_MAX_SECONDS}))), 0)`.mapWith(Number),
+      openSessions:
+        sql<number>`count(${userSessions.id}) filter (where ${userSessions.endedAt} is null and ${userSessions.startedAt} > now() - interval '12 hours')`.mapWith(Number),
       lastLoginAt: sql<string | null>`max(${userSessions.startedAt})`.mapWith(String),
       lastLogoutAt: sql<string | null>`max(${userSessions.endedAt})`.mapWith(String),
     })

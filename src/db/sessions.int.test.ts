@@ -54,4 +54,30 @@ suite("login sessions + usage metrics", () => {
       expect(formatDuration(usage[0].activeSeconds)).toMatch(/s$/);
     },
   );
+
+  it(
+    "closes the previous session when the same person signs in again",
+    { timeout: 30_000 },
+    async () => {
+      const [user] = await db!
+        .insert(appUsers)
+        .values({ name: "Staff", phone: "9000000002", passwordHash: "x", role: "staff" })
+        .returning();
+
+      const first = await startSession(db!, user.id, "web");
+      const second = await startSession(db!, user.id, "web");
+
+      const closed = await db!.select().from(userSessions).where(eq(userSessions.id, first));
+      expect(closed[0].endedAt).not.toBeNull(); // the old session was closed
+      expect(closed[0].durationSeconds).not.toBeNull();
+
+      const open = await db!.select().from(userSessions).where(eq(userSessions.id, second));
+      expect(open[0].endedAt).toBeNull(); // the new one is still running
+
+      // The usage table counts one open session, not two.
+      const usage = await userUsageMetrics(db!);
+      expect(usage[0].openSessions).toBe(1);
+      expect(usage[0].sessions).toBe(2);
+    },
+  );
 });

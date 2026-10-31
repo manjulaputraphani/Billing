@@ -21,7 +21,7 @@ import { addPurchase, deletePurchase } from "../../src/db/purchases";
 import { saveStockEntry } from "../../src/db/stock";
 import { createExpense, deleteExpense, updateExpense } from "../../src/db/expenses";
 import { setAuditActor, type AuditActor } from "../../src/db/activity";
-import { endSession, startSession, userUsageMetrics } from "../../src/db/sessions";
+import { endSession, SESSION_MAX_SECONDS, startSession, userUsageMetrics } from "../../src/db/sessions";
 import { getCostingMethod, setCostingMethod } from "../../src/db/costing";
 import { finYearOptions, finYearReport, dealProfits } from "../../src/db/reports";
 
@@ -34,7 +34,7 @@ export interface Env {
 }
 
 const COOKIE = "sdhhe_session";
-const SESSION_HOURS = 12;
+const SESSION_HOURS = SESSION_MAX_SECONDS / 3600;
 const MAX_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 15 * 60_000;
 
