@@ -24,7 +24,7 @@ import { createExpense, deleteExpense, updateExpense } from "../../src/db/expens
 import { setAuditActor, type AuditActor } from "../../src/db/activity";
 import { endSession, SESSION_MAX_SECONDS, startSession, userUsageMetrics } from "../../src/db/sessions";
 import { getCostingMethod, setCostingMethod } from "../../src/db/costing";
-import { finYearOptions, finYearReport, dealProfits } from "../../src/db/reports";
+import { finYearOptions, finYearReport, dealProfits, batchLedger } from "../../src/db/reports";
 
 export interface Env {
   DATABASE_URL?: string;
@@ -552,6 +552,14 @@ export default {
         const id = Number(batchMatch[1]);
         const rows = await sqlQuery(env, `select id, qty_remaining, unit_price_paise, purchase_date from batches where item_id = $1 and qty_remaining > 0 order by purchase_date, id`, [id]);
         return json({ batches: rows });
+      }
+
+      // Lot-wise ledger: per purchase batch, sold qty / sold value / profit / pending.
+      const ledgerMatch = url.pathname.match(/^\/api\/items\/(\d+)\/batches\/ledger$/);
+      if (ledgerMatch && request.method === "GET") {
+        const id = Number(ledgerMatch[1]);
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid item id" }, { status: 400 });
+        return json({ ledger: await batchLedger(db, id) });
       }
 
       // ---- W3b writes (session actor threaded per request) ----

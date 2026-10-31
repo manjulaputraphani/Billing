@@ -302,3 +302,202 @@ export function avgCostPerUnit(valuePaise: number, qtyBase: number, unit: string
   if (qtyBase <= 0) return 0;
   return Math.round((valuePaise * factor) / qtyBase);
 }
+
+// ---- Lot-wise (per-batch) ledger — T-2 -------------------------------------
+
+export type BatchLedgerSale = {
+  billNo: string;
+  saleDate: string;
+  customerName: string | null;
+  /** Base units taken from this batch for this sale. */
+  qtyTaken: number;
+  /** Sale unit price (paise per display unit) of the line. */
+  unitPricePaise: number;
+  /** This batch's share of the line revenue (paise), by quantity. */
+  revenuePaise: number;
+  /** Cost of goods sold from this batch for this sale (paise). */
+  cogsPaise: number;
+  /** revenuePaise − cogsPaise. */
+  profitPaise: number;
+};
+
+export type BatchLedgerRow = {
+  batchId: number;
+  purchaseId: number;
+  purchaseDate: string;
+  supplierName: string | null;
+  /** Original purchased quantity (base units). */
+  qtyOriginal: number;
+  /** Quantity still on hand (base units). */
+  qtyRemaining: number;
+  /** Purchase unit price (paise per display unit). */
+  unitPricePaise: number;
+  /** Purchase expenses (transport etc.) in paise. */
+  expensesPaise: number;
+  /** Quantity sold out of this batch (base units). */
+  qtySold: number;
+  /** This batch's share of sale revenue (paise). */
+  soldValuePaise: number;
+  /** Cost of goods sold from this batch (paise). */
+  cogsPaise: number;
+  /** soldValuePaise − cogsPaise. */
+  profitPaise: number;
+  /** Value of the stock still on hand (paise). */
+  pendingValuePaise: number;
+  /** Individual sales that drew from this batch (oldest first). */
+  sales: BatchLedgerSale[];
+};
+
+export type BatchLedger = {
+  itemId: number;
+  itemName: string;
+  unit: string;
+  batches: BatchLedgerRow[];
+};
+
+function rowsOf<T>(result: unknown): T[] {
+  const r = result as { rows?: T[] };
+  return r.rows ?? (result as T[]);
+}
+
+/**
+ * Lot-wise ledger for one item: for every purchase batch, how much was bought,
+ * how much has been sold (and for how much / at what profit), and how much is
+ * still pending. Revenue and profit are attributed to a batch by its quantity
+ * share of each sale line it contributed to. Cancelled bills are excluded.
+ */
+export async function batchLedger(db: Db, itemId: number): Promise<BatchLedger> {
+  const [item] = await db
+    .select({ id: items.id, name: items.name, unit: items.unit })
+    .from(items)
+    .where(eq(items.id, itemId));
+  if (!item) throw new Error("Item not found");
+
+  const factor = baseFactor(item.unit as Unit);
+
+  // Per-batch summary: purchase info + aggregated sold qty / cogs / revenue share.
+  const summaryRows = rowsOf<{
+    batch_id: number;
+    purchase_id: number;
+    purchase_date: string;
+    supplier_name: string | null;
+    qty_original: number;
+    qty_remaining: number;
+    unit_price_paise: number;
+    expenses_paise: number;
+    qty_sold: number;
+    cogs_paise: number;
+    sold_value_paise: number;
+  }>(
+    await db.execute(sql`
+      select
+        b.id as batch_id,
+        b.purchase_id,
+        b.purchase_date::text as purchase_date,
+        s.name as supplier_name,
+        b.qty_original,
+        b.qty_remaining,
+        b.unit_price_paise,
+        coalesce(p.expenses_paise, 0) as expenses_paise,
+        coalesce(sum(mbl.qty_taken), 0)::bigint as qty_sold,
+        coalesce(sum(mbl.cost_paise), 0)::bigint as cogs_paise,
+        coalesce(sum(round(si.line_total_paise * mbl.qty_taken::numeric / si.qty_base)), 0)::bigint as sold_value_paise
+      from batches b
+      left join purchases p on p.id = b.purchase_id
+      left join suppliers s on s.id = p.supplier_id
+      left join movement_batch_links mbl on mbl.batch_id = b.id
+      left join stock_movements sm on sm.id = mbl.movement_id and sm.type = 'SALE'
+      left join sale_items si on si.movement_id = sm.id
+      left join sale_bills sb on sb.id = si.sale_id and not sb.cancelled
+      where b.item_id = ${itemId} and (sb.id is not null or mbl.id is null)
+      group by b.id, s.name, p.expenses_paise
+      order by b.purchase_date, b.id
+    `),
+  );
+
+  // Per-batch sale lines (only batches that actually sold).
+  const saleRows = rowsOf<{
+    batch_id: number;
+    bill_no: string;
+    sale_date: string;
+    customer_name: string | null;
+    qty_taken: number;
+    unit_price_paise: number;
+    line_total_paise: number;
+    line_qty_base: number;
+    cogs_paise: number;
+  }>(
+    await db.execute(sql`
+      select
+        mbl.batch_id,
+        sb.bill_no,
+        sb.sale_date::text as sale_date,
+        c.name as customer_name,
+        mbl.qty_taken,
+        si.unit_price_paise,
+        si.line_total_paise,
+        si.qty_base as line_qty_base,
+        mbl.cost_paise as cogs_paise
+      from movement_batch_links mbl
+      join stock_movements sm on sm.id = mbl.movement_id and sm.type = 'SALE'
+      join sale_items si on si.movement_id = sm.id
+      join sale_bills sb on sb.id = si.sale_id and not sb.cancelled
+      left join customers c on c.id = sb.customer_id
+      where mbl.batch_id in (
+        select id from batches where item_id = ${itemId}
+      )
+      order by sb.sale_date, sb.id, mbl.batch_id
+    `),
+  );
+
+  const salesByBatch = new Map<number, BatchLedgerSale[]>();
+  for (const r of saleRows) {
+    const revenueShare = Math.round(
+      (r.line_total_paise * r.qty_taken) / r.line_qty_base,
+    );
+    const entry: BatchLedgerSale = {
+      billNo: r.bill_no,
+      saleDate: r.sale_date,
+      customerName: r.customer_name,
+      qtyTaken: r.qty_taken,
+      unitPricePaise: r.unit_price_paise,
+      revenuePaise: revenueShare,
+      cogsPaise: r.cogs_paise,
+      profitPaise: revenueShare - r.cogs_paise,
+    };
+    const list = salesByBatch.get(r.batch_id) ?? [];
+    list.push(entry);
+    salesByBatch.set(r.batch_id, list);
+  }
+
+  const batchesList: BatchLedgerRow[] = summaryRows.map((r) => {
+    const soldValuePaise = Number(r.sold_value_paise);
+    const cogsPaise = Number(r.cogs_paise);
+    const pendingValuePaise = Math.round(
+      (r.qty_remaining * r.unit_price_paise) / factor,
+    );
+    return {
+      batchId: r.batch_id,
+      purchaseId: r.purchase_id,
+      purchaseDate: r.purchase_date,
+      supplierName: r.supplier_name,
+      qtyOriginal: r.qty_original,
+      qtyRemaining: r.qty_remaining,
+      unitPricePaise: r.unit_price_paise,
+      expensesPaise: Number(r.expenses_paise),
+      qtySold: Number(r.qty_sold),
+      soldValuePaise,
+      cogsPaise,
+      profitPaise: soldValuePaise - cogsPaise,
+      pendingValuePaise,
+      sales: salesByBatch.get(r.batch_id) ?? [],
+    };
+  });
+
+  return {
+    itemId: item.id,
+    itemName: item.name,
+    unit: item.unit,
+    batches: batchesList,
+  };
+}

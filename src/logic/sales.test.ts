@@ -48,4 +48,54 @@ describe("planSale", () => {
     expect(() => planSale([A, B], 0, 2000, KG)).toThrow("positive");
     expect(() => planSale([A, B], 1000, -1, KG)).toThrow("Price cannot be negative");
   });
+
+  // The shop owner's exact scenario: same product bought at two prices on
+  // different days, then sold in two lots. FIFO must pull the older batch
+  // first and report the real per-batch cost, not a blended average.
+  describe("owner scenario: 100 kg @ ₹100, 60 kg @ ₹110, sell 80 then 60", () => {
+    const lotA: FifoBatch = {
+      id: 1,
+      qtyRemaining: 100_000, // 100 kg
+      unitPricePaise: 10_000, // ₹100/kg
+      purchaseDate: "2026-10-01",
+    };
+    const lotB: FifoBatch = {
+      id: 2,
+      qtyRemaining: 60_000, // 60 kg
+      unitPricePaise: 11_000, // ₹110/kg
+      purchaseDate: "2026-10-02",
+    };
+
+    it("sale 1: 80 kg @ ₹120 → all from lot A, cost ₹8000, profit ₹1600, 20 kg of A left", () => {
+      const plan = planSale([lotA, lotB], 80_000, 12_000, KG);
+      expect(plan.takes).toEqual([
+        { batchId: 1, qty: 80_000, unitPricePaise: 10_000, costPaise: 800_000 },
+      ]);
+      expect(plan.totalCostPaise).toBe(800_000); // ₹8000
+      expect(plan.revenuePaise).toBe(960_000); // ₹9600
+      expect(plan.revenuePaise - plan.totalCostPaise).toBe(160_000); // ₹1600 profit
+      expect(plan.remaining).toEqual([
+        { id: 1, qtyRemaining: 20_000 }, // 20 kg of A left
+        { id: 2, qtyRemaining: 60_000 }, // B untouched
+      ]);
+      expect(plan.leftQty).toBe(80_000); // 80 kg left overall
+    });
+
+    it("sale 2: 60 kg @ ₹130 → 20 kg from A + 40 kg from B, cost ₹6400, profit ₹1400", () => {
+      // After sale 1, lot A has 20 kg left.
+      const afterA: FifoBatch = { ...lotA, qtyRemaining: 20_000 };
+      const plan = planSale([afterA, lotB], 60_000, 13_000, KG);
+      expect(plan.takes).toEqual([
+        { batchId: 1, qty: 20_000, unitPricePaise: 10_000, costPaise: 200_000 }, // ₹2000
+        { batchId: 2, qty: 40_000, unitPricePaise: 11_000, costPaise: 440_000 }, // ₹4400
+      ]);
+      expect(plan.totalCostPaise).toBe(640_000); // ₹6400
+      expect(plan.revenuePaise).toBe(780_000); // ₹7800
+      expect(plan.remaining).toEqual([
+        { id: 1, qtyRemaining: 0 }, // A empty
+        { id: 2, qtyRemaining: 20_000 }, // 20 kg of B left
+      ]);
+      expect(plan.leftQty).toBe(20_000); // 20 kg left overall
+    });
+  });
 });
