@@ -230,8 +230,8 @@ export default function App() {
   ];
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-56 shrink-0 flex-col bg-stone-900 px-3 py-5 text-stone-100">
+    <div className="min-h-screen md:flex">
+      <aside className="hidden w-56 shrink-0 flex-col bg-stone-900 px-3 py-5 text-stone-100 md:flex">
         <div className="mb-6 flex items-center gap-3 px-2">
           <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[8px] font-bold tracking-wider text-white">
             SDHHE
@@ -257,14 +257,36 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 px-8 py-8">
+      <div className="md:hidden">
+        <header className="flex items-center justify-between gap-2 bg-stone-900 px-4 pb-1 pt-3 text-stone-100">
+          <span className="text-[10px] font-semibold uppercase leading-snug tracking-wider">
+            SREE DURGA HARIHARA ENTERPRISES
+          </span>
+          <button className="shrink-0 text-xs underline" onClick={() => void api.logout().then(() => setUser(null))}>
+            Sign out
+          </button>
+        </header>
+        <nav className="flex gap-1 overflow-x-auto bg-stone-900 px-2 pb-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm ${view === tab.key ? "bg-white/10 font-medium text-white" : "text-stone-400"}`}
+              onClick={() => { setView(tab.key); setBill(null); }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
         {error && <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         {view === "bills" && (
           <section className="space-y-4">
-            <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Invoices</h1>
             <div className="card overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full min-w-[560px] text-left text-sm">
                 <thead>
                   <tr>
                     <th className="px-3 py-2">Bill no</th>
@@ -307,7 +329,7 @@ export default function App() {
                 </div>
                 {emailStatus && <p className="text-sm text-stone-600" role="status">{emailStatus}</p>}
                 <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
-                  <iframe title={`Bill ${bill.billNo}`} className="h-[1080px] w-full" srcDoc={buildBillHtml(bill as never, shop)} />
+                  <iframe title={`Bill ${bill.billNo}`} className="h-[70vh] w-full lg:h-[1080px]" srcDoc={buildBillHtml(bill as never, shop)} />
                 </div>
               </section>
             )}
@@ -316,9 +338,9 @@ export default function App() {
 
         {view === "items" && (
           <section className="space-y-4">
-            <h1 className="text-2xl font-semibold tracking-tight">Items</h1>
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Items</h1>
             <div className="card overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full min-w-[560px] text-left text-sm">
                 <thead>
                   <tr>
                     <th className="px-3 py-2">Item</th>
@@ -344,7 +366,7 @@ export default function App() {
 
         {view === "team" && user.role === "owner" && (
           <section className="space-y-4">
-            <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Team</h1>
             <div className="card space-y-3 p-4">
               {members.map((member) => (
                 <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2 text-sm last:border-0">
@@ -409,7 +431,7 @@ export default function App() {
 
         {view === "activity" && (
           <section className="space-y-4">
-            <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Activity</h1>
             <div className="card p-4">
               <ul className="divide-y divide-stone-100 text-sm">
                 {activity.map((row) => (
