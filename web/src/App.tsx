@@ -475,7 +475,7 @@ export default function App() {
       <main className="grid min-h-screen place-items-center p-6">
         <div className="card w-full max-w-sm p-6">
           <div className="mb-6 flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[9px] font-bold tracking-wider text-white">
+            <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-amber-300 to-emerald-700 text-[9px] font-bold tracking-wider text-white">
               SDHHE
             </span>
             <div>
@@ -554,7 +554,7 @@ export default function App() {
     <div className="min-h-screen md:flex">
       <aside className="hidden w-56 shrink-0 flex-col bg-stone-900 px-3 py-5 text-stone-100 md:flex">
         <div className="mb-6 flex items-center gap-3 px-2">
-          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[8px] font-bold tracking-wider text-white">
+          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-300 to-emerald-700 text-[8px] font-bold tracking-wider text-white">
             SDHHE
           </span>
           <div className="brand-strip min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
