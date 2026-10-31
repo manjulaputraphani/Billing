@@ -12,6 +12,8 @@ import {
 } from "./api";
 import { buildBillHtml } from "../../src/lib/printBill";
 import type { ShopDetails } from "../../src/db/settings";
+import ThemeToggle from "./ThemeToggle";
+import { watchSystemTheme } from "./theme";
 
 type View = "dashboard" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
 
@@ -43,7 +45,25 @@ function IconTrash() {
   );
 }
 
-const CHART_COLORS = ["#1c1917", "#0f766e", "#b45309", "#7c3aed", "#be123c", "#64748b"];
+function IconCoffee() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 9h12v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9Z" />
+      <path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16" />
+      <path d="M7.6 2.6c-.7 1-.3 1.7 0 2.3M11.2 2.6c-.7 1-.3 1.7 0 2.3" />
+      <path d="M3 21h14" />
+    </svg>
+  );
+}
+
+const CHART_COLORS = [
+  "var(--c-chart-1)",
+  "var(--c-chart-2)",
+  "var(--c-chart-3)",
+  "var(--c-chart-4)",
+  "var(--c-chart-5)",
+  "var(--c-chart-6)",
+];
 
 function Donut({ items }: { items: { label: string; value: number }[] }) {
   const total = items.reduce((sum, item) => sum + item.value, 0) || 1;
@@ -58,14 +78,14 @@ function Donut({ items }: { items: { label: string; value: number }[] }) {
   return (
     <div className="flex flex-wrap items-center gap-5">
       <div className="relative size-28 shrink-0 rounded-full" style={{ background: `conic-gradient(${stops})` }}>
-        <div className="absolute inset-5 rounded-full bg-white" />
+        <div className="absolute inset-5 rounded-full bg-surface" />
       </div>
       <ul className="space-y-1 text-sm">
         {items.map((item, index) => (
           <li key={item.label} className="flex items-center gap-2">
             <span className="size-2.5 rounded-sm" style={{ background: CHART_COLORS[index % CHART_COLORS.length] }} />
             <span>{item.label}</span>
-            <span className="text-stone-500">{money(item.value)}</span>
+            <span className="text-muted">{money(item.value)}</span>
           </li>
         ))}
       </ul>
@@ -144,6 +164,8 @@ export default function App() {
       .catch(() => setUser(null))
       .finally(() => setChecking(false));
   }, []);
+
+  useEffect(() => watchSystemTheme(), []);
 
   function addBillLine() {
     const item = items.find((i) => i.id === draft.itemId);
@@ -467,23 +489,26 @@ export default function App() {
   }
 
   if (checking) {
-    return <main className="grid min-h-screen place-items-center text-sm text-stone-500">Loading…</main>;
+    return <main className="grid min-h-screen place-items-center text-sm text-muted">Loading…</main>;
   }
 
   if (!user) {
     return (
       <main className="grid min-h-screen place-items-center p-6">
         <div className="card w-full max-w-sm p-6">
-          <div className="mb-6 flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-amber-300 to-emerald-700 text-[9px] font-bold tracking-wider text-white">
-              SDHHE
-            </span>
-            <div>
-              <h1 className="text-[13px] font-semibold uppercase leading-snug tracking-wide">
-                SREE DURGA HARIHARA ENTERPRISES
-              </h1>
-              <p className="text-sm text-stone-500">Sign in to the web edition.</p>
+          <div className="mb-6 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-xl bg-primary text-on-primary">
+                <IconCoffee />
+              </span>
+              <div>
+                <h1 className="text-[13px] font-semibold uppercase leading-snug tracking-wide">
+                  SREE DURGA HARIHARA ENTERPRISES
+                </h1>
+                <p className="text-sm text-muted">Sign in to the web edition.</p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
           {authMode === "login" ? (
             <form className="space-y-4" onSubmit={signIn}>
@@ -495,9 +520,9 @@ export default function App() {
                 <label className="label" htmlFor="password">Password</label>
                 <input id="password" type="password" className="input" value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
               </div>
-              {error && <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+              {error && <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">{error}</p>}
               <button className="btn btn-primary w-full" type="submit" disabled={busy}>Sign in</button>
-              <button type="button" className="w-full text-sm text-stone-500 underline" onClick={() => { setAuthMode("signup"); setError(null); setSignupStatus(null); }}>
+              <button type="button" className="w-full text-sm text-muted underline" onClick={() => { setAuthMode("signup"); setError(null); setSignupStatus(null); }}>
                 Create account
               </button>
             </form>
@@ -519,10 +544,10 @@ export default function App() {
                 <label className="label" htmlFor="signup-confirm">Confirm password</label>
                 <input id="signup-confirm" type="password" className="input" value={signupConfirm} onChange={(e) => setSignupConfirm(e.currentTarget.value)} />
               </div>
-              {error && <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-              {signupStatus && <p role="status" className="rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{signupStatus}</p>}
+              {error && <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">{error}</p>}
+              {signupStatus && <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">{signupStatus}</p>}
               <button className="btn btn-primary w-full" type="submit" disabled={busy}>Request account</button>
-              <button type="button" className="w-full text-sm text-stone-500 underline" onClick={() => { setAuthMode("login"); setError(null); }}>
+              <button type="button" className="w-full text-sm text-muted underline" onClick={() => { setAuthMode("login"); setError(null); }}>
                 Back to sign in
               </button>
             </form>
@@ -552,12 +577,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen md:flex">
-      <aside className="hidden w-56 shrink-0 flex-col bg-stone-900 px-3 py-5 text-stone-100 md:flex">
+      <aside className="hidden w-56 shrink-0 flex-col bg-nav px-3 py-5 text-nav-text md:flex">
         <div className="mb-6 flex items-center gap-3 px-2">
-          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-amber-300 to-emerald-700 text-[8px] font-bold tracking-wider text-white">
-            SDHHE
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-nav-text/15 text-nav-text">
+            <IconCoffee />
           </span>
-          <div className="brand-strip min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+          <div className="brand-strip min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-nav-text">
             <span>
               SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;
             </span>
@@ -567,35 +592,44 @@ export default function App() {
           {tabs.map((tab) => (
             <button
               key={tab.key}
-              className={`rounded-lg px-3 py-2 text-left text-sm ${view === tab.key ? "bg-white/10 font-medium text-white" : "text-stone-400 hover:bg-white/5 hover:text-white"}`}
+              className={`rounded-lg px-3 py-2 text-left text-sm ${view === tab.key ? "bg-nav-active font-medium text-nav-text" : "text-nav-muted hover:bg-nav-hover hover:text-nav-text"}`}
               onClick={() => { setView(tab.key); setBill(null); }}
             >
               {tab.label}
             </button>
           ))}
         </nav>
-        <div className="mt-auto space-y-1 px-2 pt-6 text-[11px] text-stone-500">
-          <p className="text-stone-300">{user.name} · {user.role}</p>
-          <button className="underline" onClick={() => void api.logout().then(() => setUser(null))}>Sign out</button>
+        <div className="mt-auto space-y-3 px-2 pt-6 text-[11px]">
+          <ThemeToggle onDark />
+          <div className="space-y-1">
+            <p className="text-nav-muted">{user.name} · {user.role}</p>
+            <button className="underline text-nav-muted" onClick={() => void api.logout().then(() => setUser(null))}>Sign out</button>
+          </div>
         </div>
       </aside>
 
       <div className="md:hidden">
-        <header className="flex items-center justify-between gap-2 bg-stone-900 px-4 pb-1 pt-3 text-stone-100">
-          <div className="brand-strip min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-[0.14em]">
-            <span>
-              SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;
+        <header className="flex items-center justify-between gap-2 bg-nav px-4 pb-1 pt-3 text-nav-text">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-nav-text/15 text-nav-text">
+              <IconCoffee />
             </span>
+            <div className="brand-strip min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-[0.14em]">
+              <span>
+                SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;
+              </span>
+            </div>
           </div>
+          <ThemeToggle onDark className="shrink-0" />
           <button className="shrink-0 text-xs underline" onClick={() => void api.logout().then(() => setUser(null))}>
             Sign out
           </button>
         </header>
-        <nav className="flex gap-1 overflow-x-auto bg-stone-900 px-2 pb-2">
+        <nav className="flex gap-1 overflow-x-auto bg-nav px-2 pb-2">
           {tabs.map((tab) => (
             <button
               key={tab.key}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm ${view === tab.key ? "bg-white/10 font-medium text-white" : "text-stone-400"}`}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm ${view === tab.key ? "bg-nav-active font-medium text-nav-text" : "text-nav-muted"}`}
               onClick={() => { setView(tab.key); setBill(null); }}
             >
               {tab.label}
@@ -605,7 +639,7 @@ export default function App() {
       </div>
 
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
-        {error && <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p role="alert" className="mb-4 rounded bg-error-soft px-3 py-2 text-sm text-error-ink">{error}</p>}
 
         {view === "dashboard" && (
           <section className="space-y-4">
@@ -619,7 +653,7 @@ export default function App() {
                 ["Low stock items", String(stats?.low_stock ?? 0)],
               ].map(([label, value]) => (
                 <div key={label} className="card p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">{label}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</p>
                   <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
                 </div>
               ))}
@@ -628,9 +662,9 @@ export default function App() {
               <div className="card p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-sm font-medium">Last 14 days</h2>
-                  <div className="flex items-center gap-3 text-xs text-stone-500">
-                    <span className="flex items-center gap-1"><span className="size-2.5 rounded-sm bg-stone-900" /> Sales</span>
-                    <span className="flex items-center gap-1"><span className="size-2.5 rounded-sm bg-stone-300" /> Expenses</span>
+                  <div className="flex items-center gap-3 text-xs text-muted">
+                    <span className="flex items-center gap-1"><span className="size-2.5 rounded-sm bg-chart-1" /> Sales</span>
+                    <span className="flex items-center gap-1"><span className="size-2.5 rounded-sm bg-chart-5" /> Expenses</span>
                   </div>
                 </div>
                 <div className="flex h-40 items-end gap-1">
@@ -641,10 +675,10 @@ export default function App() {
                     return (
                       <div key={day.date} className="flex flex-1 flex-col items-center gap-1" title={`${day.date} · sales ${money(sales)} · expenses ${money(expenses)}`}>
                         <div className="flex h-36 w-full items-end justify-center gap-[2px]">
-                          <div className="w-1/2 rounded-t bg-stone-900" style={{ height: `${Math.max(2, (sales / max) * 100)}%` }} />
-                          <div className="w-1/2 rounded-t bg-stone-300" style={{ height: `${Math.max(2, (expenses / max) * 100)}%` }} />
+                          <div className="w-1/2 rounded-t bg-chart-1" style={{ height: `${Math.max(2, (sales / max) * 100)}%` }} />
+                          <div className="w-1/2 rounded-t bg-chart-5" style={{ height: `${Math.max(2, (expenses / max) * 100)}%` }} />
                         </div>
-                        <span className="text-[9px] text-stone-400">{day.date.slice(8)}</span>
+                        <span className="text-[9px] text-muted">{day.date.slice(8)}</span>
                       </div>
                     );
                   })}
@@ -653,7 +687,7 @@ export default function App() {
               <div className="card p-4">
                 <h2 className="mb-3 text-sm font-medium">Expenses by category (month)</h2>
                 {categories.length === 0 ? (
-                  <p className="text-sm text-stone-500">No expenses this month.</p>
+                  <p className="text-sm text-muted">No expenses this month.</p>
                 ) : (
                   <Donut items={categories.map((c) => ({ label: c.category, value: Number(c.total) }))} />
                 )}
@@ -661,11 +695,11 @@ export default function App() {
             </div>
             <div className="card p-4">
               <h2 className="mb-2 text-sm font-medium">Recent activity</h2>
-              <ul className="divide-y divide-stone-100 text-sm">
+              <ul className="divide-y divide-line text-sm">
                 {activity.slice(0, 8).map((row) => (
                   <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
                     <span>{row.summary}</span>
-                    <span className="text-xs text-stone-500">{row.actor}</span>
+                    <span className="text-xs text-muted">{row.actor}</span>
                   </li>
                 ))}
               </ul>
@@ -687,13 +721,13 @@ export default function App() {
                 <input className="input" placeholder="Supplier" value={purchase.supplier} onChange={(e) => setPurchase({ ...purchase, supplier: e.currentTarget.value })} />
               </div>
               <button className="btn btn-primary" onClick={() => void addPurchaseNow()}>Save purchase</button>
-              {purchaseMsg && <p role="status" className="text-sm text-stone-600">{purchaseMsg}</p>}
+              {purchaseMsg && <p role="status" className="text-sm text-muted">{purchaseMsg}</p>}
             </div>
             <div className="card overflow-x-auto">
               <table className="w-full min-w-[560px] text-left text-sm">
                 <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
                 <tbody>{purchasesList.map((p) => (
-                  <tr key={p.id} className="border-t border-stone-100">
+                  <tr key={p.id} className="border-t border-line">
                     <td className="px-3 py-2">{p.purchase_date}</td>
                     <td className="px-3 py-2 font-medium">{p.name}</td>
                     <td className="px-3 py-2">{qty(p.qty_base, p.unit)}</td>
@@ -721,7 +755,7 @@ export default function App() {
                 </select>
               </div>
               {stock.itemId !== "" && (
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-muted">
                   Current stock: {qty(stockBatches.reduce((sum, b) => sum + b.qty_remaining, 0), items.find((i) => i.id === stock.itemId)?.unit ?? "kg")}
                 </p>
               )}
@@ -730,7 +764,7 @@ export default function App() {
                 <input className="input" placeholder="Note (optional)" value={stock.note} onChange={(e) => setStock({ ...stock, note: e.currentTarget.value })} />
               </div>
               <button className="btn btn-primary" onClick={() => void saveStockNow()}>Save entry</button>
-              {stockMsg && <p role="status" className="text-sm text-stone-600">{stockMsg}</p>}
+              {stockMsg && <p role="status" className="text-sm text-muted">{stockMsg}</p>}
             </div>
           </section>
         )}
@@ -746,13 +780,13 @@ export default function App() {
                 <input className="input" placeholder="Note" value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.currentTarget.value })} />
               </div>
               <button className="btn btn-primary" onClick={() => void addExpenseNow()}>Add expense</button>
-              {expenseMsg && <p role="status" className="text-sm text-stone-600">{expenseMsg}</p>}
+              {expenseMsg && <p role="status" className="text-sm text-muted">{expenseMsg}</p>}
             </div>
             <div className="card overflow-x-auto">
               <table className="w-full min-w-[520px] text-left text-sm">
                 <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Paid to</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
                 <tbody>{expensesList.map((x) => (
-                  <tr key={x.id} className="border-t border-stone-100">
+                  <tr key={x.id} className="border-t border-line">
                     <td className="px-3 py-2">{x.date}</td>
                     <td className="px-3 py-2 font-medium">{x.category}</td>
                     <td className="px-3 py-2">{x.paidTo ?? "—"}</td>
@@ -768,7 +802,7 @@ export default function App() {
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Investments</h1>
             <div className="card p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Total invested</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Total invested</p>
               <p className="mt-1 text-3xl font-semibold tracking-tight">{money(investTotal)}</p>
             </div>
             <div className="card space-y-3 p-4">
@@ -779,14 +813,14 @@ export default function App() {
                 <input className="input" placeholder="Note" value={investment.note} onChange={(e) => setInvestment({ ...investment, note: e.currentTarget.value })} />
               </div>
               <button className="btn btn-primary" onClick={() => void addInvestmentNow()}>Add investment</button>
-              {investmentMsg && <p role="status" className="text-sm text-stone-600">{investmentMsg}</p>}
+              {investmentMsg && <p role="status" className="text-sm text-muted">{investmentMsg}</p>}
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="card overflow-x-auto">
                 <table className="w-full min-w-[520px] text-left text-sm">
                   <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Investor</th><th className="px-3 py-2 text-right">Amount</th><th /></tr></thead>
                   <tbody>{investments.map((row) => (
-                    <tr key={row.id} className="border-t border-stone-100">
+                    <tr key={row.id} className="border-t border-line">
                       <td className="px-3 py-2">{row.invested_on}</td>
                       <td className="px-3 py-2 font-medium">{row.investor_name}</td>
                       <td className="px-3 py-2 text-right">{money(row.amount_paise)}</td>
@@ -798,7 +832,7 @@ export default function App() {
               <div className="card p-4">
                 <h2 className="mb-3 text-sm font-medium">By investor</h2>
                 {investments.length === 0 ? (
-                  <p className="text-sm text-stone-500">No investments yet.</p>
+                  <p className="text-sm text-muted">No investments yet.</p>
                 ) : (
                   <Donut items={Object.entries(investments.reduce<Record<string, number>>((acc, row) => { acc[row.investor_name] = (acc[row.investor_name] ?? 0) + row.amount_paise; return acc; }, {})).map(([label, value]) => ({ label, value }))} />
                 )}
@@ -824,13 +858,13 @@ export default function App() {
                 </thead>
                 <tbody>
                   {bills.map((row) => (
-                    <tr key={row.id} className="border-t border-stone-100">
+                    <tr key={row.id} className="border-t border-line">
                       <td className="px-3 py-2 font-medium">{row.billNo}</td>
                       <td className="px-3 py-2">{row.saleDate}</td>
                       <td className="px-3 py-2">{row.customerName ?? "Walk-in"}</td>
                       <td className="px-3 py-2 text-right">{money(row.totalPaise)}</td>
                       <td className="px-3 py-2">
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${row.cancelled ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${row.cancelled ? "bg-error-soft text-error-ink" : "bg-success-soft text-success-ink"}`}>
                           {row.cancelled ? "Cancelled" : "Issued"}
                         </span>
                       </td>
@@ -852,8 +886,8 @@ export default function App() {
                     <button className="btn-mini" onClick={() => setBill(null)}>Close</button>
                   </div>
                 </div>
-                {emailStatus && <p className="text-sm text-stone-600" role="status">{emailStatus}</p>}
-                <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
+                {emailStatus && <p className="text-sm text-muted" role="status">{emailStatus}</p>}
+                <div className="overflow-hidden rounded-xl border border-line bg-surface">
                   <iframe title={`Bill ${bill.billNo}`} className="h-[70vh] w-full lg:h-[1080px]" srcDoc={buildBillHtml(bill as never, shop)} />
                 </div>
               </section>
@@ -885,7 +919,7 @@ export default function App() {
                 <table className="w-full min-w-[520px] text-left text-sm">
                   <thead><tr><th className="px-2 py-1">Item</th><th className="px-2 py-1">Qty</th><th className="px-2 py-1 text-right">Amount</th><th /></tr></thead>
                   <tbody>{billLines.map((l, idx) => (
-                    <tr key={idx} className="border-t border-stone-100">
+                    <tr key={idx} className="border-t border-line">
                       <td className="px-2 py-1">{l.name}</td>
                       <td className="px-2 py-1">{qty(l.qtyBase, l.unit)}</td>
                       <td className="px-2 py-1 text-right">{money(l.totalPaise)}</td>
@@ -905,9 +939,9 @@ export default function App() {
                 <input className="input" type="date" value={billDate} onChange={(e) => setBillDate(e.currentTarget.value)} />
                 <button className="btn btn-primary" onClick={() => void saveBill()}>Save bill</button>
               </div>
-              <p className="text-sm text-stone-600">Subtotal {money(billSubtotal)} · GST {money(billGstPaise)} · <b>Total {money(billTotal)}</b></p>
-              {billMsg && <p role="status" className="rounded bg-stone-50 px-3 py-2 text-sm">{billMsg}</p>}
-              {lastBillId && <button className="btn" className="btn btn-secondary" onClick={() => void openBill(lastBillId).then(() => setView("bills"))}>View last bill</button>}
+              <p className="text-sm text-muted">Subtotal {money(billSubtotal)} · GST {money(billGstPaise)} · <b>Total {money(billTotal)}</b></p>
+              {billMsg && <p role="status" className="rounded bg-surface-2 px-3 py-2 text-sm">{billMsg}</p>}
+              {lastBillId && <button className="btn btn-secondary" onClick={() => void openBill(lastBillId).then(() => setView("bills"))}>View last bill</button>}
             </div>
           </section>
         )}
@@ -933,7 +967,7 @@ export default function App() {
                 </div>
               </div>
             )}
-            {itemsMsg && <p role="status" className="text-sm text-stone-600">{itemsMsg}</p>}
+            {itemsMsg && <p role="status" className="text-sm text-muted">{itemsMsg}</p>}
             <div className="card overflow-x-auto">
               <table className="w-full min-w-[560px] text-left text-sm">
                 <thead>
@@ -947,7 +981,7 @@ export default function App() {
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="border-t border-stone-100">
+                    <tr key={item.id} className="border-t border-line">
                       <td className="px-3 py-2 font-medium">{item.name}</td>
                       <td className="px-3 py-2">{item.unit}</td>
                       <td className="px-3 py-2">{item.category ?? "—"}</td>
@@ -985,11 +1019,11 @@ export default function App() {
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Team</h1>
             <div className="card space-y-3 p-4">
               {members.map((member) => (
-                <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2 text-sm last:border-0">
+                <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 text-sm last:border-0">
                   <span>
                     <b>{member.name}</b> · {member.phone} · {member.role}
-                    {member.pending && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">awaiting approval</span>}
-                    {!member.pending && !member.active && <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700">disabled</span>}
+                    {member.pending && <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-ink">awaiting approval</span>}
+                    {!member.pending && !member.active && <span className="ml-2 rounded-full bg-error-soft px-2 py-0.5 text-xs text-error-ink">disabled</span>}
                   </span>
                   {member.pending ? (
                     <span className="flex items-center gap-2">
@@ -1027,7 +1061,7 @@ export default function App() {
                 </div>
               ))}
               {resetTarget && (
-                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-stone-50 p-3">
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-2 p-3">
                   <span className="text-sm">New password for <b>{resetTarget.name}</b>:</span>
                   <input className="input flex-1" type="password" value={resetPassword} onChange={(e) => setResetPassword(e.currentTarget.value)} />
                   <button className="btn btn-primary" onClick={() => void saveResetPassword()}>Save</button>
@@ -1040,7 +1074,7 @@ export default function App() {
                 <input className="input" type="password" placeholder="Password (6+)" value={memberPassword} onChange={(e) => setMemberPassword(e.currentTarget.value)} />
               </div>
               <button className="btn btn-primary" onClick={() => void addMember()}>Add member</button>
-              {teamStatus && <p role="status" className="text-sm text-stone-600">{teamStatus}</p>}
+              {teamStatus && <p role="status" className="text-sm text-muted">{teamStatus}</p>}
             </div>
           </section>
         )}
@@ -1051,7 +1085,7 @@ export default function App() {
             <div className="card space-y-4 p-4">
               <div>
                 <h2 className="text-sm font-medium">Email notifications</h2>
-                <p className="text-sm text-stone-500">
+                <p className="text-sm text-muted">
                   Owner alerts for signups, member changes and staff bills.{" "}
                   <b>{emailConfigured ? "Email configured ✓" : "Email NOT configured (add RESEND_API_KEY)"}</b>
                 </p>
@@ -1068,13 +1102,13 @@ export default function App() {
               <div className="space-y-1">
                 <label className="label" htmlFor="resend-key">Resend API key (stored encrypted in the database)</label>
                 <input id="resend-key" type="password" className="input" placeholder={emailConfigured ? "Key saved ✓ — enter a new key to replace" : "re_…"} value={resendKey} onChange={(e) => setResendKey(e.currentTarget.value)} />
-                <p className="text-xs text-stone-500">Encrypted with the Worker secret; never shown again. Prefer the Cloudflare secret for extra safety.</p>
+                <p className="text-xs text-muted">Encrypted with the Worker secret; never shown again. Prefer the Cloudflare secret for extra safety.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button className="btn btn-primary" onClick={() => void saveNotify()}>Save settings</button>
-                <button className="btn" className="btn btn-secondary" onClick={() => void testNotify()}>Send test email</button>
+                <button className="btn btn-secondary" onClick={() => void testNotify()}>Send test email</button>
               </div>
-              {notifyStatus && <p role="status" className="text-sm text-stone-600">{notifyStatus}</p>}
+              {notifyStatus && <p role="status" className="text-sm text-muted">{notifyStatus}</p>}
             </div>
           </section>
         )}
@@ -1089,24 +1123,24 @@ export default function App() {
           }, {});
           const dot = (event: string) =>
             event.startsWith("sale")
-              ? "bg-emerald-500"
+              ? "bg-chart-2"
               : event.startsWith("purchase")
-                ? "bg-amber-500"
+                ? "bg-chart-3"
                 : event.startsWith("expense")
-                  ? "bg-rose-500"
+                  ? "bg-chart-4"
                   : event.startsWith("user")
-                    ? "bg-indigo-500"
+                    ? "bg-chart-1"
                     : event.startsWith("investment")
-                      ? "bg-teal-500"
+                      ? "bg-chart-6"
                       : event.startsWith("item")
-                        ? "bg-stone-400"
-                        : "bg-stone-300";
+                        ? "bg-chart-5"
+                        : "bg-chart-6";
           return (
             <section className="space-y-4">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Activity</h1>
-                  <p className="text-sm text-stone-500">{shown.length} events · who did what, when</p>
+                  <p className="text-sm text-muted">{shown.length} events · who did what, when</p>
                 </div>
                 <select className="input max-w-52" value={activityFilter} onChange={(e) => setActivityFilter(e.currentTarget.value)}>
                   <option value="">All members</option>
@@ -1117,17 +1151,17 @@ export default function App() {
               </div>
               {Object.entries(days).map(([day, rows]) => (
                 <div key={day} className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">{day}</p>
-                  <div className="card divide-y divide-stone-100">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{day}</p>
+                  <div className="card divide-y divide-line">
                     {rows.map((row) => (
                       <div key={row.id} className="flex items-start gap-3 p-3">
                         <span className={`mt-1.5 size-2 shrink-0 rounded-full ${dot(row.event)}`} />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm text-stone-800">{row.summary}</p>
-                          <p className="mt-0.5 text-xs text-stone-500">
+                          <p className="text-sm text-ink">{row.summary}</p>
+                          <p className="mt-0.5 text-xs text-muted">
                             {new Date(row.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                             <span className="mx-1.5">·</span>
-                            <span className="inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">{row.actor}</span>
+                            <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted">{row.actor}</span>
                           </p>
                         </div>
                       </div>
@@ -1135,7 +1169,7 @@ export default function App() {
                   </div>
                 </div>
               ))}
-              {shown.length === 0 && <p className="text-sm text-stone-500">No activity yet.</p>}
+              {shown.length === 0 && <p className="text-sm text-muted">No activity yet.</p>}
             </section>
           );
         })()}
