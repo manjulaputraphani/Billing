@@ -443,6 +443,30 @@ export default {
         return json({ shop: await getShopDetails(db) });
       }
 
+      if (url.pathname === "/api/stats/daily" && request.method === "GET") {
+        const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 14, 7), 31);
+        const rows = await sqlQuery(env, `select d::date::text as date,
+          coalesce((select sum(total_paise) from sale_bills b where not b.cancelled and b.sale_date = d::date),0)::bigint as sales,
+          coalesce((select sum(amount_paise) from expenses e where e.expense_date = d::date),0)::bigint as expenses
+          from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d`, [days]);
+        return json({ daily: rows });
+      }
+
+      if (url.pathname === "/api/stats/expense-categories" && request.method === "GET") {
+        const rows = await sqlQuery(env, `select category, sum(amount_paise)::bigint as total from expenses
+          where expense_date >= date_trunc('month', current_date) group by category order by total desc`);
+        return json({ categories: rows });
+      }
+
+      if (url.pathname === "/api/investments") {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+        if (request.method === "GET") {
+          const rows = await sqlQuery(env, `select id, investor_name, amount_paise, invested_on::text as invested_on, note from investments order by invested_on desc, id desc`);
+          const [tot] = await sqlQuery(env, `select coalesce(sum(amount_paise),0)::bigint as total from investments`);
+          return json({ investments: rows, totalPaise: Number(tot.total) });
+        }
+      }
+
       if (url.pathname === "/api/stats" && request.method === "GET") {
         const [row] = await sqlQuery(env, `select
           (select coalesce(sum(total_paise),0) from sale_bills where cancelled = false and sale_date = current_date) as today_sales,
@@ -483,6 +507,7 @@ export default {
       }
 
       if (url.pathname.startsWith("/api/items/") && request.method === "DELETE") {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         const id = Number(url.pathname.split("/").pop());
         if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid item id" }, { status: 400 });
         await asActor(actor, () => deleteItem(db, id));
@@ -507,6 +532,28 @@ export default {
         const id = Number(url.pathname.split("/").pop());
         if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid expense id" }, { status: 400 });
         await asActor(actor, () => deleteExpense(db, id));
+        return json({ ok: true });
+      }
+
+      if (url.pathname === "/api/investments" && request.method === "POST") {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+        const investorName = String(body.investorName ?? "").trim();
+        const amountPaise = Number(body.amountPaise ?? 0);
+        const date = String(body.date ?? "");
+        if (!investorName) return json({ error: "Investor name is required" }, { status: 400 });
+        if (!Number.isInteger(amountPaise) || amountPaise <= 0) return json({ error: "Amount must be more than 0" }, { status: 400 });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "Choose a valid date" }, { status: 400 });
+        const [row] = await sqlQuery(env, `insert into investments (investor_name, amount_paise, invested_on, note) values ($1,$2,$3,$4) returning id`, [investorName, amountPaise, date, String(body.note ?? "") || null]);
+        await asActor(actor, () => logActivity(db, { event: "investment.create", summary: `Investment ${investorName}: ₹${(amountPaise / 100).toFixed(2)}`, entity: "investment", entityId: Number(row.id) }));
+        return json({ ok: true, id: row.id });
+      }
+
+      if (url.pathname.startsWith("/api/investments/") && request.method === "DELETE") {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid id" }, { status: 400 });
+        await sqlQuery(env, `delete from investments where id = $1`, [id]);
+        await asActor(actor, () => logActivity(db, { event: "investment.delete", summary: `Investment #${id} removed`, entity: "investment", entityId: id }));
         return json({ ok: true });
       }
 

@@ -13,7 +13,37 @@ import {
 import { buildBillHtml } from "../../src/lib/printBill";
 import type { ShopDetails } from "../../src/db/settings";
 
-type View = "dashboard" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
+type View = "dashboard" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
+
+const CHART_COLORS = ["#1c1917", "#0f766e", "#b45309", "#7c3aed", "#be123c", "#64748b"];
+
+function Donut({ items }: { items: { label: string; value: number }[] }) {
+  const total = items.reduce((sum, item) => sum + item.value, 0) || 1;
+  let acc = 0;
+  const stops = items
+    .map((item, index) => {
+      const start = (acc / total) * 100;
+      acc += item.value;
+      return `${CHART_COLORS[index % CHART_COLORS.length]} ${start}% ${(acc / total) * 100}%`;
+    })
+    .join(", ");
+  return (
+    <div className="flex flex-wrap items-center gap-5">
+      <div className="relative size-28 shrink-0 rounded-full" style={{ background: `conic-gradient(${stops})` }}>
+        <div className="absolute inset-5 rounded-full bg-white" />
+      </div>
+      <ul className="space-y-1 text-sm">
+        {items.map((item, index) => (
+          <li key={item.label} className="flex items-center gap-2">
+            <span className="size-2.5 rounded-sm" style={{ background: CHART_COLORS[index % CHART_COLORS.length] }} />
+            <span>{item.label}</span>
+            <span className="text-stone-500">{money(item.value)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function App() {
   const [checking, setChecking] = useState(true);
@@ -56,6 +86,12 @@ export default function App() {
   const [stock, setStock] = useState({ itemId: "" as number | "", type: "USAGE", qty: "", note: "" });
   const [stockBatches, setStockBatches] = useState<Array<{ id: number; qty_remaining: number; unit_price_paise: number; purchase_date: string }>>([]);
   const [stockMsg, setStockMsg] = useState<string | null>(null);
+  const [daily, setDaily] = useState<Array<{ date: string; sales: string; expenses: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ category: string; total: string }>>([]);
+  const [investments, setInvestments] = useState<Array<{ id: number; investor_name: string; amount_paise: number; invested_on: string; note: string | null }>>([]);
+  const [investTotal, setInvestTotal] = useState(0);
+  const [investment, setInvestment] = useState({ name: "", amount: "", date: new Date().toISOString().slice(0, 10), note: "" });
+  const [investmentMsg, setInvestmentMsg] = useState<string | null>(null);
   const [expense, setExpense] = useState({ category: "", amount: "", paidTo: "", note: "" });
   const [expenseMsg, setExpenseMsg] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
@@ -211,6 +247,32 @@ export default function App() {
     }
   }
 
+  async function addInvestmentNow() {
+    setInvestmentMsg(null);
+    try {
+      await api.addInvestment({
+        investorName: investment.name,
+        amountPaise: Math.round(Number(investment.amount) * 100),
+        date: investment.date,
+        note: investment.note,
+      });
+      setInvestmentMsg("Investment saved");
+      setInvestment({ name: "", amount: "", date: new Date().toISOString().slice(0, 10), note: "" });
+      const r = await api.investments();
+      setInvestments(r.investments);
+      setInvestTotal(r.totalPaise);
+    } catch (err) {
+      setInvestmentMsg(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function removeInvestment(id: number) {
+    await api.deleteInvestment(id);
+    const r = await api.investments();
+    setInvestments(r.investments);
+    setInvestTotal(r.totalPaise);
+  }
+
   async function addExpenseNow() {
     setExpenseMsg(null);
     try {
@@ -250,7 +312,7 @@ export default function App() {
       void loadMembers().catch(() => setMembers([]));
       void loadNotify().catch(() => setNotifyStatus("Could not load notification settings"));
     }
-    void Promise.all([api.stats().then((r) => setStats(r.stats)), api.purchases().then((r) => setPurchasesList(r.purchases)), api.expenses().then((r) => setExpensesList(r.expenses)), api.bills().then((r) => setBills(r.bills)), api.items().then((r) => setItems(r.items)), api.activity().then((r) => setActivity(r.activity)), api.shop().then((r) => setShop(r.shop as unknown as ShopDetails))]).catch((err) =>
+    void Promise.all([api.statsDaily().then((r) => setDaily(r.daily)), api.expenseCategories().then((r) => setCategories(r.categories)), ...(user.role === "owner" ? [api.investments().then((r) => { setInvestments(r.investments); setInvestTotal(r.totalPaise); })] : []), api.stats().then((r) => setStats(r.stats)), api.purchases().then((r) => setPurchasesList(r.purchases)), api.expenses().then((r) => setExpensesList(r.expenses)), api.bills().then((r) => setBills(r.bills)), api.items().then((r) => setItems(r.items)), api.activity().then((r) => setActivity(r.activity)), api.shop().then((r) => setShop(r.shop as unknown as ShopDetails))]).catch((err) =>
       setError(err instanceof Error ? err.message : String(err)),
     );
   }, [user]);
@@ -443,6 +505,7 @@ export default function App() {
 
   const tabs: { key: View; label: string }[] = [
     { key: "dashboard", label: "Dashboard" },
+    ...(user.role === "owner" ? [{ key: "investments" as View, label: "Investments" }] : []),
     { key: "bills", label: "Invoices" },
     { key: "billing", label: "New Bill" },
     { key: "items", label: "Items" },
@@ -527,6 +590,41 @@ export default function App() {
                   <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
                 </div>
               ))}
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="card p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-sm font-medium">Last 14 days</h2>
+                  <div className="flex items-center gap-3 text-xs text-stone-500">
+                    <span className="flex items-center gap-1"><span className="size-2.5 rounded-sm bg-stone-900" /> Sales</span>
+                    <span className="flex items-center gap-1"><span className="size-2.5 rounded-sm bg-stone-300" /> Expenses</span>
+                  </div>
+                </div>
+                <div className="flex h-40 items-end gap-1">
+                  {daily.map((day) => {
+                    const max = Math.max(...daily.map((d) => Math.max(Number(d.sales), Number(d.expenses))), 1);
+                    const sales = Number(day.sales);
+                    const expenses = Number(day.expenses);
+                    return (
+                      <div key={day.date} className="flex flex-1 flex-col items-center gap-1" title={`${day.date} · sales ${money(sales)} · expenses ${money(expenses)}`}>
+                        <div className="flex h-36 w-full items-end justify-center gap-[2px]">
+                          <div className="w-1/2 rounded-t bg-stone-900" style={{ height: `${Math.max(2, (sales / max) * 100)}%` }} />
+                          <div className="w-1/2 rounded-t bg-stone-300" style={{ height: `${Math.max(2, (expenses / max) * 100)}%` }} />
+                        </div>
+                        <span className="text-[9px] text-stone-400">{day.date.slice(8)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="card p-4">
+                <h2 className="mb-3 text-sm font-medium">Expenses by category (month)</h2>
+                {categories.length === 0 ? (
+                  <p className="text-sm text-stone-500">No expenses this month.</p>
+                ) : (
+                  <Donut items={categories.map((c) => ({ label: c.category, value: Number(c.total) }))} />
+                )}
+              </div>
             </div>
             <div className="card p-4">
               <h2 className="mb-2 text-sm font-medium">Recent activity</h2>
@@ -629,6 +727,49 @@ export default function App() {
                   </tr>
                 ))}</tbody>
               </table>
+            </div>
+          </section>
+        )}
+
+        {view === "investments" && user.role === "owner" && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Investments</h1>
+            <div className="card p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Total invested</p>
+              <p className="mt-1 text-3xl font-semibold tracking-tight">{money(investTotal)}</p>
+            </div>
+            <div className="card space-y-3 p-4">
+              <div className="grid gap-2 sm:grid-cols-4">
+                <input className="input" placeholder="Investor name" value={investment.name} onChange={(e) => setInvestment({ ...investment, name: e.currentTarget.value })} />
+                <input className="input" type="number" placeholder="Amount ₹" value={investment.amount} onChange={(e) => setInvestment({ ...investment, amount: e.currentTarget.value })} />
+                <input className="input" type="date" value={investment.date} onChange={(e) => setInvestment({ ...investment, date: e.currentTarget.value })} />
+                <input className="input" placeholder="Note" value={investment.note} onChange={(e) => setInvestment({ ...investment, note: e.currentTarget.value })} />
+              </div>
+              <button className="btn btn-primary" onClick={() => void addInvestmentNow()}>Add investment</button>
+              {investmentMsg && <p role="status" className="text-sm text-stone-600">{investmentMsg}</p>}
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="card overflow-x-auto">
+                <table className="w-full min-w-[520px] text-left text-sm">
+                  <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Investor</th><th className="px-3 py-2 text-right">Amount</th><th /></tr></thead>
+                  <tbody>{investments.map((row) => (
+                    <tr key={row.id} className="border-t border-stone-100">
+                      <td className="px-3 py-2">{row.invested_on}</td>
+                      <td className="px-3 py-2 font-medium">{row.investor_name}</td>
+                      <td className="px-3 py-2 text-right">{money(row.amount_paise)}</td>
+                      <td className="px-3 py-2 text-right"><button className="text-xs text-red-700 underline" onClick={() => void removeInvestment(row.id)}>Delete</button></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+              <div className="card p-4">
+                <h2 className="mb-3 text-sm font-medium">By investor</h2>
+                {investments.length === 0 ? (
+                  <p className="text-sm text-stone-500">No investments yet.</p>
+                ) : (
+                  <Donut items={Object.entries(investments.reduce<Record<string, number>>((acc, row) => { acc[row.investor_name] = (acc[row.investor_name] ?? 0) + row.amount_paise; return acc; }, {})).map(([label, value]) => ({ label, value }))} />
+                )}
+              </div>
             </div>
           </section>
         )}
@@ -780,6 +921,23 @@ export default function App() {
                       <td className="px-3 py-2 text-right">{qty(item.stockLeftBase, item.unit)}</td>
                       <td className="px-3 py-2 text-right">
                         <button className="text-sm underline" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "" })}>Edit</button>
+                        {user.role === "owner" && (
+                          <button
+                            className="ml-3 text-sm text-red-700 underline"
+                            onClick={async () => {
+                              if (!window.confirm(`Delete ${item.name}?`)) return;
+                              try {
+                                await api.deleteItem(item.id);
+                                setItems((await api.items()).items);
+                                setItemsMsg(`${item.name} deleted`);
+                              } catch (err) {
+                                setItemsMsg(err instanceof Error ? err.message : String(err));
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -75,10 +75,22 @@ export const api = {
   items: () => request<{ items: Item[] }>("/api/items"),
   createItem: (body: { name: string; unit: string; category?: string; minStockBase: number }) =>
     request<{ item: Item }>("/api/items", { method: "POST", body: JSON.stringify(body) }),
+  deleteItem: (id: number) => request<{ ok: boolean }>(`/api/items/${id}`, { method: "DELETE" }),
   updateItem: (id: number, body: { name: string; unit: string; category?: string; minStockBase: number }) =>
     request<{ item: Item }>(`/api/items/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   createCustomer: (body: { name: string; phone?: string; email?: string; gstin?: string; address?: string }) =>
     request<{ customer: { id: number } }>("/api/customers", { method: "POST", body: JSON.stringify(body) }),
+  statsDaily: (days = 14) =>
+    request<{ daily: Array<{ date: string; sales: string; expenses: string }> }>(`/api/stats/daily?days=${days}`),
+  expenseCategories: () =>
+    request<{ categories: Array<{ category: string; total: string }> }>("/api/stats/expense-categories"),
+  investments: () =>
+    request<{ investments: Array<{ id: number; investor_name: string; amount_paise: number; invested_on: string; note: string | null }>; totalPaise: number }>(
+      "/api/investments",
+    ),
+  addInvestment: (body: { investorName: string; amountPaise: number; date: string; note?: string }) =>
+    request<{ ok: boolean; id: number }>("/api/investments", { method: "POST", body: JSON.stringify(body) }),
+  deleteInvestment: (id: number) => request<{ ok: boolean }>(`/api/investments/${id}`, { method: "DELETE" }),
   stats: () => request<{ stats: { today_sales: number; month_sales: number; month_profit: number; month_expenses: number; low_stock: number } }>("/api/stats"),
   purchases: () => request<{ purchases: Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }> }>("/api/purchases"),
   addPurchase: (body: { itemId: number; qty: number; unitPricePaise: number; date: string; supplierName?: string; paymentMode?: string }) =>
