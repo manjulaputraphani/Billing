@@ -505,7 +505,6 @@ export default {
         }
         if (url.pathname === "/api/settings/notifications/test" && request.method === "POST") {
           const cfg = await readNotify(env);
-          if (!env.RESEND_API_KEY) return json({ error: "Email is not configured (RESEND_API_KEY missing)" }, { status: 503 });
           if (cfg.emails.length === 0) return json({ error: "Add at least one notification email" }, { status: 400 });
           const storedKey = await getResendKey(env);
           if (!storedKey) return json({ error: "Email is not configured (add a Resend API key)" }, { status: 503 });
