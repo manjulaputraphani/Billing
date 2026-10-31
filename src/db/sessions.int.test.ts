@@ -51,7 +51,7 @@ suite("login sessions + usage metrics", () => {
       expect(usage[0].lastLogoutAt).toBeTruthy();
 
       expect(await listSessions(db!, user.id)).toHaveLength(1);
-      expect(formatDuration(usage[0].activeSeconds)).toMatch(/s$/);
+      expect(formatDuration(usage[0].activeSeconds)).toMatch(/^(\d+h \d+m|\d+m \d+s|\d+s|0m)$/);
     },
   );
 

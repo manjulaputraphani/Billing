@@ -3,15 +3,17 @@ import { formatDuration, type UserUsage } from "./sessions";
 
 describe("usage metrics", () => {
   it("formats durations for humans", () => {
-    expect(formatDuration(0)).toBe("0s");
+    expect(formatDuration(0)).toBe("0m");
     expect(formatDuration(45)).toBe("45s");
     expect(formatDuration(90)).toBe("1m 30s");
     expect(formatDuration(3600)).toBe("1h 0m");
     expect(formatDuration(3900)).toBe("1h 5m");
+    expect(formatDuration(3045)).toBe("50m 45s");
+    expect(formatDuration(7500)).toBe("2h 5m");
   });
 
   it("never shows a negative duration", () => {
-    expect(formatDuration(-10)).toBe("0s");
+    expect(formatDuration(-10)).toBe("0m");
   });
 
   it("keeps per-user totals separate", () => {

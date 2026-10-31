@@ -271,8 +271,8 @@ export const api = {
   approveUser: (id: number, role: "staff" | "owner") =>
     request<{ ok: boolean; role: string }>(`/api/users/${id}/approve`, { method: "POST", body: JSON.stringify({ role }) }),
   rejectUser: (id: number) => request<{ ok: boolean }>(`/api/users/${id}/reject`, { method: "POST" }),
-  addUser: (name: string, phone: string, password: string) =>
-    request<{ user: Member }>("/api/users", { method: "POST", body: JSON.stringify({ name, phone, password }) }),
+  addUser: (name: string, phone: string, password: string, role: "owner" | "staff" = "staff") =>
+    request<{ user: Member }>("/api/users", { method: "POST", body: JSON.stringify({ name, phone, password, role }) }),
   resetUserPassword: (id: number, password: string) =>
     request<{ ok: boolean }>(`/api/users/${id}/password`, { method: "POST", body: JSON.stringify({ password }) }),
   setUserActive: (id: number, active: boolean) =>

@@ -161,12 +161,12 @@ export async function endSession(db: Db, userId: number, source?: SessionSource)
   return seconds;
 }
 
-/** "1h 5m" / "12m 30s" / "45s" */
+/** "1h 5m" / "50m 45s" / "0m" — whole units, never negative. */
 export function formatDuration(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0m";
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  const rest = seconds % 60;
+  const rest = Math.floor(seconds % 60);
   if (hours > 0) return `${hours}h ${minutes}m`;
   if (minutes > 0) return `${minutes}m ${rest}s`;
   return `${rest}s`;
@@ -205,8 +205,10 @@ export async function userUsageMetrics(db: Db): Promise<UserUsage[]> {
       sessions: sql<number>`count(${userSessions.id})`.mapWith(Number),
       // An open session counts up to the cap (it is assumed to have ended when
       // the sign-in expired), so a forgotten tab never shows as "still active".
+      // NOTE: `least(null, cap)` in Postgres ignores the null and returns the
+      // cap, so a user with no sessions must be guarded with coalesce(…, 0).
       activeSeconds:
-        sql<number>`coalesce(sum(coalesce(${userSessions.durationSeconds}, least(extract(epoch from (now() - ${userSessions.startedAt})), ${SESSION_MAX_SECONDS}))), 0)`.mapWith(Number),
+        sql<number>`coalesce(sum(coalesce(${userSessions.durationSeconds}, least(coalesce(extract(epoch from (now() - ${userSessions.startedAt})), 0), ${SESSION_MAX_SECONDS}))), 0)`.mapWith(Number),
       openSessions:
         sql<number>`count(${userSessions.id}) filter (where ${userSessions.endedAt} is null and ${userSessions.startedAt} > now() - interval '12 hours')`.mapWith(Number),
       lastLoginAt: sql<string | null>`max(${userSessions.startedAt})`.mapWith(String),

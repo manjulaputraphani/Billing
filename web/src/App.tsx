@@ -28,9 +28,11 @@ import ItemThumb from "./components/ItemThumb";
 import SalesChart from "./components/SalesChart";
 import {
   IconActivity,
+  IconBarChart,
   IconBill,
   IconClose,
   IconCoffee as IconCoffeeNav,
+  IconCrown,
   IconDashboard,
   IconExpenses,
   IconImage,
@@ -38,8 +40,11 @@ import {
   IconInvestments,
   IconInvoice,
   IconItems,
+  IconKey,
+  IconLock,
   IconMenu,
   IconPackage,
+  IconPhone,
   IconPlus,
   IconPurchases,
   IconReports,
@@ -50,6 +55,11 @@ import {
   IconStore,
   IconTeam,
   IconTruck,
+  IconUser,
+  IconUserCheck,
+  IconUserPlus,
+  IconUsers,
+  IconUserX,
 } from "./components/icons";
 
 type View = "dashboard" | "reports" | "customers" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
@@ -91,16 +101,32 @@ const CHART_COLORS = [
   "var(--c-chart-6)",
 ];
 
-/** "1h 5m" — how long a member was active. */
+/** "Bh Phani Kumar" → "BK"; "Chaluvaraj" → "CH". */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/** 7569208757 → "75692•••57" */
+function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length <= 7) return phone;
+  return `${digits.slice(0, 5)}•••${digits.slice(-2)}`;
+}
+
+/** "1h 5m", "50m 45s", "0m" — how long a member was active (whole units). */
 function formatDuration(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0m";
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  const rest = seconds % 60;
+  const rest = Math.floor(seconds % 60);
   if (hours > 0) return `${hours}h ${minutes}m`;
   if (minutes > 0) return `${minutes}m ${rest}s`;
   return `${rest}s`;
 }
+
 
 function Donut({ items }: { items: { label: string; value: number }[] }) {  const total = items.reduce((sum, item) => sum + item.value, 0) || 1;
   let acc = 0;
@@ -163,6 +189,7 @@ export default function App() {
   const [memberName, setMemberName] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
+  const [memberRole, setMemberRole] = useState<"owner" | "staff">("staff");
   const [teamStatus, setTeamStatus] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<Member | null>(null);
   const [resetPassword, setResetPassword] = useState("");
@@ -731,11 +758,12 @@ export default function App() {
   async function addMember() {
     setTeamStatus(null);
     try {
-      await api.addUser(memberName, memberPhone, memberPassword);
+      await api.addUser(memberName, memberPhone, memberPassword, memberRole);
       setTeamStatus("Member added");
       setMemberName("");
       setMemberPhone("");
       setMemberPassword("");
+      setMemberRole("staff");
       await loadMembers();
     } catch (err) {
       setTeamStatus(err instanceof Error ? err.message : String(err));
@@ -2299,102 +2327,207 @@ export default function App() {
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Team</h1>
             {usage.length > 0 && (
               <div className="card overflow-x-auto">
-                <div className="px-4 py-3">
-                  <h2 className="text-sm font-medium">Usage</h2>
-                  <p className="text-xs text-muted">Who logged in, when they signed out and how long they were active.</p>
+                <div className="flex items-start gap-2 px-4 py-3">
+                  <IconBarChart size={16} className="mt-0.5 shrink-0 text-muted" />
+                  <div>
+                    <h2 className="text-sm font-medium">Usage</h2>
+                    <p className="text-xs text-muted">Who logged in, when they signed out and how long they were active.</p>
+                  </div>
                 </div>
-                <table className="w-full min-w-[560px] text-left text-sm">
+                <table className="w-full min-w-[640px] text-left text-sm">
                   <thead>
                     <tr>
-                      <th className="px-3 py-2">Member</th>
-                      <th className="px-3 py-2 text-right">Sessions</th>
-                      <th className="px-3 py-2 text-right">Active time</th>
-                      <th className="px-3 py-2">Last login</th>
-                      <th className="px-3 py-2">Last logout</th>
+                      <th className="px-4 py-2">Member</th>
+                      <th className="px-4 py-2 text-right">Sessions</th>
+                      <th className="px-4 py-2 text-right">Active time</th>
+                      <th className="px-4 py-2">Last login</th>
+                      <th className="px-4 py-2">Last logout</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {usage.map((row) => (
-                      <tr key={row.userId} className="border-t border-line">
-                        <td className="px-3 py-2 font-medium">
-                          {row.name} <span className="text-muted">· {row.role}</span>
-                        </td>
-                        <td className="px-3 py-2 text-right">{row.sessions}</td>
-                        <td className="px-3 py-2 text-right">{formatDuration(row.activeSeconds)}</td>
-                        <td className="px-3 py-2">{row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleString("en-IN") : "—"}</td>
-                        <td className="px-3 py-2">
-                          {row.lastLogoutAt ? (
-                            new Date(row.lastLogoutAt).toLocaleString("en-IN")
-                          ) : row.openSessions > 0 ? (
-                            <span className="badge badge-warn">still active</span>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {usage.map((row) => {
+                      const online =
+                        row.lastLoginAt != null &&
+                        (row.lastLogoutAt == null || new Date(row.lastLoginAt) > new Date(row.lastLogoutAt));
+                      return (
+                        <tr key={row.userId} className="border-t border-line">
+                          <td className="px-4 py-2">
+                            <span className="flex items-center gap-2">
+                              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-[11px] font-semibold text-secondary-ink">
+                                {initials(row.name)}
+                              </span>
+                              <span className="flex flex-wrap items-center gap-2 font-medium">
+                                {row.name}
+                                {row.role === "owner" ? (
+                                  <span className="badge badge-warn inline-flex items-center gap-1"><IconCrown size={12} /> Owner</span>
+                                ) : (
+                                  <span className="badge badge-info inline-flex items-center gap-1"><IconUser size={12} /> Staff</span>
+                                )}
+                              </span>
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-right">{row.sessions}</td>
+                          <td className="px-4 py-2 text-right">{formatDuration(row.activeSeconds)}</td>
+                          <td className="whitespace-nowrap px-4 py-2">{row.lastLoginAt ? formatDateTime(row.lastLoginAt) : "—"}</td>
+                          <td className="whitespace-nowrap px-4 py-2">
+                            {online ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs text-success-ink">
+                                <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+                                Online now
+                              </span>
+                            ) : row.lastLogoutAt ? (
+                              formatDateTime(row.lastLogoutAt)
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             )}
+
+            {/* Members */}
             <div className="card space-y-3 p-4">
-              {members.map((member) => (
-                <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 text-sm last:border-0">
-                  <span>
-                    <b>{member.name}</b> · {member.phone} · {member.role}
-                    {member.pending && <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-ink">awaiting approval</span>}
-                    {!member.pending && !member.active && <span className="ml-2 rounded-full bg-error-soft px-2 py-0.5 text-xs text-error-ink">disabled</span>}
-                  </span>
-                  {member.pending ? (
-                    <span className="flex items-center gap-2">
-                      <select
-                        className="input"
-                        value={approveRole[member.id] ?? "staff"}
-                        onChange={(e) => setApproveRole({ ...approveRole, [member.id]: e.currentTarget.value as "staff" | "owner" })}
-                      >
-                        <option value="staff">Staff</option>
-                        <option value="owner">Owner</option>
-                      </select>
-                      <button className="btn-mini btn-mini-ok" onClick={() => void api.approveUser(member.id, approveRole[member.id] ?? "staff").then(loadMembers).then(() => setTeamStatus(`${member.name} approved`))}>Approve</button>
-                      <button className="btn-mini btn-mini-danger" onClick={() => void api.rejectUser(member.id).then(loadMembers).then(() => setTeamStatus("Request rejected"))}>Reject</button>
+              <div className="flex items-center gap-2">
+                <IconUsers size={16} className="text-muted" />
+                <h2 className="text-sm font-medium">Members</h2>
+              </div>
+              {members.map((member) => {
+                const isSelf = member.id === user.id;
+                return (
+                  <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 text-sm last:border-0">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-[11px] font-semibold text-secondary-ink">
+                        {initials(member.name)}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <b>{member.name}</b>
+                          {isSelf && <span className="text-xs text-muted">(you)</span>}
+                          {member.role === "owner" ? (
+                            <span className="badge badge-warn inline-flex items-center gap-1"><IconCrown size={12} /> Owner</span>
+                          ) : (
+                            <span className="badge badge-info inline-flex items-center gap-1"><IconUser size={12} /> Staff</span>
+                          )}
+                          {member.pending && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-ink">awaiting approval</span>}
+                          {!member.pending && !member.active && <span className="rounded-full bg-error-soft px-2 py-0.5 text-xs text-error-ink">disabled</span>}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-muted">{maskPhone(member.phone)}</span>
+                      </span>
                     </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <select
-                        className="input"
-                        value={member.role}
-                        disabled={member.phone === "7569208757"}
-                        onChange={(e) => {
-                          const role = e.currentTarget.value as "staff" | "owner";
-                          void api.setUserRole(member.id, role).then(loadMembers).then(() => setTeamStatus(`${member.name} is now ${role}`));
-                        }}
-                      >
-                        <option value="staff">Staff</option>
-                        <option value="owner">Owner</option>
-                      </select>
-                      <button className="btn-mini" onClick={() => { setResetTarget(member); setResetPassword(""); }}>Reset password</button>
-                      <button className={`btn-mini ${member.active ? "btn-mini-danger" : "btn-mini-ok"}`} onClick={() => void toggleMember(member)}>
-                        {member.active ? "Deactivate" : "Enable"}
-                      </button>
-                    </span>
-                  )}
-                </div>
-              ))}
+                    {member.pending ? (
+                      <span className="flex items-center gap-2">
+                        <select
+                          className="input"
+                          value={approveRole[member.id] ?? "staff"}
+                          onChange={(e) => setApproveRole({ ...approveRole, [member.id]: e.currentTarget.value as "staff" | "owner" })}
+                        >
+                          <option value="staff">Staff</option>
+                          <option value="owner">Owner</option>
+                        </select>
+                        <button className="btn-mini btn-mini-ok" onClick={() => void api.approveUser(member.id, approveRole[member.id] ?? "staff").then(loadMembers).then(() => setTeamStatus(`${member.name} approved`))}>Approve</button>
+                        <button className="btn-mini btn-mini-danger" onClick={() => void api.rejectUser(member.id).then(loadMembers).then(() => setTeamStatus("Request rejected"))}>Reject</button>
+                      </span>
+                    ) : !isSelf ? (
+                      <span className="flex items-center gap-2">
+                        <select
+                          className="input"
+                          value={member.role}
+                          onChange={(e) => {
+                            const role = e.currentTarget.value as "staff" | "owner";
+                            void api.setUserRole(member.id, role).then(loadMembers).then(() => setTeamStatus(`${member.name} is now ${role}`));
+                          }}
+                        >
+                          <option value="staff">Staff</option>
+                          <option value="owner">Owner</option>
+                        </select>
+                        <button
+                          className="btn-mini whitespace-nowrap"
+                          title="Reset password"
+                          aria-label={`Reset password for ${member.name}`}
+                          onClick={() => { setResetTarget(member); setResetPassword(""); }}
+                        >
+                          <IconKey size={13} /> Reset
+                        </button>
+                        {member.active ? (
+                          <button
+                            className="btn-mini btn-mini-danger whitespace-nowrap"
+                            title="Disable member"
+                            aria-label={`Disable ${member.name}`}
+                            onClick={() => {
+                              if (window.confirm(`Disable ${member.name}? They will not be able to sign in.`)) {
+                                void toggleMember(member);
+                              }
+                            }}
+                          >
+                            <IconUserX size={13} /> Disable
+                          </button>
+                        ) : (
+                          <button
+                            className="btn-mini btn-mini-ok whitespace-nowrap"
+                            title="Enable member"
+                            aria-label={`Enable ${member.name}`}
+                            onClick={() => void toggleMember(member)}
+                          >
+                            <IconUserCheck size={13} /> Enable
+                          </button>
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
               {resetTarget && (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-2 p-3">
                   <span className="text-sm">New password for <b>{resetTarget.name}</b>:</span>
-                  <input className="input flex-1" type="password" value={resetPassword} onChange={(e) => setResetPassword(e.currentTarget.value)} />
+                  <input className="input flex-1" type="password" autoComplete="new-password" value={resetPassword} onChange={(e) => setResetPassword(e.currentTarget.value)} />
                   <button className="btn btn-primary" onClick={() => void saveResetPassword()}>Save</button>
                   <button className="btn-mini" onClick={() => setResetTarget(null)}>Cancel</button>
                 </div>
               )}
-              <div className="grid gap-2 sm:grid-cols-3">
-                <input className="input" placeholder="Name" value={memberName} onChange={(e) => setMemberName(e.currentTarget.value)} />
-                <input className="input" placeholder="Phone (10 digits)" value={memberPhone} onChange={(e) => setMemberPhone(e.currentTarget.value)} />
-                <input className="input" type="password" placeholder="Password (6+)" value={memberPassword} onChange={(e) => setMemberPassword(e.currentTarget.value)} />
+            </div>
+
+            {/* Add member */}
+            <div className="card p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <IconUserPlus size={16} className="text-muted" />
+                <h2 className="text-sm font-medium">Add member</h2>
               </div>
-              <button className="btn btn-primary" onClick={() => void addMember()}>Add member</button>
-              {teamStatus && <p role="status" className="text-sm text-muted">{teamStatus}</p>}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-name">Name</label>
+                  <div className="relative">
+                    <IconUser size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <input id="member-name" className="input input-icon" autoComplete="off" placeholder="Full name" value={memberName} onChange={(e) => setMemberName(e.currentTarget.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-phone">Phone</label>
+                  <div className="relative">
+                    <IconPhone size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <input id="member-phone" className="input input-icon" autoComplete="off" placeholder="10 digits" value={memberPhone} onChange={(e) => setMemberPhone(e.currentTarget.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-password">Password</label>
+                  <div className="relative">
+                    <IconLock size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <input id="member-password" className="input input-icon" type="password" autoComplete="new-password" placeholder="6+ characters" value={memberPassword} onChange={(e) => setMemberPassword(e.currentTarget.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-role">Role</label>
+                  <select id="member-role" className="input" value={memberRole} onChange={(e) => setMemberRole(e.currentTarget.value as "owner" | "staff")}>
+                    <option value="staff">Staff</option>
+                    <option value="owner">Owner</option>
+                  </select>
+                </div>
+              </div>
+              <button className="btn btn-primary mt-3" onClick={() => void addMember()}>Add member</button>
+              {teamStatus && <p role="status" className="mt-2 text-sm text-muted">{teamStatus}</p>}
             </div>
           </section>
         )}

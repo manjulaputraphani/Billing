@@ -718,6 +718,7 @@ export default {
             const name = String(body.name ?? "").trim();
             const phone = normalizePhone(String(body.phone ?? ""));
             const password = String(body.password ?? "");
+            const role = body.role === "owner" ? "owner" : "staff";
             if (!name) return json({ error: "Name is required" }, { status: 400 });
             if (!phone.valid) return json({ error: phone.reason }, { status: 400 });
             const pw = validatePassword(password);
@@ -727,10 +728,10 @@ export default {
             const created = await sqlQuery(
               env,
               `insert into app_users (name, phone, password_hash, role) values ($1,$2,$3,$4) returning id, name, phone, role, active`,
-              [name, phone.phone, hashPasswordPhc(password), "staff"],
+              [name, phone.phone, hashPasswordPhc(password), role],
             );
-            await asActor(actor, () => logActivity(db, { event: "user.create", summary: `Member added: ${name} (staff)`, entity: "user", entityId: Number(created[0].id) }));
-            await notifyOwners(env, "member", `Member added — ${name}`, `<p><b>${name}</b> (${phone.phone}) was added as staff by ${session.name}.</p>`);
+            await asActor(actor, () => logActivity(db, { event: "user.create", summary: `Member added: ${name} (${role})`, entity: "user", entityId: Number(created[0].id) }));
+            await notifyOwners(env, "member", `Member added — ${name}`, `<p><b>${name}</b> (${phone.phone}) was added as ${role} by ${session.name}.</p>`);
             return json({ user: created[0] });
           }
 
