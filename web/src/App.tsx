@@ -27,6 +27,7 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -54,6 +55,16 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function emailBill(id: number) {
+    setEmailStatus("Sending…");
+    try {
+      const result = await api.emailBill(id);
+      setEmailStatus(`Emailed to ${result.to}`);
+    } catch (err) {
+      setEmailStatus(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -179,8 +190,12 @@ export default function App() {
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold tracking-tight">Bill preview</h2>
-                  <button className="text-sm underline" onClick={() => setBill(null)}>Close</button>
+                  <div className="flex items-center gap-3">
+                    <button className="btn btn-primary" onClick={() => void emailBill(bill.id)}>Email bill</button>
+                    <button className="text-sm underline" onClick={() => setBill(null)}>Close</button>
+                  </div>
                 </div>
+                {emailStatus && <p className="text-sm text-stone-600" role="status">{emailStatus}</p>}
                 <div className="overflow-hidden rounded-xl border border-stone-200 bg-white">
                   <iframe title={`Bill ${bill.billNo}`} className="h-[1080px] w-full" srcDoc={buildBillHtml(bill as never, shop)} />
                 </div>

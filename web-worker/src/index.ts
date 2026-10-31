@@ -13,6 +13,8 @@ import { getSaleBill, listSaleBills } from "../../src/db/billing";
 import { listExpenses } from "../../src/db/expenses";
 import { listActivity } from "../../src/db/activity";
 import { getShopDetails, saveShopDetails } from "../../src/db/settings";
+import { buildBillHtml } from "../../src/lib/printBill";
+import { logActivity } from "../../src/db/activity";
 import { createItem, deleteItem } from "../../src/db/items";
 import { cancelSaleBill, createCustomer, createSaleBill } from "../../src/db/billing";
 import { addPurchase, deletePurchase } from "../../src/db/purchases";
@@ -23,6 +25,8 @@ import { setAuditActor, type AuditActor } from "../../src/db/activity";
 export interface Env {
   DATABASE_URL?: string;
   SESSION_SECRET?: string;
+  RESEND_API_KEY?: string;
+  MAIL_FROM?: string;
 }
 
 const COOKIE = "sdhhe_session";
@@ -336,6 +340,48 @@ export default {
       if (url.pathname === "/api/shop" && request.method === "PUT") {
         await asActor(actor, () => saveShopDetails(db, body));
         return json({ ok: true });
+      }
+
+      // ---- W5 email a bill (Resend API) ----
+      if (url.pathname.match(/^\/api\/bills\/\d+\/email$/) && request.method === "POST") {
+        const id = Number(url.pathname.split("/")[3]);
+        const bill = await getSaleBill(db, id);
+        if (!bill) return json({ error: "Bill not found" }, { status: 404 });
+        if (!bill.customerEmail) {
+          return json({ error: "This customer has no email — add it in GST Billing" }, { status: 400 });
+        }
+        if (!env.RESEND_API_KEY) {
+          return json({ error: "Email is not configured (RESEND_API_KEY missing)" }, { status: 503 });
+        }
+        const shop = await getShopDetails(db);
+        const from = env.MAIL_FROM || "SREE DURGA HARIHARA ENTERPRISES <onboarding@resend.dev>";
+        const subject = `Invoice ${bill.billNo} — ${shop.name}`;
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.RESEND_API_KEY}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            from,
+            to: [bill.customerEmail],
+            subject,
+            html: buildBillHtml(bill, shop),
+          }),
+        });
+        if (!res.ok) {
+          const detail = await res.text();
+          return json({ error: `Email failed: ${detail.slice(0, 200)}` }, { status: 502 });
+        }
+        await asActor(actor, () =>
+          logActivity(db, {
+            event: "bill.email",
+            summary: `Bill ${bill.billNo} emailed to ${bill.customerEmail}`,
+            entity: "sale",
+            entityId: id,
+          }),
+        );
+        return json({ ok: true, to: bill.customerEmail });
       }
 
       // ---- W3c transactional writes (Neon WebSocket pool, verified on Workers) ----

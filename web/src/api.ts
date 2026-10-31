@@ -75,6 +75,7 @@ export const api = {
   bill: (id: number) => request<{ bill: BillDetail }>(`/api/bills/${id}`),
   activity: () => request<{ activity: ActivityRow[] }>("/api/activity?limit=25"),
   shop: () => request<{ shop: Record<string, string> }>("/api/shop"),
+  emailBill: (id: number) => request<{ ok: boolean; to?: string }>(`/api/bills/${id}/email`, { method: "POST" }),
 };
 
 export const money = (paise: number): string =>
