@@ -112,7 +112,7 @@ describe("Settings — security", () => {
     await user.click(await screen.findByRole("button", { name: "Lock now" }));
     expect(logActivity).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ event: "lock" }),
+      expect.objectContaining({ event: "user.logout" }),
     );
     expect(onLock).toHaveBeenCalledTimes(1);
   });

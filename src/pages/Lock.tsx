@@ -55,13 +55,13 @@ export default function Lock({ url, onLogin }: Props) {
   async function finishLogin(user: AppUser) {
     setAuditActor({ userId: user.id, name: user.name, role: user.role });
     try {
-      await logActivity(db, { event: "login", summary: `${user.name} signed in` });
+      await logActivity(db, { event: "user.login", summary: `${user.name} signed in` });
     } catch {
       // logging must never block sign-in
     }
     // Open a session so the usage metrics know who was in and for how long.
     try {
-      await startSession(db, user.id, "desktop");
+      await startSession(db, user.id, "desktop", user.name);
     } catch {
       // session tracking must never block sign-in
     }

@@ -169,7 +169,7 @@ export const api = {
   createBill: (body: Record<string, unknown>) => request<{ bill: { saleId: number; billNo: string; totalPaise: number } }>("/api/bills", { method: "POST", body: JSON.stringify(body) }),
   bills: () => request<{ bills: BillRow[] }>("/api/bills?limit=100"),
   bill: (id: number) => request<{ bill: BillDetail }>(`/api/bills/${id}`),
-  activity: () => request<{ activity: ActivityRow[] }>("/api/activity?limit=25"),
+  activity: () => request<{ activity: ActivityRow[] }>("/api/activity?limit=100"),
   shop: () => request<{ shop: Record<string, string> }>("/api/shop"),
   signup: (name: string, phone: string, password: string) =>
     request<{ ok: boolean; pending: boolean }>("/api/auth/signup", {

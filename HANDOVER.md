@@ -25,8 +25,10 @@ Both editions share the coffee theme, the weighted-average costing, FY reports a
   `src/db/reports.ts`. Worker: `/api/reports/fin-year|fin-years|deals`.
 - **Expenses** now carry a type: purchase (into stock cost) / sale (onto the deal) / general.
   Purchases have a "Transport ₹" field, bills a "Delivery ₹" field (both editions).
-- **Login sessions** (`user_sessions`) + `user.login` / `user.logout` in the activity log; per-member
-  sessions, active time and last login in web *Team → Usage*. `src/db/sessions.ts`.
+- **Login sessions** (`user_sessions`) + `user.login` / `user.logout` in the activity log (actor = the
+  member's name); per-member sessions, active time and last login in web *Team → Usage*.
+  `src/db/sessions.ts`. The Activity list now **refetches when the tab is opened** (it used to load
+  once at sign-in, so a colleague's sign-in stayed invisible) and has a Refresh button.
 - DB migrated additively (new columns + `user_sessions`); cost pools backfilled from open batches.
   Required test case verified: avg ₹102.33/kg, gross ₹153.33, net ₹113.33, 280 kg left.
 

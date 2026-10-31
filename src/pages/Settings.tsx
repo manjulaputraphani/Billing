@@ -293,7 +293,7 @@ export default function Settings({
 
   async function lockNow() {
     try {
-      await logActivity(db, { event: "lock", summary: "Locked the app" });
+      await logActivity(db, { event: "user.logout", summary: "Locked the app (session closed)" });
     } catch {
       // Never block locking on a logging failure.
     }
@@ -884,6 +884,13 @@ export default function Settings({
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => void listActivity(db).then(setActivity).catch(() => setActivity([]))}
+            >
+              Refresh
+            </button>
           </div>
         )}
         {activity.length === 0 ? (

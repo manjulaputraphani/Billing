@@ -225,8 +225,25 @@ export default function App() {
     };
   }, [user, view, finYear]);
 
-  /** The costing method in force (WAC by default). */
+  /**
+   * Refresh the activity list whenever the Activity or Dashboard tab is opened —
+   * otherwise a colleague's sign-in only appears after a full reload.
+   */
   useEffect(() => {
+    if (!user || (view !== "activity" && view !== "dashboard")) return;
+    let cancelled = false;
+    api
+      .activity()
+      .then((res) => {
+        if (!cancelled) setActivity(res.activity);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view]);
+
+  /** The costing method in force (WAC by default). */  useEffect(() => {
     if (!user || user.role !== "owner" || view !== "settings") return;
     let cancelled = false;
     api
@@ -1415,12 +1432,20 @@ export default function App() {
                   <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Activity</h1>
                   <p className="text-sm text-muted">{shown.length} events · who did what, when</p>
                 </div>
-                <select className="input max-w-52" value={activityFilter} onChange={(e) => setActivityFilter(e.currentTarget.value)}>
-                  <option value="">All members</option>
-                  {actors.map((actor) => (
-                    <option key={actor} value={actor}>{actor}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select className="input max-w-52" value={activityFilter} onChange={(e) => setActivityFilter(e.currentTarget.value)}>
+                    <option value="">All members</option>
+                    {actors.map((actor) => (
+                      <option key={actor} value={actor}>{actor}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn-mini"
+                    onClick={() => void api.activity().then((res) => setActivity(res.activity))}
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
               {Object.entries(days).map(([day, rows]) => (
                 <div key={day} className="space-y-2">

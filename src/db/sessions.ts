@@ -42,20 +42,32 @@ export async function startSession(
   db: Db,
   userId: number,
   source: SessionSource,
+  name?: string,
 ): Promise<number> {
   const [created] = await db
     .insert(userSessions)
     .values({ userId, source, startedAt: new Date() })
     .returning({ id: userSessions.id });
+  const actor = name ?? (await userName(db, userId));
   await db.insert(activityLog).values({
     userId,
-    actor: `user:${userId}`,
+    actor,
     event: "user.login",
     summary: `Signed in (${source})`,
     entity: "user",
     entityId: userId,
   });
   return created.id;
+}
+
+/** The member's name — used as the actor on the activity rows. */
+async function userName(db: Db, userId: number): Promise<string> {
+  const [user] = await db
+    .select({ name: appUsers.name })
+    .from(appUsers)
+    .where(eq(appUsers.id, userId))
+    .limit(1);
+  return user?.name ?? `user:${userId}`;
 }
 
 /**
@@ -79,6 +91,7 @@ export async function endSession(db: Db, userId: number, source?: SessionSource)
     );
 
   let seconds = 0;
+  const actor = await userName(db, userId);
   for (const session of open) {
     const endedAt = new Date();
     const duration = Math.max(0, Math.round((endedAt.getTime() - new Date(session.startedAt).getTime()) / 1000));
@@ -89,7 +102,7 @@ export async function endSession(db: Db, userId: number, source?: SessionSource)
       .where(eq(userSessions.id, session.id));
     await db.insert(activityLog).values({
       userId,
-      actor: `user:${userId}`,
+      actor,
       event: "user.logout",
       summary: `Signed out after ${formatDuration(duration)}`,
       entity: "user",

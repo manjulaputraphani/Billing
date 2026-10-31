@@ -243,7 +243,7 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
   };
   const token = await createToken(session, env.SESSION_SECRET as string);
   // Track the session so the activity log knows who was in and for how long.
-  await startSession(getDb(env.DATABASE_URL as string), session.uid, "web");
+  await startSession(getDb(env.DATABASE_URL as string), session.uid, "web", session.name);
   return json(
     { user: { id: session.uid, name: session.name, role: session.role } },
     { headers: { "Set-Cookie": sessionCookie(token, url) } },
