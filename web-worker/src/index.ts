@@ -6,14 +6,17 @@
 import { neon } from "@neondatabase/serverless";
 import { argon2id } from "@noble/hashes/argon2.js";
 import { normalizePhone } from "../../src/logic/auth";
-import { getDb } from "../../src/db/client";
+import { getDb, withTransaction } from "../../src/db/client";
+import { sql } from "drizzle-orm";
 import { listItems } from "../../src/db/items";
 import { getSaleBill, listSaleBills } from "../../src/db/billing";
 import { listExpenses } from "../../src/db/expenses";
 import { listActivity } from "../../src/db/activity";
 import { getShopDetails, saveShopDetails } from "../../src/db/settings";
 import { createItem, deleteItem } from "../../src/db/items";
-import { createCustomer } from "../../src/db/billing";
+import { cancelSaleBill, createCustomer, createSaleBill } from "../../src/db/billing";
+import { addPurchase, deletePurchase } from "../../src/db/purchases";
+import { saveStockEntry } from "../../src/db/stock";
 import { createExpense, deleteExpense, updateExpense } from "../../src/db/expenses";
 import { setAuditActor, type AuditActor } from "../../src/db/activity";
 
@@ -254,6 +257,12 @@ export default {
 
     const db = getDb(env.DATABASE_URL as string);
     try {
+      if (url.pathname === "/api/_txn-test" && request.method === "GET") {
+        const rows = await withTransaction(env.DATABASE_URL as string, (tx) =>
+          tx.execute(sql`select 1 as ok`),
+        );
+        return json({ ok: true, rows });
+      }
       if (url.pathname === "/api/items" && request.method === "GET") {
         return json({ items: await listItems(db) });
       }
@@ -327,6 +336,31 @@ export default {
       if (url.pathname === "/api/shop" && request.method === "PUT") {
         await asActor(actor, () => saveShopDetails(db, body));
         return json({ ok: true });
+      }
+
+      // ---- W3c transactional writes (Neon WebSocket pool, verified on Workers) ----
+      if (url.pathname === "/api/purchases" && request.method === "POST") {
+        return json({ purchase: await asActor(actor, () => addPurchase(db, body)) });
+      }
+
+      if (url.pathname.startsWith("/api/purchases/") && request.method === "DELETE") {
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid purchase id" }, { status: 400 });
+        await asActor(actor, () => deletePurchase(env.DATABASE_URL as string, id));
+        return json({ ok: true });
+      }
+
+      if (url.pathname === "/api/bills" && request.method === "POST") {
+        return json({ bill: await asActor(actor, () => createSaleBill(env.DATABASE_URL as string, body)) });
+      }
+
+      if (url.pathname.match(/^\/api\/bills\/\d+\/cancel$/) && request.method === "POST") {
+        const id = Number(url.pathname.split("/")[3]);
+        return json({ result: await asActor(actor, () => cancelSaleBill(env.DATABASE_URL as string, id)) });
+      }
+
+      if (url.pathname === "/api/stock" && request.method === "POST") {
+        return json({ stock: await asActor(actor, () => saveStockEntry(env.DATABASE_URL as string, body)) });
       }
     } catch (err) {
       console.error("api error:", err);
