@@ -19,6 +19,10 @@ export const items = pgTable("items", {
   unit: text("unit").notNull(),
   category: text("category"),
   minStockBase: integer("min_stock_base").notNull().default(0),
+  /** Weighted-average cost of one display unit (paise per kg / l / pc). */
+  avgCostPaise: integer("avg_cost_paise").notNull().default(0),
+  /** Value of the stock on hand in paise — the weighted-average cost pool. */
+  stockValuePaise: integer("stock_value_paise").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -39,6 +43,8 @@ export const purchases = pgTable(
     qtyBase: integer("qty_base").notNull(),
     unitPricePaise: integer("unit_price_paise").notNull(),
     totalPaise: integer("total_paise").notNull(),
+    /** Transport / loading / commission added into the stock cost. */
+    expensesPaise: integer("expenses_paise").notNull().default(0),
     purchaseDate: date("purchase_date").notNull(),
     paymentMode: text("payment_mode"),
     note: text("note"),
@@ -130,11 +136,17 @@ export const sales = pgTable(
 export const expenses = pgTable("expenses", {
   id: serial("id").primaryKey(),
   category: text("category").notNull(),
+  /** purchase | sale | general — decides where the amount is counted. */
+  expenseType: text("expense_type").notNull().default("general"),
   amountPaise: integer("amount_paise").notNull(),
   expenseDate: date("expense_date").notNull(),
   paymentMode: text("payment_mode"),
   paidTo: text("paid_to"),
   note: text("note"),
+  /** Deal this expense belongs to (sale expenses). */
+  relatedSaleId: integer("related_sale_id").references(() => saleBills.id),
+  /** Purchase this expense belongs to (transport, loading, commission). */
+  relatedPurchaseId: integer("related_purchase_id").references(() => purchases.id),
 });
 
 export const expenseBills = pgTable("expense_bills", {
@@ -177,6 +189,23 @@ export const appUsers = pgTable(
   (t) => [check("app_users_role_valid", sql`${t.role} in ('owner','staff')`)],
 );
 
+// One row per login. Opened at sign-in, closed at sign-out (duration = usage time).
+export const userSessions = pgTable(
+  "user_sessions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    /** Active seconds — written when the session is closed. */
+    durationSeconds: integer("duration_seconds"),
+    source: text("source").notNull().default("web"),
+  },
+  (t) => [check("user_sessions_source_valid", sql`${t.source} in ('web','desktop')`)],
+);
+
 // V2-P10 billing. NOTE: named sale_bills so the interim `sales` table keeps working
 // until the New Sale / Sales list screens replace it (see docs/BUILD_PLAN.md).
 export const customers = pgTable("customers", {
@@ -203,6 +232,8 @@ export const saleBills = pgTable(
     totalPaise: integer("total_paise").notNull(),
     paymentMode: text("payment_mode").notNull(),
     paidPaise: integer("paid_paise").notNull(),
+    /** Travel / delivery / packing paid for this deal. */
+    saleExpensesPaise: integer("sale_expenses_paise").notNull().default(0),
     note: text("note"),
     cancelled: boolean("cancelled").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -234,6 +265,8 @@ export const saleItems = pgTable(
     lineTotalPaise: integer("line_total_paise").notNull(),
     costPaise: integer("cost_paise").notNull(),
     profitPaise: integer("profit_paise").notNull(),
+    /** Average cost per display unit at the time of the sale (snapshot). */
+    avgCostPaise: integer("avg_cost_paise").notNull().default(0),
   },
   (t) => [check("sale_items_qty_positive", sql`${t.qtyBase} > 0`)],
 );

@@ -1,6 +1,6 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import type { Db } from "./client";
+import type { Db, TxDb } from "./client";
 import { batches, items, purchases } from "./schema";
 import { logActivity } from "./activity";
 
@@ -36,7 +36,7 @@ export function parseItemInput(input: unknown): ItemInput {
   return result.data;
 }
 
-async function assertUniqueName(db: Db, name: string, excludeId?: number) {
+async function assertUniqueName(db: Db | TxDb, name: string, excludeId?: number) {
   const clash = await db
     .select({ id: items.id })
     .from(items)
@@ -81,7 +81,7 @@ export async function getItem(db: Db, id: number): Promise<ItemRow | null> {
   return rows[0] ?? null;
 }
 
-export async function createItem(db: Db, input: unknown): Promise<ItemRow> {
+export async function createItem(db: Db | TxDb, input: unknown): Promise<ItemRow> {
   const data = parseItemInput(input);
   await assertUniqueName(db, data.name);
   const [created] = await db

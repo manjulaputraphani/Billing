@@ -181,6 +181,15 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
 - [ ] **V2-P15** Auto-update + dark mode + languages (en/te/hi/kn)
 - [ ] **V2-P16** Users/roles + locations/transfers + accountant Excel export + daily summary
 - [ ] **V2-P17** Offline outbox (SQLite) + AI bill reader
+- [x] **V2-P18** Profit & turnover — India financial year (1 Apr–31 Mar) with an FY selector,
+  weighted-average costing per item (purchase expenses inside the stock cost), cost snapshot on every
+  sale, purchase/sale/general expense types, FY report (turnover, purchases, gross, net, closing
+  stock) + per-deal profit. Web: Reports screen; desktop: Reports screen. Costing switch
+  (WAC/FIFO) in Settings. `src/logic/finYear.ts`, `src/logic/weightedCost.ts`, `src/db/costing.ts`,
+  `src/db/reports.ts` — 237 tests green.
+- [x] **V2-P19** Login sessions & usage metrics — `user_sessions` table, sign-in/sign-out written to
+  the activity log, per-member sessions / active time / last login in Team → Usage (web) and Settings
+  (desktop). `src/db/sessions.ts`.
 
 Reconciliation with the interim work of 2026-10-30:
 - The interim "Phase 10 sales" (single-item `sales` table) is SUPERSEDED by V2-P10 (bill header +

@@ -16,6 +16,7 @@ import Expenses from "./pages/Expenses";
 import Items from "./pages/Items";
 import Lock from "./pages/Lock";
 import Purchases from "./pages/Purchases";
+import Reports from "./pages/Reports";
 import Sales from "./pages/Sales";
 import Settings from "./pages/Settings";
 import Setup from "./pages/Setup";
@@ -79,7 +80,7 @@ export default function App() {
             <Route path="bills" element={<Bills />} />
             <Route path="sales" element={<Sales />} />
             <Route path="expenses" element={<Expenses />} />
-            <Route path="reports" element={<ComingSoon title="Reports" />} />
+            <Route path="reports" element={<Reports />} />
             <Route
               path="settings"
               element={

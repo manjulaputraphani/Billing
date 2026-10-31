@@ -45,6 +45,73 @@ export type BillDetail = BillRow & {
 
 export type Member = { id: number; name: string; phone: string; role: "owner" | "staff"; active: boolean; pending: boolean };
 
+export type ClosingStockRow = {
+  itemId: number;
+  name: string;
+  unit: string;
+  qtyBase: number;
+  valuePaise: number;
+  avgCostPaise: number;
+};
+
+export type FinYearReport = {
+  finYear: string;
+  startDate: string;
+  endDate: string;
+  turnoverPaise: number;
+  discountsPaise: number;
+  gstPaise: number;
+  salesCount: number;
+  purchaseValuePaise: number;
+  purchaseExpensesPaise: number;
+  totalPurchasesPaise: number;
+  cogsPaise: number;
+  grossProfitPaise: number;
+  saleExpensesPaise: number;
+  generalExpensesPaise: number;
+  netProfitPaise: number;
+  closingStock: ClosingStockRow[];
+  closingStockQtyBase: number;
+  closingStockValuePaise: number;
+};
+
+export type DealProfit = {
+  saleId: number;
+  billNo: string;
+  date: string;
+  customerName: string | null;
+  saleValuePaise: number;
+  discountPaise: number;
+  cogsPaise: number;
+  grossProfitPaise: number;
+  saleExpensesPaise: number;
+  netProfitPaise: number;
+  profitPercent: number;
+  lines: Array<{
+    itemName: string;
+    qtyBase: number;
+    unit: string;
+    ratePaise: number;
+    avgCostPaise: number;
+    saleValuePaise: number;
+    cogsPaise: number;
+    profitPaise: number;
+    profitPercent: number;
+  }>;
+};
+
+export type UsageRow = {
+  userId: number;
+  name: string;
+  phone: string;
+  role: string;
+  sessions: number;
+  activeSeconds: number;
+  openSessions: number;
+  lastLoginAt: string | null;
+  lastLogoutAt: string | null;
+};
+
 export type ActivityRow = {
   id: number;
   at: string;
@@ -93,7 +160,7 @@ export const api = {
   deleteInvestment: (id: number) => request<{ ok: boolean }>(`/api/investments/${id}`, { method: "DELETE" }),
   stats: () => request<{ stats: { today_sales: number; month_sales: number; month_profit: number; month_expenses: number; low_stock: number } }>("/api/stats"),
   purchases: () => request<{ purchases: Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }> }>("/api/purchases"),
-  addPurchase: (body: { itemId: number; qty: number; unitPricePaise: number; date: string; supplierName?: string; paymentMode?: string }) =>
+  addPurchase: (body: { itemId: number; qty: number; unitPricePaise: number; expensesPaise?: number; date: string; supplierName?: string; paymentMode?: string }) =>
     request<{ purchase: { purchaseId: number } }>("/api/purchases", { method: "POST", body: JSON.stringify(body) }),
   batches: (itemId: number) => request<{ batches: Array<{ id: number; qty_remaining: number; unit_price_paise: number; purchase_date: string }> }>(`/api/items/${itemId}/batches`),
   saveStock: (body: Record<string, unknown>) => request<{ stock: unknown }>("/api/stock", { method: "POST", body: JSON.stringify(body) }),
@@ -136,6 +203,13 @@ export const api = {
   setUserActive: (id: number, active: boolean) =>
     request<{ ok: boolean }>(`/api/users/${id}/active`, { method: "POST", body: JSON.stringify({ active }) }),
   emailBill: (id: number) => request<{ ok: boolean; to?: string }>(`/api/bills/${id}/email`, { method: "POST" }),
+  finYears: () => request<{ finYears: string[] }>("/api/reports/fin-years"),
+  finYearReport: (finYear: string) => request<{ report: FinYearReport }>(`/api/reports/fin-year?fy=${finYear}`),
+  dealProfits: (finYear: string) => request<{ deals: DealProfit[] }>(`/api/reports/deals?fy=${finYear}`),
+  usage: () => request<{ usage: UsageRow[] }>("/api/usage"),
+  costingMethod: () => request<{ method: "WAC" | "FIFO" }>("/api/settings/costing"),
+  setCostingMethod: (method: "WAC" | "FIFO") =>
+    request<{ ok: boolean; method: string }>("/api/settings/costing", { method: "POST", body: JSON.stringify({ method }) }),
 };
 
 export const money = (paise: number): string =>

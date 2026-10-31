@@ -12,9 +12,11 @@ import {
 } from "./schema";
 import { logActivity } from "./activity";
 import { PAYMENT_MODES } from "./purchases";
+import { getCostingMethod, getCostPool, saveCostPool } from "./costing";
 import { billYear, formatBillNo, nextSequence } from "../logic/billNumber";
 import { lineProfit } from "../logic/profit";
 import { planSale } from "../logic/sales";
+import { takeFromPool } from "../logic/weightedCost";
 import { baseFactor, formatRupees, type Unit } from "../logic/units";
 
 export const saleLineSchema = z.object({
@@ -33,6 +35,8 @@ export const saleBillSchema = z
     discountPaise: z.number().int().nonnegative("Discount cannot be negative").default(0),
     gstPaise: z.number().int().nonnegative("GST cannot be negative").default(0),
     gstRateBp: z.number().int().min(0).max(10_000).optional(),
+    /** Travel / delivery / packing paid for this deal. */
+    saleExpensesPaise: z.number().int().nonnegative("Sale expenses cannot be negative").default(0),
     note: z.string().trim().max(200, "Note is too long").optional(),
     lines: z.array(saleLineSchema).min(1, "Add at least one item"),
   })
@@ -78,9 +82,14 @@ export type SaleBillResult = {
  * bill header. Overselling blocks that line with an item-named message.
  */
 export async function createSaleBill(url: string, input: unknown): Promise<SaleBillResult> {
+  return withTransaction(url, (tx) => createSaleBillInTx(tx, input));
+}
+
+/** Same as {@link createSaleBill} but inside a transaction the caller owns. */
+export async function createSaleBillInTx(tx: TxDb, input: unknown): Promise<SaleBillResult> {
   const data = parseSaleBill(input);
 
-  return withTransaction(url, async (tx) => {
+  return (async () => {
     if (data.customerId != null) {
       const [customer] = await tx
         .select({ id: customers.id })
@@ -90,6 +99,7 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
     }
 
     const billNo = await nextBillNoForDate(tx, data.date);
+    const costing = await getCostingMethod(tx);
 
     const lines: {
       itemId: number;
@@ -100,6 +110,7 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
       lineTotalPaise: number;
       costPaise: number;
       profitPaise: number;
+      avgCostPaise: number;
     }[] = [];
 
     for (const line of data.lines) {
@@ -124,6 +135,9 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
         .orderBy(asc(batches.purchaseDate), asc(batches.id))
         .for("update");
 
+      // Read the value pool BEFORE the batches are reduced (stock on hand before the sale).
+      const poolBefore = costing === "WAC" ? await getCostPool(tx, line.itemId) : null;
+
       let plan;
       try {
         plan = planSale(open, line.qtyBase, line.unitPricePaise, factor);
@@ -142,13 +156,30 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
         }
       }
 
+      // Cost of goods sold: weighted average (default) or FIFO batch cost.
+      let costPaise: number;
+      let avgCostPaise: number;
+      if (poolBefore) {
+        const take = takeFromPool(
+          { qtyBase: poolBefore.qtyBase, valuePaise: poolBefore.valuePaise },
+          line.qtyBase,
+          factor,
+        );
+        costPaise = take.costPaise;
+        avgCostPaise = take.avgCostPaise;
+        await saveCostPool(tx, line.itemId, take.pool, item.unit as Unit);
+      } else {
+        costPaise = plan.totalCostPaise;
+        avgCostPaise = Math.round((plan.totalCostPaise * factor) / line.qtyBase);
+      }
+
       const [movement] = await tx
         .insert(stockMovements)
         .values({
           itemId: line.itemId,
           type: "SALE",
           qtyChange: -line.qtyBase,
-          costPaise: plan.totalCostPaise,
+          costPaise,
           enteredQtyLeft: null,
           movementDate: data.date,
           note: `Bill ${billNo}`,
@@ -174,8 +205,9 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
         unitPricePaise: line.unitPricePaise,
         hsnCode: line.hsnCode?.trim() || null,
         lineTotalPaise: plan.revenuePaise,
-        costPaise: plan.totalCostPaise,
-        profitPaise: lineProfit(plan.revenuePaise, plan.totalCostPaise),
+        costPaise,
+        profitPaise: lineProfit(plan.revenuePaise, costPaise),
+        avgCostPaise,
       });
     }
 
@@ -198,6 +230,7 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
         totalPaise,
         paymentMode: data.paymentMode,
         paidPaise,
+        saleExpensesPaise: data.saleExpensesPaise,
         note: data.note?.trim() || null,
       })
       .returning({ id: saleBills.id });
@@ -215,7 +248,7 @@ export async function createSaleBill(url: string, input: unknown): Promise<SaleB
     });
 
     return { saleId: bill.id, billNo, subtotalPaise, totalPaise, profitPaise };
-  });
+  })();
 }
 
 export type SaleBillRow = {
@@ -261,9 +294,27 @@ export async function cancelSaleBill(url: string, saleId: number): Promise<{ res
     if (bill.cancelled) throw new Error("Sale is already cancelled");
 
     const lines = await tx
-      .select({ id: saleItems.id, movementId: saleItems.movementId })
+      .select({
+        id: saleItems.id,
+        movementId: saleItems.movementId,
+        itemId: saleItems.itemId,
+        qtyBase: saleItems.qtyBase,
+        costPaise: saleItems.costPaise,
+      })
       .from(saleItems)
       .where(eq(saleItems.saleId, saleId));
+
+    const costing = await getCostingMethod(tx);
+
+    // Read the pools BEFORE the batches are restored (stock on hand before the undo).
+    const pools = new Map<number, { qtyBase: number; valuePaise: number }>();
+    if (costing === "WAC") {
+      for (const line of lines) {
+        if (pools.has(line.itemId)) continue;
+        const pool = await getCostPool(tx, line.itemId);
+        pools.set(line.itemId, { qtyBase: pool.qtyBase, valuePaise: pool.valuePaise });
+      }
+    }
 
     for (const line of lines) {
       if (line.movementId == null) continue;
@@ -281,6 +332,28 @@ export async function cancelSaleBill(url: string, saleId: number): Promise<{ res
           .update(batches)
           .set({ qtyRemaining: batch.qtyRemaining + link.qtyTaken })
           .where(eq(batches.id, link.batchId));
+      }
+    }
+
+    // Give the cost of goods sold back to the weighted-average pool.
+    if (costing === "WAC") {
+      for (const line of lines) {
+        const pool = pools.get(line.itemId);
+        if (!pool) continue;
+        const [item] = await tx
+          .select({ unit: items.unit })
+          .from(items)
+          .where(eq(items.id, line.itemId));
+        if (!item) continue;
+        await saveCostPool(
+          tx,
+          line.itemId,
+          {
+            qtyBase: pool.qtyBase + line.qtyBase,
+            valuePaise: pool.valuePaise + line.costPaise,
+          },
+          item.unit as Unit,
+        );
       }
     }
 

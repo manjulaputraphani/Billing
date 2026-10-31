@@ -4,6 +4,7 @@ import { countUsers, createUser, findUserByPhone, type AppUser } from "../db/use
 import { logActivity, setAuditActor } from "../db/activity";
 import { deleteSecret, SECRET_KEYS, verifyPassword } from "../lib/secrets";
 import { normalizePhone } from "../logic/auth";
+import { startSession } from "../db/sessions";
 import CoffeeIcon from "../components/CoffeeIcon";
 import ThemeToggle from "../components/ThemeToggle";
 
@@ -57,6 +58,12 @@ export default function Lock({ url, onLogin }: Props) {
       await logActivity(db, { event: "login", summary: `${user.name} signed in` });
     } catch {
       // logging must never block sign-in
+    }
+    // Open a session so the usage metrics know who was in and for how long.
+    try {
+      await startSession(db, user.id, "desktop");
+    } catch {
+      // session tracking must never block sign-in
     }
     // The PIN is retired once member login works.
     try {

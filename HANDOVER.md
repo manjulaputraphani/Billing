@@ -1,59 +1,55 @@
 # HANDOVER (keep under 60 lines — overwrite each time, history is in git)
 
-Last updated: 2026-10-31 13:10 by MiniMax M3.1 Flash (OpenCode)
+Last updated: 2026-10-31 14:05 by MiniMax M3.1 Flash (OpenCode)
 Tool: OpenCode
 
 ## Current state
-Both editions share the **coffee-café theme (light + dark)**.
 Web LIVE: https://sdhhe-api.blvphani.workers.dev · Desktop = Tauri app in `src/`.
+Both editions share the coffee theme, the weighted-average costing, FY reports and login sessions.
 
 ## Live / deployment
 - Worker `sdhhe-api`: static assets from `web/dist` + API. Deploy: `cd web && npm run build` →
   `cd ../web-worker && ./node_modules/.bin/wrangler deploy` (wrangler 4.86 works on Node 20 here).
-- Secrets set: `DATABASE_URL`, `SESSION_SECRET`. Optional email: `RESEND_API_KEY` / `MAIL_FROM`;
-  a key can also be saved AES-GCM encrypted in settings (`resend_api_key_enc`) via Settings.
-- DB: Neon `SriDurgaHariHaraEnterprises` (shared with desktop). Members: owner **B PHANI KUMAR**
-  (7569208757), staff **Chaluvaraj** (9019744242).
+- Secrets: `DATABASE_URL`, `SESSION_SECRET`. Optional email: `RESEND_API_KEY` / `MAIL_FROM` (or the
+  AES-GCM encrypted `resend_api_key_enc` in Settings). DB: Neon `SriDurgaHariHaraEnterprises`.
+- Members: owner **B PHANI KUMAR** (7569208757), staff **Chaluvaraj** (9019744242).
 
-## Theme (done 2026-10-31)
-- Palette = CSS variables → `<html data-theme="light|dark">`, mapped into Tailwind v4 with
-  `@theme inline` (`bg-surface`, `text-ink`, `border-line`, `bg-primary`, …). Web: `web/src/styles.css`
-  · desktop: `src/App.css` (same tokens, same rules).
-- Light: cream `#F7F1E8` page, `#FFFFFF` cards, brown `#6F4E37` primary, gold `#C8963E`, sage
-  `#7A8B5A`. Dark: `#1C1612` page, `#2A211B` cards, latte `#C8A27C`, `#E0B060`, `#9DB07A`.
-- Shared engine: `src/lib/theme.ts` + `src/components/ThemeToggle.tsx` (web re-exports them).
-  Modes light/dark/system, localStorage `sdhhe-theme`, inline pre-paint script in `index.html`
-  (no flash), live `prefers-color-scheme` following, 200 ms cross-fade. Toggle: desktop side rail
-  + Lock/Setup screens; web sidebar, mobile header, login card. Playfair Display + Inter (CDN).
-- Tests: `src/lib/theme.test.ts` (5) · Playwright checked light/dark at 1280 px and 390 px.
+## New (2026-10-31): profit, turnover, FY, usage metrics
+- **Weighted-average costing**: per item a value pool (`items.stock_value_paise`, `avg_cost_paise`).
+  Purchases add value + transport/loading; sales take at the average (COGS snapshot on the sale line);
+  usage/wastage and sale cancels keep the pool in step. Switch WAC/FIFO in Settings (both editions).
+  Logic: `src/logic/weightedCost.ts`, `src/db/costing.ts`.
+- **India FY** (1 Apr–31 Mar, label "2026-27") derived from the date — `src/logic/finYear.ts`.
+- **FY report** (web *Reports* tab + desktop *Reports* page): turnover (excl. GST, less discounts),
+  total purchases, gross profit, net profit, closing stock qty/value/avg cost, per-deal profit.
+  `src/db/reports.ts`. Worker: `/api/reports/fin-year|fin-years|deals`.
+- **Expenses** now carry a type: purchase (into stock cost) / sale (onto the deal) / general.
+  Purchases have a "Transport ₹" field, bills a "Delivery ₹" field (both editions).
+- **Login sessions** (`user_sessions`) + `user.login` / `user.logout` in the activity log; per-member
+  sessions, active time and last login in web *Team → Usage*. `src/db/sessions.ts`.
+- DB migrated additively (new columns + `user_sessions`); cost pools backfilled from open batches.
+  Required test case verified: avg ₹102.33/kg, gross ₹153.33, net ₹113.33, 280 kg left.
 
-## Web features done
-Login · self-signup → owner approval + role · Invoices + GST bill view · New Bill · Items add/edit +
-owner-only delete · Purchases · Stock Check · Expenses · Dashboard · Investments · Activity ·
-Settings (email/Resend key) · responsive · icon pill buttons.
-Desktop (Tauri): phone+password login, setup, billing + SDHHE invoice, bill cancel with exact stock
-restore, audit attribution, expenses + bill photos, Gmail SMTP (needs app password). PIN retired.
+## Theme (2026-10-31)
+- Palette = CSS variables → `<html data-theme>` + Tailwind v4 `@theme inline`; shared engine in
+  `src/lib/theme.ts` / `src/components/ThemeToggle.tsx`; light/dark/system, no flash, 200 ms fade.
 
 ## Next tasks (priority)
-1. **Enable email**: Resend key + MAIL_FROM (Settings or `wrangler secret put`) → Send test; desktop
-   Gmail app password → Send test.
+1. **Enable email**: Resend key + MAIL_FROM → Send test; desktop Gmail app password → Send test.
 2. **Rotate the owner password** (short/exposed) via Team → Reset password.
 3. Save the Playwright suites into the repo (`web/tests/`) — they currently live only in TMPDIR.
-4. Fix the PRE-EXISTING tsc errors (handover used to say "tsc clean", it is not): `src/db/users.ts`
-   `createAppUser().returning()` misses `pending` → add `pending: appUsers.pending`; same in the
-   fixtures of `src/App.test.tsx`, `src/pages/Lock.test.tsx`, `src/pages/Settings.test.tsx`.
-5. `tablesFilter` guard in drizzle.config; drop the empty interim `sales` table; optionally remove
-   TEST items/bills/audit rows.
-6. Optional: desktop analytics (docs/PLAN_ANALYTICS.md — `/reports` is still ComingSoon), V2-P12
-   pack units / WhatsApp share, V2-P14 barcode, V2-P16 multi-location + accountant export.
-## Commands
-- Web local: `cd web-worker && ./node_modules/.bin/wrangler dev` (:8787 serves web/dist + API) or
-  `cd web && npm run dev` (:5173, /api proxied) · `cd web && npm run typecheck`
-- Desktop: `npm run tauri dev` · Tests: `npx vitest run --reporter=dot` (217 green) ·
-  `npx tsc --noEmit` (8 pre-existing errors, see task 4) · e2e skipped (no DATABASE_URL_TEST)
+4. Fix the PRE-EXISTING tsc errors: `src/db/users.ts` `createAppUser().returning()` misses `pending`
+   (same in `src/App.test.tsx`, `src/pages/Lock.test.tsx`, `src/pages/Settings.test.tsx`); the worker
+   also has `pending`, `Uint8Array` and `notify` type errors (`web-worker/tsconfig.json` added).
+5. Link purchase/sale expenses to their purchase/deal in the UI (the DB columns exist; the forms only
+   set the type) · `tablesFilter` guard in drizzle.config; drop the interim `sales` table.
+6. Desktop-only features still missing in the web app: Suggestions/Ask AI (Ollama), print/Save-as-PDF,
+   Excel export, offline, auto-update, keychain setup. Desktop analytics (PLAN_ANALYTICS) + V2-P12
+   pack units / WhatsApp, V2-P14 barcode, V2-P16 multi-location + accountant export.
 
-## Blockers / notes
-- No `DATABASE_URL_TEST` → integration + Playwright suites skipped; schema changes applied additively
-  to the live DB.
-- Workers cannot use Gmail SMTP (web uses Resend); desktop keeps Gmail SMTP.
-- Passwords were pasted in an earlier chat — treat as exposed; rotate.
+## Commands
+- Web local: `cd web-worker && ./node_modules/.bin/wrangler dev` (:8787 = web/dist + API) ·
+  `cd web && npm run dev` (:5173) · `cd web && npm run typecheck`
+- Tests: `npx vitest run --reporter=dot` (237 green) · `npx tsc --noEmit` (8 pre-existing errors)
+- e2e skipped (no DATABASE_URL_TEST). The Neon **WebSocket** pool cannot open connections in this
+  sandbox → billing/stock-write paths can only be exercised on the user's machine or in Workers.

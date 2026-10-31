@@ -6,8 +6,11 @@ import {
   type ActivityRow,
   type BillDetail,
   type BillRow,
+  type DealProfit,
+  type FinYearReport,
   type Item,
   type Member,
+  type UsageRow,
   type User,
 } from "./api";
 import { buildBillHtml } from "../../src/lib/printBill";
@@ -16,7 +19,7 @@ import ThemeToggle from "./ThemeToggle";
 import { watchSystemTheme } from "./theme";
 import CoffeeIcon from "../../src/components/CoffeeIcon";
 
-type View = "dashboard" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
+type View = "dashboard" | "reports" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
 
 function IconEye() {
   return (
@@ -59,8 +62,18 @@ const CHART_COLORS = [
   "var(--c-chart-6)",
 ];
 
-function Donut({ items }: { items: { label: string; value: number }[] }) {
-  const total = items.reduce((sum, item) => sum + item.value, 0) || 1;
+/** "1h 5m" — how long a member was active. */
+function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0s";
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${rest}s`;
+  return `${rest}s`;
+}
+
+function Donut({ items }: { items: { label: string; value: number }[] }) {  const total = items.reduce((sum, item) => sum + item.value, 0) || 1;
   let acc = 0;
   const stops = items
     .map((item, index) => {
@@ -116,6 +129,7 @@ export default function App() {
   const [billMode, setBillMode] = useState("Cash");
   const [billGst, setBillGst] = useState("500");
   const [billDiscount, setBillDiscount] = useState("");
+  const [billSaleExpenses, setBillSaleExpenses] = useState("");
   const [draft, setDraft] = useState({ itemId: "" as number | "", qty: "", rate: "", hsn: "" });
   const [billLines, setBillLines] = useState<{ itemId: number; name: string; unit: string; qtyBase: number; ratePaise: number; hsn: string; totalPaise: number }[]>([]);
   const [billMsg, setBillMsg] = useState<string | null>(null);
@@ -123,7 +137,7 @@ export default function App() {
   const [stats, setStats] = useState<{ today_sales: number; month_sales: number; month_profit: number; month_expenses: number; low_stock: number } | null>(null);
   const [purchasesList, setPurchasesList] = useState<Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }>>([]);
   const [expensesList, setExpensesList] = useState<Array<{ id: number; category: string; amountPaise: number; date: string; paymentMode: string | null; paidTo: string | null; note: string | null }>>([]);
-  const [purchase, setPurchase] = useState({ itemId: "" as number | "", qty: "", rate: "", supplier: "" });
+  const [purchase, setPurchase] = useState({ itemId: "" as number | "", qty: "", rate: "", supplier: "", expenses: "" });
   const [purchaseMsg, setPurchaseMsg] = useState<string | null>(null);
   const [stock, setStock] = useState({ itemId: "" as number | "", type: "USAGE", qty: "", note: "" });
   const [stockBatches, setStockBatches] = useState<Array<{ id: number; qty_remaining: number; unit_price_paise: number; purchase_date: string }>>([]);
@@ -135,7 +149,7 @@ export default function App() {
   const [investment, setInvestment] = useState({ name: "", amount: "", date: new Date().toISOString().slice(0, 10), note: "" });
   const [investmentMsg, setInvestmentMsg] = useState<string | null>(null);
   const [activityFilter, setActivityFilter] = useState("");
-  const [expense, setExpense] = useState({ category: "", amount: "", paidTo: "", note: "" });
+  const [expense, setExpense] = useState({ category: "", amount: "", paidTo: "", note: "", type: "general" });
   const [expenseMsg, setExpenseMsg] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
@@ -150,6 +164,14 @@ export default function App() {
   const [signupConfirm, setSignupConfirm] = useState("");
   const [signupStatus, setSignupStatus] = useState<string | null>(null);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [finYears, setFinYears] = useState<string[]>([]);
+  const [finYear, setFinYear] = useState("");
+  const [report, setReport] = useState<FinYearReport | null>(null);
+  const [deals, setDeals] = useState<DealProfit[]>([]);
+  const [usage, setUsage] = useState<UsageRow[]>([]);
+  const [reportsMsg, setReportsMsg] = useState<string | null>(null);
+  const [costingMethod, setCostingMethodState] = useState<"WAC" | "FIFO">("WAC");
+  const [costingMsg, setCostingMsg] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -160,6 +182,80 @@ export default function App() {
   }, []);
 
   useEffect(() => watchSystemTheme(), []);
+
+  /** The financial years available for the FY selector. */
+  useEffect(() => {
+    if (!user || view !== "reports") return;
+    let cancelled = false;
+    api
+      .finYears()
+      .then((res) => {
+        if (cancelled) return;
+        setFinYears(res.finYears);
+        setFinYear((current) => (current && res.finYears.includes(current) ? current : res.finYears[0] ?? ""));
+      })
+      .catch((err) => {
+        if (!cancelled) setReportsMsg(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view]);
+
+  /** Load the financial-year report for the selected FY. */
+  useEffect(() => {
+    if (!user || view !== "reports" || !finYear) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setReportsMsg(null);
+        const [reportRes, dealsRes] = await Promise.all([
+          api.finYearReport(finYear),
+          api.dealProfits(finYear),
+        ]);
+        if (cancelled) return;
+        setReport(reportRes.report);
+        setDeals(dealsRes.deals);
+      } catch (err) {
+        if (!cancelled) setReportsMsg(err instanceof Error ? err.message : String(err));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view, finYear]);
+
+  /** The costing method in force (WAC by default). */
+  useEffect(() => {
+    if (!user || user.role !== "owner" || view !== "settings") return;
+    let cancelled = false;
+    api
+      .costingMethod()
+      .then((res) => {
+        if (!cancelled) setCostingMethodState(res.method);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view]);
+
+  /** Owner-only usage metrics (sessions, active time, last login). */
+  useEffect(() => {
+    if (!user || user.role !== "owner" || view !== "team") return;
+    let cancelled = false;
+    api
+      .usage()
+      .then((res) => {
+        if (!cancelled) setUsage(res.usage);
+      })
+      .catch(() => {
+        if (!cancelled) setUsage([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view]);
 
   function addBillLine() {
     const item = items.find((i) => i.id === draft.itemId);
@@ -199,6 +295,7 @@ export default function App() {
         date: billDate,
         paymentMode: billMode,
         discountPaise: billDiscountPaise,
+        saleExpensesPaise: Math.round(Number(billSaleExpenses || "0") * 100),
         gstPaise: billGstPaise,
         gstRateBp: Number(billGst),
         lines: billLines.map((l) => ({ itemId: l.itemId, qtyBase: l.qtyBase, unitPricePaise: l.ratePaise, hsnCode: l.hsn || undefined })),
@@ -208,6 +305,7 @@ export default function App() {
       setBillLines([]);
       setBillCustomer({ name: "", phone: "", email: "", gstin: "" });
       setBillDiscount("");
+      setBillSaleExpenses("");
       setBills((await api.bills()).bills);
       setItems((await api.items()).items);
     } catch (err) {
@@ -247,12 +345,13 @@ export default function App() {
         itemId: item.id,
         qty: Number(purchase.qty),
         unitPricePaise: Math.round(Number(purchase.rate) * 100),
+        expensesPaise: Math.round(Number(purchase.expenses || "0") * 100),
         date: todayIso(),
         supplierName: purchase.supplier,
         paymentMode: "Cash",
       });
       setPurchaseMsg("Purchase saved");
-      setPurchase({ itemId: "", qty: "", rate: "", supplier: "" });
+      setPurchase({ itemId: "", qty: "", rate: "", supplier: "", expenses: "" });
       setItems((await api.items()).items);
       setPurchasesList((await api.purchases()).purchases);
       setStats((await api.stats()).stats);
@@ -323,6 +422,7 @@ export default function App() {
     try {
       await api.addExpense({
         category: expense.category,
+        expenseType: expense.type,
         amountPaise: Math.round(Number(expense.amount) * 100),
         date: todayIso(),
         paymentMode: "Cash",
@@ -330,7 +430,7 @@ export default function App() {
         note: expense.note,
       });
       setExpenseMsg("Expense saved");
-      setExpense({ category: "", amount: "", paidTo: "", note: "" });
+      setExpense({ category: "", amount: "", paidTo: "", note: "", type: "general" });
       setExpensesList((await api.expenses()).expenses);
       setStats((await api.stats()).stats);
     } catch (err) {
@@ -553,6 +653,7 @@ export default function App() {
 
   const tabs: { key: View; label: string }[] = [
     { key: "dashboard", label: "Dashboard" },
+    { key: "reports", label: "Reports" },
     ...(user.role === "owner" ? [{ key: "investments" as View, label: "Investments" }] : []),
     { key: "bills", label: "Invoices" },
     { key: "billing", label: "New Bill" },
@@ -701,17 +802,126 @@ export default function App() {
           </section>
         )}
 
+        {view === "reports" && (
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Profit &amp; turnover</h1>
+                <p className="text-sm text-muted">
+                  {report ? `Financial year ${report.finYear} · ${report.startDate} to ${report.endDate}` : "Pick a financial year."}
+                </p>
+              </div>
+              <select className="input max-w-44" value={finYear} onChange={(e) => setFinYear(e.currentTarget.value)}>
+                {finYears.map((year) => (
+                  <option key={year} value={year}>
+                    FY {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {reportsMsg && <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">{reportsMsg}</p>}
+            {report && (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ["Turnover", money(report.turnoverPaise), `${report.salesCount} deals`],
+                    ["Total purchases", money(report.totalPurchasesPaise), `stock ${money(report.purchaseValuePaise)} + ${money(report.purchaseExpensesPaise)}`],
+                    ["Gross profit", money(report.grossProfitPaise), `after COGS ${money(report.cogsPaise)}`],
+                    ["Net profit", money(report.netProfitPaise), `sales ${money(report.saleExpensesPaise)} · general ${money(report.generalExpensesPaise)}`],
+                  ].map(([label, value, hint]) => (
+                    <div key={label} className="card p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+                      <p className="mt-0.5 text-[11px] text-muted">{hint}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="card overflow-x-auto">
+                  <table className="w-full min-w-[560px] text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2">Deal</th>
+                        <th className="px-3 py-2">Date</th>
+                        <th className="px-3 py-2">Customer</th>
+                        <th className="px-3 py-2 text-right">Sale value</th>
+                        <th className="px-3 py-2 text-right">COGS</th>
+                        <th className="px-3 py-2 text-right">Gross</th>
+                        <th className="px-3 py-2 text-right">Sale exp.</th>
+                        <th className="px-3 py-2 text-right">Net profit</th>
+                        <th className="px-3 py-2 text-right">%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deals.length === 0 && (
+                        <tr>
+                          <td className="px-3 py-4 text-muted" colSpan={9}>
+                            No deals in this financial year.
+                          </td>
+                        </tr>
+                      )}
+                      {deals.map((deal) => (
+                        <tr key={deal.saleId} className="border-t border-line">
+                          <td className="px-3 py-2 font-medium">{deal.billNo}</td>
+                          <td className="px-3 py-2">{deal.date}</td>
+                          <td className="px-3 py-2">{deal.customerName ?? "Walk-in"}</td>
+                          <td className="px-3 py-2 text-right">{money(deal.saleValuePaise)}</td>
+                          <td className="px-3 py-2 text-right">{money(deal.cogsPaise)}</td>
+                          <td className="px-3 py-2 text-right">{money(deal.grossProfitPaise)}</td>
+                          <td className="px-3 py-2 text-right">{money(deal.saleExpensesPaise)}</td>
+                          <td className="px-3 py-2 text-right font-medium">{money(deal.netProfitPaise)}</td>
+                          <td className="px-3 py-2 text-right">
+                            <span className={`badge ${deal.profitPercent >= 0 ? "badge-ok" : "badge-bad"}`}>{deal.profitPercent}%</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="card overflow-x-auto">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <h2 className="text-sm font-medium">Closing stock</h2>
+                    <span className="text-sm text-muted">{money(report.closingStockValuePaise)}</span>
+                  </div>
+                  <table className="w-full min-w-[520px] text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2">Item</th>
+                        <th className="px-3 py-2 text-right">Quantity</th>
+                        <th className="px-3 py-2 text-right">Avg cost</th>
+                        <th className="px-3 py-2 text-right">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.closingStock.filter((row) => row.qtyBase > 0).map((row) => (
+                        <tr key={row.itemId} className="border-t border-line">
+                          <td className="px-3 py-2 font-medium">{row.name}</td>
+                          <td className="px-3 py-2 text-right">{qty(row.qtyBase, row.unit)}</td>
+                          <td className="px-3 py-2 text-right">{money(row.avgCostPaise)}</td>
+                          <td className="px-3 py-2 text-right">{money(row.valuePaise)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
         {view === "purchases" && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Purchases</h1>
             <div className="card max-w-3xl space-y-3 p-4">
-              <div className="grid gap-2 sm:grid-cols-4">
+              <div className="grid gap-2 sm:grid-cols-5">
                 <select className="input" value={purchase.itemId} onChange={(e) => setPurchase({ ...purchase, itemId: e.currentTarget.value === "" ? "" : Number(e.currentTarget.value) })}>
                   <option value="">Choose item…</option>
                   {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
                 <input className="input" type="number" placeholder="Qty" value={purchase.qty} onChange={(e) => setPurchase({ ...purchase, qty: e.currentTarget.value })} />
                 <input className="input" type="number" placeholder="Rate ₹" value={purchase.rate} onChange={(e) => setPurchase({ ...purchase, rate: e.currentTarget.value })} />
+                <input className="input" type="number" placeholder="Transport ₹" value={purchase.expenses} onChange={(e) => setPurchase({ ...purchase, expenses: e.currentTarget.value })} />
                 <input className="input" placeholder="Supplier" value={purchase.supplier} onChange={(e) => setPurchase({ ...purchase, supplier: e.currentTarget.value })} />
               </div>
               <button className="btn btn-primary" onClick={() => void addPurchaseNow()}>Save purchase</button>
@@ -767,7 +977,12 @@ export default function App() {
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Expenses</h1>
             <div className="card max-w-3xl space-y-3 p-4">
-              <div className="grid gap-2 sm:grid-cols-4">
+              <div className="grid gap-2 sm:grid-cols-5">
+                <select className="input" value={expense.type} onChange={(e) => setExpense({ ...expense, type: e.currentTarget.value })}>
+                  <option value="general">General</option>
+                  <option value="purchase">Purchase</option>
+                  <option value="sale">Sale</option>
+                </select>
                 <input className="input" placeholder="Category" value={expense.category} onChange={(e) => setExpense({ ...expense, category: e.currentTarget.value })} />
                 <input className="input" type="number" placeholder="Amount ₹" value={expense.amount} onChange={(e) => setExpense({ ...expense, amount: e.currentTarget.value })} />
                 <input className="input" placeholder="Paid to" value={expense.paidTo} onChange={(e) => setExpense({ ...expense, paidTo: e.currentTarget.value })} />
@@ -922,8 +1137,9 @@ export default function App() {
                   ))}</tbody>
                 </table>
               )}
-              <div className="grid gap-2 sm:grid-cols-5">
+              <div className="grid gap-2 sm:grid-cols-6">
                 <input className="input" type="number" placeholder="Discount ₹" value={billDiscount} onChange={(e) => setBillDiscount(e.currentTarget.value)} />
+                <input className="input" type="number" placeholder="Delivery ₹" value={billSaleExpenses} onChange={(e) => setBillSaleExpenses(e.currentTarget.value)} />
                 <select className="input" value={billGst} onChange={(e) => setBillGst(e.currentTarget.value)}>
                   <option value="0">GST 0%</option><option value="500">GST 5%</option><option value="1200">GST 12%</option><option value="1800">GST 18%</option><option value="2800">GST 28%</option>
                 </select>
@@ -1011,6 +1227,46 @@ export default function App() {
         {view === "team" && user.role === "owner" && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Team</h1>
+            {usage.length > 0 && (
+              <div className="card overflow-x-auto">
+                <div className="px-4 py-3">
+                  <h2 className="text-sm font-medium">Usage</h2>
+                  <p className="text-xs text-muted">Who logged in, when they signed out and how long they were active.</p>
+                </div>
+                <table className="w-full min-w-[560px] text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th className="px-3 py-2">Member</th>
+                      <th className="px-3 py-2 text-right">Sessions</th>
+                      <th className="px-3 py-2 text-right">Active time</th>
+                      <th className="px-3 py-2">Last login</th>
+                      <th className="px-3 py-2">Last logout</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usage.map((row) => (
+                      <tr key={row.userId} className="border-t border-line">
+                        <td className="px-3 py-2 font-medium">
+                          {row.name} <span className="text-muted">· {row.role}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right">{row.sessions}</td>
+                        <td className="px-3 py-2 text-right">{formatDuration(row.activeSeconds)}</td>
+                        <td className="px-3 py-2">{row.lastLoginAt ? new Date(row.lastLoginAt).toLocaleString("en-IN") : "—"}</td>
+                        <td className="px-3 py-2">
+                          {row.lastLogoutAt ? (
+                            new Date(row.lastLogoutAt).toLocaleString("en-IN")
+                          ) : row.openSessions > 0 ? (
+                            <span className="badge badge-warn">still active</span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <div className="card space-y-3 p-4">
               {members.map((member) => (
                 <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 text-sm last:border-0">
@@ -1076,6 +1332,29 @@ export default function App() {
         {view === "settings" && user.role === "owner" && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Settings</h1>
+            <div className="card space-y-3 p-4">
+              <div>
+                <h2 className="text-sm font-medium">Stock costing</h2>
+                <p className="text-sm text-muted">
+                  Weighted average keeps one average cost per item; FIFO costs each sale from the oldest batch.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-end gap-2">
+                <select
+                  className="input max-w-56"
+                  value={costingMethod}
+                  onChange={(e) => {
+                    const method = e.currentTarget.value as "WAC" | "FIFO";
+                    setCostingMethodState(method);
+                    void api.setCostingMethod(method).then(() => setCostingMsg(`Costing method set to ${method}`));
+                  }}
+                >
+                  <option value="WAC">Weighted average (WAC)</option>
+                  <option value="FIFO">FIFO (batch-wise)</option>
+                </select>
+                {costingMsg && <span className="text-sm text-muted">{costingMsg}</span>}
+              </div>
+            </div>
             <div className="card space-y-4 p-4">
               <div>
                 <h2 className="text-sm font-medium">Email notifications</h2>

@@ -23,6 +23,8 @@ import {
   type ShopDetails,
 } from "../db/settings";
 import { sendEmail } from "../lib/email";
+import { endSession } from "../db/sessions";
+import { getCostingMethod, setCostingMethod, type CostingMethod } from "../db/costing";
 
 const PIN_RE = /^\d{4,6}$/;
 
@@ -58,6 +60,8 @@ export default function Settings({
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [testTo, setTestTo] = useState("");
   const [shopStatus, setShopStatus] = useState<string | null>(null);
+  const [costingMethod, setCostingMethodState] = useState<CostingMethod>("WAC");
+  const [costingStatus, setCostingStatus] = useState<string | null>(null);
   const [members, setMembers] = useState<AppUser[]>([]);
   const [membersStatus, setMembersStatus] = useState<string | null>(null);
   const [memberName, setMemberName] = useState("");
@@ -71,6 +75,12 @@ export default function Settings({
     listActivity(db)
       .then(setActivity)
       .catch(() => setActivity([]));
+  }, [db]);
+
+  useEffect(() => {
+    getCostingMethod(db)
+      .then(setCostingMethodState)
+      .catch(() => setCostingMethodState("WAC"));
   }, [db]);
 
   async function loadMembers() {
@@ -286,6 +296,13 @@ export default function Settings({
       await logActivity(db, { event: "lock", summary: "Locked the app" });
     } catch {
       // Never block locking on a logging failure.
+    }
+    // Close the open session so the usage metrics know the active time.
+    try {
+      const actor = getAuditActor();
+      if (actor?.userId) await endSession(db, actor.userId, "desktop");
+    } catch {
+      // Never block locking on a session-tracking failure.
     }
     onLock();
   }
@@ -569,6 +586,31 @@ export default function Settings({
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn-primary" onClick={() => void saveEmailCfg()}>Save email settings</button>
           <button type="button" className="btn-ghost" onClick={() => void sendTestEmail()}>Send test email</button>
+        </div>
+      </section>
+
+      <section className="space-y-3 card p-4">
+        <div>
+          <h2 className="text-sm font-medium">Stock costing</h2>
+          <p className="text-sm text-muted">
+            Weighted average keeps one average cost per item (purchase expenses included). FIFO costs each
+            sale from the oldest batch.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <select
+            className="input w-56"
+            value={costingMethod}
+            onChange={(e) => {
+              const method = e.currentTarget.value as CostingMethod;
+              setCostingMethodState(method);
+              void setCostingMethod(db, method).then(() => setCostingStatus(`Costing method set to ${method}`));
+            }}
+          >
+            <option value="WAC">Weighted average (WAC)</option>
+            <option value="FIFO">FIFO (batch-wise)</option>
+          </select>
+          {costingStatus && <span className="text-sm text-muted">{costingStatus}</span>}
         </div>
       </section>
 

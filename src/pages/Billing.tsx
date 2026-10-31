@@ -52,6 +52,7 @@ export default function Billing() {
   const [draftHsn, setDraftHsn] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [discount, setDiscount] = useState("");
+  const [saleExpenses, setSaleExpenses] = useState("");
   const [gstRateBp, setGstRateBp] = useState("500");
   const [paymentMode, setPaymentMode] = useState<string>("Cash");
   const [paid, setPaid] = useState("");
@@ -184,6 +185,7 @@ export default function Billing() {
         paymentMode,
         paidPaise: paid.trim() ? rupeesToPaise(paid) : undefined,
         discountPaise: totals.discountPaise,
+        saleExpensesPaise: saleExpenses.trim() ? rupeesToPaise(saleExpenses) : 0,
         gstPaise: totals.gstPaise,
         gstRateBp: Number(gstRateBp) || 0,
         lines: lines.map((line) => ({
@@ -198,6 +200,7 @@ export default function Billing() {
       setBill(detail);
       setLines([]);
       setDiscount("");
+      setSaleExpenses("");
       setPaid("");
       setCustomerName("");
       setCustomerPhone("");
@@ -450,7 +453,7 @@ export default function Billing() {
           </table>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-5">
           <div className="space-y-1">
             <label className="label" htmlFor="bill-discount">
               Discount (₹)
@@ -462,6 +465,19 @@ export default function Billing() {
               className="input w-full"
               value={discount}
               onChange={(e) => setDiscount(e.currentTarget.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="label" htmlFor="bill-sale-expenses">
+              Delivery / packing (₹)
+            </label>
+            <input
+              id="bill-sale-expenses"
+              type="number"
+              step="any"
+              className="input w-full"
+              value={saleExpenses}
+              onChange={(e) => setSaleExpenses(e.currentTarget.value)}
             />
           </div>
           <div className="space-y-1">

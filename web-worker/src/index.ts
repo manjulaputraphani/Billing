@@ -21,6 +21,9 @@ import { addPurchase, deletePurchase } from "../../src/db/purchases";
 import { saveStockEntry } from "../../src/db/stock";
 import { createExpense, deleteExpense, updateExpense } from "../../src/db/expenses";
 import { setAuditActor, type AuditActor } from "../../src/db/activity";
+import { endSession, startSession, userUsageMetrics } from "../../src/db/sessions";
+import { getCostingMethod, setCostingMethod } from "../../src/db/costing";
+import { finYearOptions, finYearReport, dealProfits } from "../../src/db/reports";
 
 export interface Env {
   DATABASE_URL?: string;
@@ -34,6 +37,13 @@ const COOKIE = "sdhhe_session";
 const SESSION_HOURS = 12;
 const MAX_ATTEMPTS = 5;
 const ATTEMPT_WINDOW_MS = 15 * 60_000;
+
+/** The financial year that contains today (India: 1 April – 31 March). */
+function currentFinYear(): string {
+  const now = new Date();
+  const year = now.getUTCMonth() >= 3 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+  return `${year}-${String(year + 1).slice(-2)}`;
+}
 
 type Session = { uid: number; name: string; role: "owner" | "staff"; exp: number };
 
@@ -232,6 +242,8 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
     exp: Date.now() + SESSION_HOURS * 3600_000,
   };
   const token = await createToken(session, env.SESSION_SECRET as string);
+  // Track the session so the activity log knows who was in and for how long.
+  await startSession(getDb(env.DATABASE_URL as string), session.uid, "web");
   return json(
     { user: { id: session.uid, name: session.name, role: session.role } },
     { headers: { "Set-Cookie": sessionCookie(token, url) } },
@@ -365,6 +377,11 @@ export default {
     }
 
     if (url.pathname === "/api/auth/logout" && request.method === "POST") {
+      const session = await readSession(request, env.SESSION_SECRET);
+      if (session) {
+        // Close the open session and store how long the person was active.
+        await endSession(getDb(env.DATABASE_URL as string), session.uid, "web");
+      }
       return json({ ok: true }, { headers: { "Set-Cookie": clearCookie() } });
     }
 
@@ -456,6 +473,50 @@ export default {
         const rows = await sqlQuery(env, `select category, sum(amount_paise)::bigint as total from expenses
           where expense_date >= date_trunc('month', current_date) group by category order by total desc`);
         return json({ categories: rows });
+      }
+
+      if (url.pathname === "/api/reports/fin-years" && request.method === "GET") {
+        return json({ finYears: await finYearOptions(db) });
+      }
+
+      if (url.pathname === "/api/reports/fin-year" && request.method === "GET") {
+        const finYear = url.searchParams.get("fy") ?? currentFinYear();
+        try {
+          return json({ report: await finYearReport(db, finYear) });
+        } catch {
+          return json({ error: "Invalid financial year" }, { status: 400 });
+        }
+      }
+
+      if (url.pathname === "/api/reports/deals" && request.method === "GET") {
+        const finYear = url.searchParams.get("fy") ?? currentFinYear();
+        try {
+          return json({ deals: await dealProfits(db, finYear) });
+        } catch {
+          return json({ error: "Invalid financial year" }, { status: 400 });
+        }
+      }
+
+      if (url.pathname === "/api/usage" && request.method === "GET") {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+        return json({ usage: await userUsageMetrics(db) });
+      }
+
+      if (url.pathname === "/api/settings/costing" && request.method === "GET") {
+        return json({ method: await getCostingMethod(db) });
+      }
+
+      if (url.pathname === "/api/settings/costing" && request.method === "POST") {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+        const body = (await request.json().catch(() => ({}))) as { method?: string };
+        const method = body.method === "FIFO" ? "FIFO" : "WAC";
+        await setCostingMethod(db, method);
+        await logActivity(db, {
+          event: "settings.costing",
+          summary: `Costing method set to ${method}`,
+          entity: "settings",
+        });
+        return json({ ok: true, method });
       }
 
       if (url.pathname === "/api/investments") {

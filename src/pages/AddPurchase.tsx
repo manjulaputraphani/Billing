@@ -28,6 +28,7 @@ export default function AddPurchase() {
   const [itemId, setItemId] = useState<number | "">("");
   const [qty, setQty] = useState("");
   const [price, setPrice] = useState("");
+  const [expenses, setExpenses] = useState("");
   const [date, setDate] = useState(todayLocal);
   const [supplier, setSupplier] = useState("");
   const [paymentMode, setPaymentMode] = useState<string>("Cash");
@@ -112,6 +113,7 @@ export default function AddPurchase() {
         supplierName: supplier,
         qty: Number(qty),
         unitPricePaise: pricePaise,
+        expensesPaise: expenses.trim() ? rupeesToPaise(expenses) : 0,
         date,
         paymentMode: paymentMode as (typeof PAYMENT_MODES)[number],
         note,
@@ -125,6 +127,7 @@ export default function AddPurchase() {
 
       setQty("");
       setPrice("");
+      setExpenses("");
       setNote("");
       setSupplier("");
       if (itemId !== "") await loadLastPrice(itemId);
@@ -185,6 +188,20 @@ export default function AddPurchase() {
               className="input w-full"
               value={price}
               onChange={(e) => setPrice(e.currentTarget.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="label" htmlFor="purchase-expenses">
+              Transport / loading (₹)
+            </label>
+            <input
+              id="purchase-expenses"
+              type="number"
+              step="any"
+              className="input w-full"
+              value={expenses}
+              onChange={(e) => setExpenses(e.currentTarget.value)}
             />
           </div>
         </div>

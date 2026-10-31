@@ -18,6 +18,8 @@ export const purchaseInputSchema = z.object({
     .number({ message: "Price is required" })
     .int("Price must be whole paise")
     .min(0, "Price cannot be negative"),
+  /** Transport / loading / commission — added into the stock cost. */
+  expensesPaise: z.number().int("Expenses must be whole paise").min(0, "Expenses cannot be negative").optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date"),
   paymentMode: z.enum(PAYMENT_MODES).optional(),
   note: z.string().trim().max(200, "Note is too long").optional(),
@@ -50,7 +52,7 @@ function rowsOf<T>(result: unknown): T[] {
  * Insert purchase + batch + PURCHASE movement as ONE statement (CTEs), so the
  * three rows exist together or not at all. Supplier is found by name or created.
  */
-export async function addPurchase(db: Db, input: unknown): Promise<AddPurchaseResult> {
+export async function addPurchase(db: Db | TxDb, input: unknown): Promise<AddPurchaseResult> {
   const data = parsePurchaseInput(input);
 
   const [item] = await db
@@ -67,7 +69,11 @@ export async function addPurchase(db: Db, input: unknown): Promise<AddPurchaseRe
   const supplier = data.supplierName?.trim() || null;
   const note = data.note?.trim() || null;
   const paymentMode = data.paymentMode ?? null;
+  const expensesPaise = data.expensesPaise ?? 0;
+  const factor = baseFactor(unit);
 
+  // One statement: supplier → purchase → batch → movement → cost pool.
+  // The pool keeps the weighted-average value of the stock (purchase expenses included).
   const result = await db.execute(sql`
     WITH new_supplier AS (
       INSERT INTO suppliers (name)
@@ -84,10 +90,10 @@ export async function addPurchase(db: Db, input: unknown): Promise<AddPurchaseRe
     ),
     p AS (
       INSERT INTO purchases
-        (item_id, supplier_id, qty_base, unit_price_paise, total_paise, purchase_date, payment_mode, note)
+        (item_id, supplier_id, qty_base, unit_price_paise, total_paise, expenses_paise, purchase_date, payment_mode, note)
       SELECT
         ${data.itemId}::int, (SELECT id FROM supplier_id), ${qtyBase}::int,
-        ${data.unitPricePaise}::int, ${totalPaise}::int, ${data.date}::date,
+        ${data.unitPricePaise}::int, ${totalPaise}::int, ${expensesPaise}::int, ${data.date}::date,
         ${paymentMode}::text, ${note}::text
       RETURNING id, item_id, qty_base, unit_price_paise, total_paise, purchase_date
     ),
@@ -95,16 +101,37 @@ export async function addPurchase(db: Db, input: unknown): Promise<AddPurchaseRe
       INSERT INTO batches
         (purchase_id, item_id, qty_original, qty_remaining, unit_price_paise, purchase_date)
       SELECT id, item_id, qty_base, qty_base, unit_price_paise, purchase_date FROM p
-      RETURNING id
+      RETURNING id, qty_remaining
     ),
     m AS (
       INSERT INTO stock_movements
         (item_id, type, qty_change, cost_paise, movement_date, note)
-      SELECT item_id, 'PURCHASE', qty_base, total_paise, purchase_date, ${note}::text FROM p
+      SELECT item_id, 'PURCHASE', qty_base, total_paise + ${expensesPaise}::int, purchase_date, ${note}::text FROM p
       RETURNING id
+    ),
+    stock_qty AS (
+      SELECT coalesce(sum(all_b.qty_remaining), 0)::int AS qty
+      FROM (
+        SELECT nb.qty_remaining FROM b nb
+        UNION ALL
+        SELECT ob.qty_remaining FROM batches ob
+        WHERE ob.item_id = (SELECT item_id FROM p) AND ob.qty_remaining > 0
+      ) all_b
+    ),
+    i AS (
+      UPDATE items it
+      SET stock_value_paise = it.stock_value_paise + p.total_paise + ${expensesPaise}::int,
+          avg_cost_paise = CASE
+            WHEN (SELECT qty FROM stock_qty) > 0
+            THEN round((((it.stock_value_paise + p.total_paise + ${expensesPaise}::int)::numeric) * ${factor}::int) / (SELECT qty FROM stock_qty))::int
+            ELSE 0
+          END
+      FROM p
+      WHERE it.id = p.item_id
+      RETURNING it.id
     )
     SELECT p.id AS purchase_id, b.id AS batch_id, m.id AS movement_id
-    FROM p, b, m
+    FROM p, b, m, i
   `);
 
   const row = rowsOf<{ purchase_id: number; batch_id: number; movement_id: number }>(result)[0];

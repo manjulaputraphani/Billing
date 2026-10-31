@@ -4,6 +4,8 @@ import { withTransaction } from "./client";
 import { batches, items, movementBatchLinks, stockMovements } from "./schema";import { allocateFifo } from "../logic/fifo";
 import { computeUsage } from "../logic/stockCheck";
 import { baseFactor, formatQuantity, type Unit } from "../logic/units";
+import { takeFromPool } from "../logic/weightedCost";
+import { getCostingMethod, getCostPool, saveCostPool } from "./costing";
 import { logActivity } from "./activity";
 import type { Db } from "./client";
 
@@ -136,11 +138,27 @@ export async function saveStockEntry(url: string, input: unknown): Promise<Stock
 
     const plan = planStockEntry(open, data, factor);
 
+    // Value pool BEFORE the batches are reduced (stock on hand before this entry).
+    const costing = await getCostingMethod(tx);
+    const poolBefore = costing === "WAC" ? await getCostPool(tx, data.itemId) : null;
+
     for (const row of plan.remaining) {
       const before = open.find((b) => b.id === row.id)?.qtyRemaining;
       if (before !== row.qtyRemaining) {
         await tx.update(batches).set({ qtyRemaining: row.qtyRemaining }).where(eq(batches.id, row.id));
       }
+    }
+
+    // Usage / wastage / stock-check removes stock, so the pool loses that value.
+    let costPaise = plan.totalCostPaise;
+    if (poolBefore && plan.used > 0) {
+      const take = takeFromPool(
+        { qtyBase: poolBefore.qtyBase, valuePaise: poolBefore.valuePaise },
+        plan.used,
+        factor,
+      );
+      costPaise = take.costPaise;
+      await saveCostPool(tx, data.itemId, take.pool, item.unit as Unit);
     }
 
     const [movement] = await tx
@@ -149,7 +167,7 @@ export async function saveStockEntry(url: string, input: unknown): Promise<Stock
         itemId: data.itemId,
         type: data.type,
         qtyChange: -plan.used,
-        costPaise: plan.totalCostPaise,
+        costPaise,
         enteredQtyLeft: data.type === "STOCK_CHECK" ? (data.enteredLeft ?? null) : null,
         movementDate: data.date,
         note: data.note?.trim() || null,
@@ -178,7 +196,7 @@ export async function saveStockEntry(url: string, input: unknown): Promise<Stock
       entityId: data.itemId,
     });
 
-    return { movementId: movement.id, used: plan.used, costPaise: plan.totalCostPaise };
+    return { movementId: movement.id, used: plan.used, costPaise };
   });
 }
 

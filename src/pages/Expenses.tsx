@@ -3,6 +3,7 @@ import {
   createExpense,
   deleteExpense,
   EXPENSE_CATEGORIES,
+  EXPENSE_TYPES,
   getExpenseBill,
   listExpenses,
   listExpenseCategories,
@@ -19,6 +20,7 @@ type BillFile = { filename: string; mime: string; sizeBytes: number; dataBase64:
 
 type FormState = {
   id: number | null;
+  expenseType: string;
   category: string;
   amount: string;
   date: string;
@@ -53,6 +55,7 @@ function currentMonth(): string {
 function emptyForm(): FormState {
   return {
     id: null,
+    expenseType: "general",
     category: "",
     amount: "",
     date: todayLocal(),
@@ -139,6 +142,7 @@ export default function Expenses() {
     setBusy(true);
     try {
       const input = parseExpenseInput({
+        expenseType: form.expenseType as (typeof EXPENSE_TYPES)[number],
         category: form.category,
         amountPaise: rupeesToPaise(form.amount),
         date: form.date,
@@ -290,6 +294,7 @@ export default function Expenses() {
                       setError(null);
                       setForm({
                         id: row.id,
+                        expenseType: row.expenseType ?? "general",
                         category: row.category,
                         amount: String(row.amountPaise / 100),
                         date: row.date,
@@ -339,6 +344,22 @@ export default function Expenses() {
             </h2>
 
             <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="label" htmlFor="expense-type">
+                  Type
+                </label>
+                <select
+                  id="expense-type"
+                  className="input w-full"
+                  value={form.expenseType}
+                  onChange={(e) => setForm({ ...form, expenseType: e.currentTarget.value })}
+                >
+                  <option value="general">General (rent, salary…)</option>
+                  <option value="purchase">Purchase (transport, loading)</option>
+                  <option value="sale">Sale (delivery, packing)</option>
+                </select>
+              </div>
+
               <div className="space-y-1">
                 <label className="label" htmlFor="expense-category">
                   Category

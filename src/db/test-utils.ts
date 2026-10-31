@@ -9,10 +9,18 @@ const OUR_TABLES = [
   "batches",
   "purchases",
   "expenses",
+  "expense_bills",
   "ai_suggestions",
   "settings",
   "suppliers",
   "items",
+  "customers",
+  "sale_items",
+  "sale_bills",
+  "activity_log",
+  "app_users",
+  "user_sessions",
+  "investments",
 ] as const;
 
 function rowsOf<T>(result: unknown): T[] {
