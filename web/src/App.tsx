@@ -34,17 +34,22 @@ import {
   IconDashboard,
   IconExpenses,
   IconImage,
+  IconIndianRupee,
   IconInvestments,
   IconInvoice,
   IconItems,
   IconMenu,
+  IconPackage,
   IconPlus,
   IconPurchases,
   IconReports,
+  IconScale,
   IconSettings,
   IconSignOut,
   IconStock,
+  IconStore,
   IconTeam,
+  IconTruck,
 } from "./components/icons";
 
 type View = "dashboard" | "reports" | "customers" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
@@ -182,11 +187,12 @@ export default function App() {
   const [billMsg, setBillMsg] = useState<string | null>(null);
   const [lastBillId, setLastBillId] = useState<number | null>(null);
   const [stats, setStats] = useState<{ today_sales: number; month_sales: number; month_profit: number; month_expenses: number; credit_paise: number; credit_bills: number; low_stock: number } | null>(null);
-  const [purchasesList, setPurchasesList] = useState<Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }>>([]);
+  const [purchasesList, setPurchasesList] = useState<Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string; expenses_paise: number; supplier_name: string | null }>>([]);
   const [expensesList, setExpensesList] = useState<Array<{ id: number; category: string; amountPaise: number; date: string; paymentMode: string | null; paidTo: string | null; note: string | null }>>([]);
   const [stockEntries, setStockEntries] = useState<StockEntryRow[]>([]);
   const [purchase, setPurchase] = useState({ itemId: "" as number | "", qty: "", rate: "", supplier: "", expenses: "" });
   const [purchaseMsg, setPurchaseMsg] = useState<string | null>(null);
+  const [purchaseSaving, setPurchaseSaving] = useState(false);
   const [stock, setStock] = useState({ itemId: "" as number | "", type: "USAGE", qty: "", note: "" });
   const [stockBatches, setStockBatches] = useState<Array<{ id: number; qty_remaining: number; unit_price_paise: number; purchase_date: string }>>([]);
   const [stockMsg, setStockMsg] = useState<string | null>(null);
@@ -486,7 +492,8 @@ export default function App() {
 
   async function addPurchaseNow() {
     const item = items.find((i) => i.id === purchase.itemId);
-    if (!item) return;
+    if (!item || purchaseSaving) return;
+    setPurchaseSaving(true);
     setPurchaseMsg(null);
     try {
       await api.addPurchase({
@@ -505,6 +512,8 @@ export default function App() {
       setStats((await api.stats()).stats);
     } catch (err) {
       setPurchaseMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPurchaseSaving(false);
     }
   }
 
@@ -1464,46 +1473,122 @@ export default function App() {
           </section>
         )}
 
-        {view === "purchases" && (
-          <section className="space-y-4">
-            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Purchases</h1>
-            <div className="card max-w-3xl space-y-3 p-4">
-              <div className="grid gap-2 sm:grid-cols-5">
-                <select className="input" value={purchase.itemId} onChange={(e) => setPurchase({ ...purchase, itemId: e.currentTarget.value === "" ? "" : Number(e.currentTarget.value) })}>
-                  <option value="">Choose item…</option>
-                  {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-                </select>
-                <input className="input" type="number" placeholder="Qty" value={purchase.qty} onChange={(e) => setPurchase({ ...purchase, qty: e.currentTarget.value })} />
-                <input className="input" type="number" placeholder="Rate ₹" value={purchase.rate} onChange={(e) => setPurchase({ ...purchase, rate: e.currentTarget.value })} />
-                <input className="input" type="number" placeholder="Transport ₹" value={purchase.expenses} onChange={(e) => setPurchase({ ...purchase, expenses: e.currentTarget.value })} />
-                <input className="input" placeholder="Supplier" value={purchase.supplier} onChange={(e) => setPurchase({ ...purchase, supplier: e.currentTarget.value })} />
+        {view === "purchases" && (() => {
+          const purchaseRatePaise = Math.round(Number(purchase.rate || "0") * 100);
+          const purchaseQty = Number(purchase.qty || "0");
+          const purchaseTotalPaise = purchaseQty > 0 ? Math.round(purchaseQty * purchaseRatePaise) : 0;
+          return (
+            <section className="space-y-4">
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Purchases</h1>
+                <p className="text-sm text-muted">Record stock you buy from suppliers.</p>
               </div>
-              <button className="btn btn-primary" onClick={() => void addPurchaseNow()}>Save purchase</button>
-              {purchaseMsg && <p role="status" className="text-sm text-muted">{purchaseMsg}</p>}
-            </div>
-            <div className="card overflow-x-auto">
-              {purchasesList.length === 0 ? (
-                <EmptyState
-                  illustration="purchases"
-                  title="No purchases yet"
-                  message="Record what you buy — the weighted-average cost is updated automatically."
-                />
-              ) : (
-                <table className="w-full min-w-[560px] text-left text-sm">
-                  <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
-                  <tbody>{purchasesList.map((p) => (
-                    <tr key={p.id} className="border-t border-line">
-                      <td className="px-3 py-2">{formatDate(p.purchase_date)}</td>
-                      <td className="px-3 py-2 font-medium">{p.name}</td>
-                      <td className="px-3 py-2">{qty(p.qty_base, p.unit)}</td>
-                      <td className="px-3 py-2 text-right">{money(p.total_paise)}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              )}
-            </div>
-          </section>
-        )}
+
+              <div className="card p-4">
+                <div className="grid items-end gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto]">
+                  <div className="space-y-1">
+                    <label className="label">Item</label>
+                    <div className="relative">
+                      <IconPackage size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                      <select className="input input-icon" value={purchase.itemId} onChange={(e) => setPurchase({ ...purchase, itemId: e.currentTarget.value === "" ? "" : Number(e.currentTarget.value) })}>
+                        <option value="">Choose item…</option>
+                        {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="label">Qty</label>
+                    <div className="relative">
+                      <IconScale size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                      <input className="input input-icon" type="number" placeholder="0" value={purchase.qty} onChange={(e) => setPurchase({ ...purchase, qty: e.currentTarget.value })} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="label">Rate ₹</label>
+                    <div className="relative">
+                      <IconIndianRupee size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                      <input className="input input-icon" type="number" placeholder="0" value={purchase.rate} onChange={(e) => setPurchase({ ...purchase, rate: e.currentTarget.value })} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="label">Transport ₹</label>
+                    <div className="relative">
+                      <IconTruck size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                      <input className="input input-icon" type="number" placeholder="0" value={purchase.expenses} onChange={(e) => setPurchase({ ...purchase, expenses: e.currentTarget.value })} />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="label">Supplier</label>
+                    <div className="relative">
+                      <IconStore size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                      <input className="input input-icon" placeholder="Supplier" value={purchase.supplier} onChange={(e) => setPurchase({ ...purchase, supplier: e.currentTarget.value })} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="whitespace-nowrap text-sm text-muted">
+                      Total: <span className="font-semibold text-ink">{money(purchaseTotalPaise)}</span>
+                    </span>
+                    <button className="btn btn-primary whitespace-nowrap" onClick={() => void addPurchaseNow()} disabled={purchaseSaving}>
+                      {purchaseSaving ? "Saving…" : "Save purchase"}
+                    </button>
+                  </div>
+                </div>
+                {purchaseMsg && <p role="status" className="mt-2 text-sm text-muted">{purchaseMsg}</p>}
+              </div>
+
+              <div className="card overflow-x-auto">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <h2 className="text-sm font-medium">Recent purchases</h2>
+                </div>
+                {purchasesList.length === 0 ? (
+                  <div className="px-4 pb-4">
+                    <EmptyState
+                      illustration="purchases"
+                      title="No purchases yet"
+                      message="Record what you buy — the weighted-average cost is updated automatically."
+                    />
+                  </div>
+                ) : (
+                  <table className="w-full min-w-[820px] text-left text-sm">
+                    <colgroup>
+                      <col className="w-[12%]" />
+                      <col className="w-[24%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[14%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[11%]" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th className="px-4 py-2">Date</th>
+                        <th className="px-4 py-2">Item</th>
+                        <th className="px-4 py-2 text-right">Qty</th>
+                        <th className="px-4 py-2 text-right">Rate/kg</th>
+                        <th className="px-4 py-2 text-right">Transport</th>
+                        <th className="px-4 py-2">Supplier</th>
+                        <th className="px-4 py-2 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {purchasesList.map((p) => (
+                        <tr key={p.id} className="border-t border-line">
+                          <td className="whitespace-nowrap px-4 py-2">{formatDate(p.purchase_date)}</td>
+                          <td className="px-4 py-2 font-medium">{p.name}</td>
+                          <td className="px-4 py-2 text-right">{qty(p.qty_base, p.unit)}</td>
+                          <td className="px-4 py-2 text-right">{money(p.unit_price_paise)}</td>
+                          <td className="px-4 py-2 text-right">{money(p.expenses_paise)}</td>
+                          <td className="px-4 py-2">{p.supplier_name ?? "—"}</td>
+                          <td className="px-4 py-2 text-right">{money(p.total_paise)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          );
+        })()}
 
         {view === "stock" && (() => {
           const picked = items.find((i) => i.id === stock.itemId);

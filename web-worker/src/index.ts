@@ -542,8 +542,12 @@ export default {
       }
 
       if (url.pathname === "/api/purchases" && request.method === "GET") {
-        const rows = await sqlQuery(env, `select p.id, p.qty_base, p.unit_price_paise, p.total_paise, p.purchase_date, i.name, i.unit
-          from purchases p join items i on i.id = p.item_id order by p.id desc limit 30`);
+        const rows = await sqlQuery(env, `select p.id, p.qty_base, p.unit_price_paise, p.total_paise, p.purchase_date,
+            p.expenses_paise, i.name, i.unit, s.name as supplier_name
+          from purchases p
+          join items i on i.id = p.item_id
+          left join suppliers s on s.id = p.supplier_id
+          order by p.id desc limit 30`);
         return json({ purchases: rows });
       }
 

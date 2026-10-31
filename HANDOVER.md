@@ -1,44 +1,42 @@
 # HANDOVER (keep under 60 lines — overwrite each time, history is in git)
 
-Last updated: 2026-10-31 20:41 by GLM-5.2 (OpenCode)
+Last updated: 2026-10-31 20:49 by GLM-5.2 (OpenCode)
 Tool: OpenCode
 
 ## Current state
 Web LIVE: https://sdhhe-api.blvphani.workers.dev · Desktop = Tauri app in `src/`.
 Coffee theme, FY reports, sessions, customer master, lot-wise ledger, Dashboard polish,
-refined New Bill (uniform controls, GST split), Stock Check with saved user + timestamps.
+refined New Bill + Stock Check, and a redesigned Purchases page.
 
 ## Done this session
 - **Lot-wise ledger**: `batchLedger` + `/api/items/:id/batches/ledger` + Items **Lots** panel.
 - **Dashboard**: 3-col stats; Quick expense; EmptyState fix; sticky full-height sidebar;
   chart fills card + empty message; warning/clickable low-stock card + list; relative activity.
-- **Stock Check**: labels, matched select padding, stock next to Quantity, **Recent entries**.
-  Form + table cards now full width (same margins); table cells `px-4` align with the title;
-  `<colgroup>` 16/24/13/15/18/14 %; "Last 30 entries"; date+time via `formatDateTime`.
-- **Stock entries now save the member**: added `stock_movements.actor` + `created_at`
-  (nullable) to `src/db/schema.ts`, applied to live DB with `ALTER TABLE … ADD COLUMN IF NOT
-  EXISTS` (drizzle-kit push currently errors "activity_log already exists" — pre-existing).
-  `saveStockEntry` writes `actor=getAuditActor().name, createdAt=new Date()`. `GET /api/stock`
-  returns them (activity-log join kept only as fallback for old rows).
-- **Shared date format** `web/src/format.ts`: `formatDate` → "31 Oct 2026",
-  `formatDateTime` → "31 Oct 2026, 8:35 PM" (en-IN, AM/PM upper-cased, date-only parsed local).
-  Applied to Stock Check, Invoices, Reports (deals + FY range), Purchases, Expenses,
-  Investments, Lots panel; printed/emailed bill `billDate` now "14 May 2026".
-- **New Bill**: all inputs `h-10`; Item/Qty/Rate/HSN labels aligned; single-line `+ Add`;
-  pickers `h-10` with shared `IconSearch` empty state; GSTIN placeholder "e.g. 29ABCDE…";
-  Summary order Subtotal · GST split · Discount (−) · Delivery (+) · Total, sticky top-6.
-  GST split: same state code → CGST+SGST, else IGST. Delivery stays an internal expense.
+- **Stock Check**: labels, matched select padding, stock next to Quantity, **Recent entries**;
+  full-width cards, `px-4` cells, `<colgroup>` 16/24/13/15/18/14 %, "Last 30 entries";
+  `stock_movements.actor` + `created_at` saved per entry (live DB columns added).
+- **Purchases (latest)**: subtitle "Record stock you buy from suppliers."; full-width form;
+  one labelled row `2fr 1fr 1fr 1fr 1.2fr auto` (Item, Qty, Rate ₹, Transport ₹, Supplier)
+  with Lucide icons inside the fields (package, scale, indian-rupee, truck, store); live
+  `Total: ₹x` beside the Save button; Save disabled while saving; table titled **Recent
+  purchases** with Date, Item, Qty, Rate/kg, Transport, Supplier, Total (balanced colgroup).
+  `/api/purchases` now returns `expenses_paise` + `supplier_name`.
+- **New Bill**: uniform `h-10` controls, aligned labels, `+ Add`, search-icon pickers, GSTIN
+  placeholder, Summary order Subtotal · GST split · Discount (−) · Delivery (+) · Total,
+  sticky top-6; CGST+SGST vs IGST by state code.
+- **Shared dates** `web/src/format.ts`: "31 Oct 2026" / "31 Oct 2026, 8:35 PM"; applied across
+  Stock Check, Invoices, Reports, Purchases, Expenses, Investments, Lots; printed bill date.
 - `npx tsc --noEmit` clean (root + web + worker); `cd web && npm run build` ok; 244 tests green.
 
 ## Live / deployment
-- **Deployed 2026-10-31 20:41** — Stock Check + dates live (version e9f4779a, bundle HCbfTH1B).
+- **Deployed 2026-10-31 20:49** — Purchases live (version 7305cf14, bundle CMEGGSpn).
 - Worker `sdhhe-api`: assets from `web/dist` + API. Deploy: `cd web && npm run build` →
   `cd ../web-worker && ./node_modules/.bin/wrangler deploy`.
 - Secrets: `DATABASE_URL`, `SESSION_SECRET`. DB: Neon `SriDurgaHariHaraEnterprises`.
 - Members: owner **B PHANI KUMAR** (7569208757), staff **Chaluvaraj** (9019744242).
 
 ## Next tasks (priority)
-1. **Desktop parity**: Lots tab, Stock Check actor/time, New Bill layout, Dashboard polish.
+1. **Desktop parity**: Lots tab, Stock Check actor/time, Purchases form, New Bill layout.
 2. Decide whether Delivery should be charged into the invoice total (currently expense-only).
 3. T-4 lot-wise FY report; T-5 sale preview batch breakdown.
 4. Add `web/public/assets/login-bg.webp`; enable email; rotate owner password; save Playwright
