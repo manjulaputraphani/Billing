@@ -667,19 +667,18 @@ export default function App() {
         {/* Right: the form */}
         <div className="flex items-center justify-center bg-bg p-6">
           <div className="card w-full max-w-sm p-6">
-            <div className="mb-6 flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-primary text-on-primary md:hidden">
-                  <IconCoffeeNav />
-                </span>
-                <div>
-                  <h1 className="text-[13px] font-semibold uppercase leading-snug tracking-wide">
-                    SREE DURGA HARIHARA ENTERPRISES
-                  </h1>
-                  <p className="text-sm text-muted">Sign in to the web edition.</p>
-                </div>
+            <div className="mb-6">
+              {/* On mobile the logo sits above the form (the photo panel is hidden). */}
+              <span className="mb-3 grid size-10 place-items-center rounded-xl bg-primary text-on-primary md:hidden">
+                <IconCoffeeNav />
+              </span>
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="text-[13px] font-semibold uppercase leading-snug tracking-wide">
+                  SREE DURGA HARIHARA ENTERPRISES
+                </h1>
+                <ThemeToggle />
               </div>
-              <ThemeToggle />
+              <p className="mt-1 text-sm text-muted">Sign in to the web edition.</p>
             </div>
           {authMode === "login" ? (
             <form className="space-y-4" onSubmit={signIn}>
