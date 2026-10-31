@@ -223,6 +223,21 @@
     border-color: var(--c-primary);
     box-shadow: 0 0 0 3px var(--c-ring);
   }
+  /* Dropdowns: the native arrow/padding varies by browser, so draw our own
+     chevron and force the same left padding as a text input. */
+  select.input {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-left: 0.75rem;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237d6b5d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    background-size: 12px 12px;
+  }
+  [data-theme="dark"] select.input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23b5a595' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
   .label {
     display: block;
     font-size: 13px;

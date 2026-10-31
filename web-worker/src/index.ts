@@ -852,6 +852,41 @@ export default {
       if (url.pathname === "/api/stock" && request.method === "POST") {
         return json({ stock: await asActor(actor, () => saveStockEntry(env.DATABASE_URL as string, body)) });
       }
+
+      // Recent stock entries (date, item, type, qty, note, user). The user is
+      // recovered from the activity log: each entry logs `stock.*` with the
+      // item as entity, in the same transaction and the same order.
+      if (url.pathname === "/api/stock" && request.method === "GET") {
+        const rows = await sqlQuery(
+          env,
+          `with sm as (
+             select m.id, m.item_id, m.type, m.qty_change, m.entered_qty_left, m.note,
+                    m.movement_date::text as date, i.name as item, i.unit,
+                    row_number() over (partition by m.item_id, m.type order by m.id) as rn
+             from stock_movements m
+             join items i on i.id = m.item_id
+             where m.type in ('STOCK_CHECK','USAGE','WASTAGE')
+           ),
+           al as (
+             select a.id, a.entity_id, a.event, a.actor,
+                    row_number() over (partition by a.entity_id, a.event order by a.id) as rn
+             from activity_log a
+             where a.entity = 'item' and a.event like 'stock.%'
+           )
+           select sm.id, sm.date, sm.item, sm.unit, sm.type,
+                  case when sm.type = 'STOCK_CHECK'
+                       then coalesce(sm.entered_qty_left, 0)
+                       else abs(sm.qty_change) end as qty_base,
+                  sm.note, al.actor as "user"
+           from sm
+           left join al on al.entity_id = sm.item_id
+             and al.event = 'stock.' || lower(sm.type)
+             and al.rn = sm.rn
+           order by sm.id desc
+           limit 30`,
+        );
+        return json({ entries: rows });
+      }
     } catch (err) {
       console.error("api error:", err);
       return json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });

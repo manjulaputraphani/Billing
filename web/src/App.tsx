@@ -12,6 +12,7 @@ import {
   type FinYearReport,
   type Item,
   type Member,
+  type StockEntryRow,
   type UsageRow,
   type User,
 } from "./api";
@@ -122,6 +123,12 @@ function Donut({ items }: { items: { label: string; value: number }[] }) {  cons
   );
 }
 
+const STOCK_TYPE_LABEL: Record<string, string> = {
+  STOCK_CHECK: "Stock left",
+  USAGE: "Used",
+  WASTAGE: "Wastage",
+};
+
 export default function App() {
   const [checking, setChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -159,6 +166,7 @@ export default function App() {
   const [stats, setStats] = useState<{ today_sales: number; month_sales: number; month_profit: number; month_expenses: number; credit_paise: number; credit_bills: number; low_stock: number } | null>(null);
   const [purchasesList, setPurchasesList] = useState<Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }>>([]);
   const [expensesList, setExpensesList] = useState<Array<{ id: number; category: string; amountPaise: number; date: string; paymentMode: string | null; paidTo: string | null; note: string | null }>>([]);
+  const [stockEntries, setStockEntries] = useState<StockEntryRow[]>([]);
   const [purchase, setPurchase] = useState({ itemId: "" as number | "", qty: "", rate: "", supplier: "", expenses: "" });
   const [purchaseMsg, setPurchaseMsg] = useState<string | null>(null);
   const [stock, setStock] = useState({ itemId: "" as number | "", type: "USAGE", qty: "", note: "" });
@@ -344,6 +352,23 @@ export default function App() {
     };
   }, [user, view]);
 
+  // Load recent stock entries when the Stock Check tab opens.
+  useEffect(() => {
+    if (!user || view !== "stock") return;
+    let cancelled = false;
+    api
+      .stockEntries()
+      .then((res) => {
+        if (!cancelled) setStockEntries(res.entries);
+      })
+      .catch(() => {
+        if (!cancelled) setStockEntries([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view]);
+
   function addBillLine() {
     const item = items.find((i) => i.id === draft.itemId);
     if (!item) return;
@@ -492,6 +517,7 @@ export default function App() {
       setStockBatches([]);
       setItems((await api.items()).items);
       setStats((await api.stats()).stats);
+      setStockEntries((await api.stockEntries()).entries);
     } catch (err) {
       setStockMsg(err instanceof Error ? err.message : String(err));
     }
@@ -1397,46 +1423,125 @@ export default function App() {
           </section>
         )}
 
-        {view === "stock" && (
-          <section className="space-y-4">
-            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Stock Check</h1>
-            <div className="card max-w-3xl space-y-3 p-4">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <select className="input" value={stock.itemId} onChange={(e) => void pickStockItem(e.currentTarget.value === "" ? "" : Number(e.currentTarget.value))}>
-                  <option value="">Choose item…</option>
-                  {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-                </select>
-                <select className="input" value={stock.type} onChange={(e) => setStock({ ...stock, type: e.currentTarget.value })}>
-                  <option value="USAGE">Used</option>
-                  <option value="WASTAGE">Wastage</option>
-                  <option value="STOCK_CHECK">Stock left</option>
-                </select>
+        {view === "stock" && (() => {
+          const picked = items.find((i) => i.id === stock.itemId);
+          const unit = picked?.unit ?? "kg";
+          const currentStockBase = stockBatches.reduce((sum, b) => sum + b.qty_remaining, 0);
+          return (
+            <section className="space-y-4">
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Stock Check</h1>
+                <p className="text-sm text-muted">Record usage, wastage or the stock counted on the shelf.</p>
               </div>
-              {stock.itemId !== "" && (
-                <div className="rounded-lg bg-surface-2 px-3 py-2 text-sm">
-                  <p className="text-muted">
-                    Current stock: <span className="font-medium text-ink">{qty(stockBatches.reduce((sum, b) => sum + b.qty_remaining, 0), items.find((i) => i.id === stock.itemId)?.unit ?? "kg")}</span>
-                  </p>
-                  {stockBatches.length > 0 && (
-                    <ul className="mt-1.5 space-y-0.5 text-xs text-muted">
-                      {stockBatches.map((b) => (
-                        <li key={b.id}>
-                          Lot #{b.id} · {b.purchase_date} · {qty(b.qty_remaining, items.find((i) => i.id === stock.itemId)?.unit ?? "kg")} @ {money(b.unit_price_paise)}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+
+              <div className="card max-w-3xl space-y-3 p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="label" htmlFor="stock-item">Item</label>
+                    <select
+                      id="stock-item"
+                      className="input"
+                      value={stock.itemId}
+                      onChange={(e) => void pickStockItem(e.currentTarget.value === "" ? "" : Number(e.currentTarget.value))}
+                    >
+                      <option value="">Choose item…</option>
+                      {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="label" htmlFor="stock-type">Type</label>
+                    <select
+                      id="stock-type"
+                      className="input"
+                      value={stock.type}
+                      onChange={(e) => setStock({ ...stock, type: e.currentTarget.value })}
+                    >
+                      <option value="USAGE">Used</option>
+                      <option value="WASTAGE">Wastage</option>
+                      <option value="STOCK_CHECK">Stock left</option>
+                    </select>
+                  </div>
                 </div>
-              )}
-              <div className="grid gap-2 sm:grid-cols-2">
-                <input className="input" type="number" placeholder={stock.type === "STOCK_CHECK" ? "Stock left" : "Quantity"} value={stock.qty} onChange={(e) => setStock({ ...stock, qty: e.currentTarget.value })} />
-                <input className="input" placeholder="Note (optional)" value={stock.note} onChange={(e) => setStock({ ...stock, note: e.currentTarget.value })} />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <label className="label" htmlFor="stock-qty">Quantity</label>
+                      {stock.itemId !== "" && (
+                        <span className="text-xs text-muted">
+                          Stock: <span className="font-medium text-ink">{qty(currentStockBase, unit)}</span>
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      id="stock-qty"
+                      className="input"
+                      type="number"
+                      placeholder={stock.type === "STOCK_CHECK" ? "Stock left" : "Quantity"}
+                      value={stock.qty}
+                      onChange={(e) => setStock({ ...stock, qty: e.currentTarget.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="label" htmlFor="stock-note">Note</label>
+                    <input
+                      id="stock-note"
+                      className="input"
+                      placeholder="Optional"
+                      value={stock.note}
+                      onChange={(e) => setStock({ ...stock, note: e.currentTarget.value })}
+                    />
+                  </div>
+                </div>
+
+                <button className="btn btn-primary" onClick={() => void saveStockNow()}>Save entry</button>
+                {stockMsg && <p role="status" className="text-sm text-muted">{stockMsg}</p>}
               </div>
-              <button className="btn btn-primary" onClick={() => void saveStockNow()}>Save entry</button>
-              {stockMsg && <p role="status" className="text-sm text-muted">{stockMsg}</p>}
-            </div>
-          </section>
-        )}
+
+              {/* Recent entries */}
+              <div className="card overflow-x-auto">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <h2 className="text-sm font-medium">Recent entries</h2>
+                  <span className="text-xs text-muted">Last 30</span>
+                </div>
+                {stockEntries.length === 0 ? (
+                  <p className="px-4 pb-4 text-sm text-muted">No stock entries yet.</p>
+                ) : (
+                  <table className="w-full min-w-[720px] text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2">Date</th>
+                        <th className="px-3 py-2">Item</th>
+                        <th className="px-3 py-2">Type</th>
+                        <th className="px-3 py-2 text-right">Quantity</th>
+                        <th className="px-3 py-2">Note</th>
+                        <th className="px-3 py-2">User</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockEntries.map((row) => (
+                        <tr key={row.id} className="border-t border-line">
+                          <td className="px-3 py-2">{row.date}</td>
+                          <td className="px-3 py-2 font-medium">{row.item}</td>
+                          <td className="px-3 py-2">
+                            <span className={`badge ${
+                              row.type === "STOCK_CHECK" ? "badge-info" : row.type === "WASTAGE" ? "badge-bad" : "badge-warn"
+                            }`}>
+                              {STOCK_TYPE_LABEL[row.type] ?? row.type}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right">{qty(row.qtyBase, row.unit)}</td>
+                          <td className="px-3 py-2">{row.note ?? "—"}</td>
+                          <td className="px-3 py-2">{row.user ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          );
+        })()}
 
         {view === "expenses" && (
           <section className="space-y-4">

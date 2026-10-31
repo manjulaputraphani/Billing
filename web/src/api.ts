@@ -162,6 +162,17 @@ export type BatchLedger = {
   batches: BatchLedgerRow[];
 };
 
+export type StockEntryRow = {
+  id: number;
+  date: string;
+  item: string;
+  unit: string;
+  type: string;
+  qtyBase: number;
+  note: string | null;
+  user: string | null;
+};
+
 export type ActivityRow = {
   id: number;
   at: string;
@@ -226,6 +237,7 @@ export const api = {
   batches: (itemId: number) => request<{ batches: Array<{ id: number; qty_remaining: number; unit_price_paise: number; purchase_date: string }> }>(`/api/items/${itemId}/batches`),
   batchLedger: (itemId: number) => request<{ ledger: BatchLedger }>(`/api/items/${itemId}/batches/ledger`),
   saveStock: (body: Record<string, unknown>) => request<{ stock: unknown }>("/api/stock", { method: "POST", body: JSON.stringify(body) }),
+  stockEntries: () => request<{ entries: StockEntryRow[] }>("/api/stock"),
   expenses: () => request<{ expenses: Array<{ id: number; category: string; amountPaise: number; date: string; paymentMode: string | null; paidTo: string | null; note: string | null }> }>("/api/expenses"),
   addExpense: (body: Record<string, unknown>) => request<{ expense: unknown }>("/api/expenses", { method: "POST", body: JSON.stringify(body) }),
   createBill: (body: Record<string, unknown>) => request<{ bill: { saleId: number; billNo: string; totalPaise: number } }>("/api/bills", { method: "POST", body: JSON.stringify(body) }),
