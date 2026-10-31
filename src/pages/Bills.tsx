@@ -3,6 +3,7 @@ import {
   cancelSaleBill,
   getSaleBill,
   listSaleBills,
+  recordBillPayment,
   type SaleBillDetail,
   type SaleBillRow,
 } from "../db/billing";
@@ -62,6 +63,34 @@ export default function Bills() {
     setSuccess(null);
     try {
       setDetail(await getSaleBill(db, row.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  /** Record a payment against a bill that still has credit. */
+  async function collectPayment(row: SaleBillRow) {
+    setError(null);
+    setSuccess(null);
+    const due = row.totalPaise - row.paidPaise;
+    const input = window.prompt(
+      `Amount received for ${row.billNo} (credit due ${formatRupees(due)})`,
+      (due / 100).toFixed(2),
+    );
+    if (input === null) return;
+    const amountPaise = Math.round(Number(input) * 100);
+    if (!Number.isFinite(amountPaise) || amountPaise <= 0) {
+      setError("Enter a valid amount");
+      return;
+    }
+    try {
+      const result = await recordBillPayment(db, row.id, amountPaise);
+      setSuccess(
+        result.creditPaise > 0
+          ? `Payment recorded — ${formatRupees(result.creditPaise)} credit still due`
+          : "Payment recorded — bill fully paid",
+      );
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -210,8 +239,12 @@ export default function Bills() {
                 <td className="px-3 py-2">
                   {row.cancelled ? (
                     <span className="badge badge-bad">Cancelled</span>
+                  ) : row.paidPaise < row.totalPaise ? (
+                    <span className="badge badge-warn" title="Credit still due">
+                      Credit {formatRupees(row.totalPaise - row.paidPaise)}
+                    </span>
                   ) : (
-                    <span className="badge badge-ok">Issued</span>
+                    <span className="badge badge-ok">Paid</span>
                   )}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-right">
@@ -222,6 +255,15 @@ export default function Bills() {
                   >
                     View
                   </button>
+                  {!row.cancelled && row.paidPaise < row.totalPaise && (
+                    <button
+                      type="button"
+                      className="mr-3 text-sm underline"
+                      onClick={() => void collectPayment(row)}
+                    >
+                      Record payment
+                    </button>
+                  )}
                   {!row.cancelled && (
                     <button
                       type="button"

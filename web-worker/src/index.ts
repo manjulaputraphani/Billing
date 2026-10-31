@@ -16,7 +16,7 @@ import { getShopDetails, saveShopDetails } from "../../src/db/settings";
 import { buildBillHtml } from "../../src/lib/printBill";
 import { logActivity } from "../../src/db/activity";
 import { createItem, deleteItem, updateItem } from "../../src/db/items";
-import { cancelSaleBill, createCustomer, createSaleBill } from "../../src/db/billing";
+import { cancelSaleBill, createCustomer, createSaleBill, recordBillPayment } from "../../src/db/billing";
 import { deleteCustomer, listCustomers, updateCustomer } from "../../src/db/customers";
 import { addPurchase, deletePurchase } from "../../src/db/purchases";
 import { saveStockEntry } from "../../src/db/stock";
@@ -535,6 +535,8 @@ export default {
           (select coalesce(sum(total_paise),0) from sale_bills where cancelled = false and sale_date >= date_trunc('month', current_date)) as month_sales,
           (select coalesce(sum(si.profit_paise),0) from sale_items si join sale_bills sb on sb.id = si.sale_id where sb.cancelled = false and sb.sale_date >= date_trunc('month', current_date)) as month_profit,
           (select coalesce(sum(amount_paise),0) from expenses where expense_date >= date_trunc('month', current_date)) as month_expenses,
+          (select coalesce(sum(total_paise - paid_paise),0) from sale_bills where cancelled = false and paid_paise < total_paise) as credit_paise,
+          (select count(*)::int from sale_bills where cancelled = false and paid_paise < total_paise) as credit_bills,
           (select count(*)::int from items i where coalesce((select sum(b.qty_remaining) from batches b where b.item_id = i.id),0) <= i.min_stock_base) as low_stock`);
         return json({ stats: row });
       }
@@ -830,6 +832,13 @@ export default {
       if (url.pathname.match(/^\/api\/bills\/\d+\/cancel$/) && request.method === "POST") {
         const id = Number(url.pathname.split("/")[3]);
         return json({ result: await asActor(actor, () => cancelSaleBill(env.DATABASE_URL as string, id)) });
+      }
+
+      if (url.pathname.match(/^\/api\/bills\/\d+\/payment$/) && request.method === "POST") {
+        const id = Number(url.pathname.split("/")[3]);
+        // The body was already read for this request — read it from there.
+        const amount = Number((body as { amountPaise?: number }).amountPaise ?? 0);
+        return json({ payment: await asActor(actor, () => recordBillPayment(db, id, amount)) });
       }
 
       if (url.pathname === "/api/stock" && request.method === "POST") {

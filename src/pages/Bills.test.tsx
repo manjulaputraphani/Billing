@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Bills from "./Bills";
 import { DbProvider } from "../lib/db-context";
@@ -125,8 +125,28 @@ describe("Bills list", () => {
     expect(await screen.findByText("SD-2026-000001")).toBeInTheDocument();
     expect(screen.getByText("SD-2026-000002")).toBeInTheDocument();
     const table = screen.getByTestId("bills-table");
-    expect(within(table).getByText("Issued")).toBeInTheDocument();
-    expect(within(table).getByText("Cancelled")).toBeInTheDocument();
+    const badges = Array.from(table.querySelectorAll("span.badge")).map((el) => el.textContent);
+    expect(badges).toContain("Paid");
+    expect(badges).toContain("Cancelled");
+  });
+
+  it("tags a partly unpaid bill with the credit still due", async () => {
+    vi.mocked(listSaleBills).mockResolvedValue([
+      {
+        id: 9,
+        billNo: "SD-2026-000009",
+        customerName: "Kalki",
+        saleDate: "2026-10-28",
+        totalPaise: 5000,
+        paidPaise: 2000,
+        paymentMode: "Credit",
+        cancelled: false,
+      },
+    ]);
+    renderPage();
+    const table = await screen.findByTestId("bills-table");
+    const badges = Array.from(table.querySelectorAll("span.badge")).map((el) => el.textContent);
+    expect(badges.some((text) => text?.startsWith("Credit"))).toBe(true);
   });
 
   it("opens a bill to view its lines and totals", async () => {

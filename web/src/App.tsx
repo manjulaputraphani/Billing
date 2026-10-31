@@ -155,7 +155,7 @@ export default function App() {
   const [billLines, setBillLines] = useState<{ itemId: number; name: string; unit: string; qtyBase: number; ratePaise: number; hsn: string; totalPaise: number }[]>([]);
   const [billMsg, setBillMsg] = useState<string | null>(null);
   const [lastBillId, setLastBillId] = useState<number | null>(null);
-  const [stats, setStats] = useState<{ today_sales: number; month_sales: number; month_profit: number; month_expenses: number; low_stock: number } | null>(null);
+  const [stats, setStats] = useState<{ today_sales: number; month_sales: number; month_profit: number; month_expenses: number; credit_paise: number; credit_bills: number; low_stock: number } | null>(null);
   const [purchasesList, setPurchasesList] = useState<Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }>>([]);
   const [expensesList, setExpensesList] = useState<Array<{ id: number; category: string; amountPaise: number; date: string; paymentMode: string | null; paidTo: string | null; note: string | null }>>([]);
   const [purchase, setPurchase] = useState({ itemId: "" as number | "", qty: "", rate: "", supplier: "", expenses: "" });
@@ -1009,15 +1009,17 @@ export default function App() {
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Dashboard</h1>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                ["Today's sales", money(stats?.today_sales ?? 0)],
-                ["This month", money(stats?.month_sales ?? 0)],
-                ["Month profit", money(stats?.month_profit ?? 0)],
-                ["Month expenses", money(stats?.month_expenses ?? 0)],
-                ["Low stock items", String(stats?.low_stock ?? 0)],
-              ].map(([label, value]) => (
+                ["Today's sales", money(stats?.today_sales ?? 0), ""],
+                ["This month", money(stats?.month_sales ?? 0), ""],
+                ["Month profit", money(stats?.month_profit ?? 0), ""],
+                ["Month expenses", money(stats?.month_expenses ?? 0), ""],
+                ["Credit given", money(stats?.credit_paise ?? 0), `${stats?.credit_bills ?? 0} unpaid bills`],
+                ["Low stock items", String(stats?.low_stock ?? 0), ""],
+              ].map(([label, value, hint]) => (
                 <div key={label} className="card p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</p>
                   <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+                  {hint ? <p className="mt-0.5 text-[11px] text-muted">{hint}</p> : null}
                 </div>
               ))}
             </div>
@@ -1229,6 +1231,7 @@ export default function App() {
                       <th className="px-3 py-2">GSTIN</th>
                       <th className="px-3 py-2 text-right">Bills</th>
                       <th className="px-3 py-2 text-right">Billed</th>
+                      <th className="px-3 py-2 text-right">Credit</th>
                       <th className="px-3 py-2" />
                     </tr>
                   </thead>
@@ -1247,6 +1250,13 @@ export default function App() {
                         <td className="px-3 py-2">{customer.gstin ?? "—"}</td>
                         <td className="px-3 py-2 text-right">{customer.billCount}</td>
                         <td className="px-3 py-2 text-right">{money(customer.billedPaise)}</td>
+                        <td className="px-3 py-2 text-right">
+                          {customer.creditPaise > 0 ? (
+                            <span className="badge badge-warn">{money(customer.creditPaise)}</span>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-right">
                           <span className="flex justify-end gap-2">
                             <button
@@ -1471,12 +1481,55 @@ export default function App() {
                         <td className="px-3 py-2">{row.customerName ?? "Walk-in"}</td>
                         <td className="px-3 py-2 text-right">{money(row.totalPaise)}</td>
                         <td className="px-3 py-2">
-                          <span className={`rounded-full px-2 py-0.5 text-xs ${row.cancelled ? "bg-error-soft text-error-ink" : "bg-success-soft text-success-ink"}`}>
-                            {row.cancelled ? "Cancelled" : "Issued"}
-                          </span>
+                          {row.cancelled ? (
+                            <span className="badge badge-bad">Cancelled</span>
+                          ) : row.paidPaise < row.totalPaise ? (
+                            <span className="badge badge-warn" title="Credit still due">
+                              Credit {money(row.totalPaise - row.paidPaise)}
+                            </span>
+                          ) : (
+                            <span className="badge badge-ok">Paid</span>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-right">
-                          <button className="btn-mini" onClick={() => void openBill(row.id)}><IconEye /> View</button>
+                          {row.cancelled ? (
+                            <span className="btn-mini">Cancelled</span>
+                          ) : row.paidPaise < row.totalPaise ? (
+                            <span className="flex items-center justify-end gap-2">
+                              <button
+                                className="btn-mini"
+                                onClick={async () => {
+                                  const input = window.prompt(
+                                    `Amount received (bill ${row.billNo})`,
+                                    ((row.totalPaise - row.paidPaise) / 100).toFixed(2),
+                                  );
+                                  if (input === null) return;
+                                  const amount = Math.round(Number(input) * 100);
+                                  if (!Number.isFinite(amount) || amount <= 0) {
+                                    setError("Enter a valid amount");
+                                    return;
+                                  }
+                                  try {
+                                    const res = await api.recordPayment(row.id, amount);
+                                    setBills((await api.bills()).bills);
+                                    setStats((await api.stats()).stats);
+                                    setError(
+                                      res.payment.creditPaise > 0
+                                        ? `₹${(res.payment.creditPaise / 100).toFixed(2)} credit still due`
+                                        : "Payment received — bill fully paid",
+                                    );
+                                  } catch (err) {
+                                    setError(err instanceof Error ? err.message : String(err));
+                                  }
+                                }}
+                              >
+                                Record payment
+                              </button>
+                              <button className="btn-mini" onClick={() => void openBill(row.id)}><IconEye /> View</button>
+                            </span>
+                          ) : (
+                            <button className="btn-mini" onClick={() => void openBill(row.id)}><IconEye /> View</button>
+                          )}
                         </td>
                       </tr>
                     ))}

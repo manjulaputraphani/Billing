@@ -31,6 +31,9 @@ Both editions share the coffee theme, weighted-average costing, FY reports and l
   name, faint coffee-bean texture, `EmptyState` component, split sign-in page (photo left, form right).
 - **Item thumbnails**: `items.image_url` (nullable) + optional image link in the item form; 40×40
   thumbnails in the Items list and the New Bill picker (letter circle when there is no image).
+- **Credit (udhaar) tags**: an unpaid bill shows "Credit ₹X" in the invoice list (web + desktop), the
+  dashboard has a "Credit given" card (total + unpaid bill count), the customer master has a Credit
+  column, and **Record payment** settles it (the worker endpoint reads the already-parsed body).
 - **Customer master**: `src/db/customers.ts` — one row per client (matched by phone → GSTIN → name);
   billing saves/updates the master instead of inserting duplicates. Web: *Customers* screen (CONTACTS
   group, search, bill count, billed total) + a customer picker on the billing form. The screen has

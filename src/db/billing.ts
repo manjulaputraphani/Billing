@@ -390,6 +390,43 @@ export async function createCustomer(
   return { id: saved.id, name: saved.name, phone: saved.phone };
 }
 
+/**
+ * Record a payment against a bill (credit collection).
+ * The amount is added to what has been paid; it can never go past the bill
+ * total, and the bill is never marked paid while money is still due.
+ */
+export async function recordBillPayment(
+  db: Db,
+  saleId: number,
+  amountPaise: number,
+): Promise<{ paidPaise: number; totalPaise: number; creditPaise: number }> {
+  if (!Number.isInteger(amountPaise) || amountPaise <= 0) {
+    throw new Error("Enter an amount greater than zero");
+  }
+  const [bill] = await db
+    .select({
+      id: saleBills.id,
+      billNo: saleBills.billNo,
+      totalPaise: saleBills.totalPaise,
+      paidPaise: saleBills.paidPaise,
+      cancelled: saleBills.cancelled,
+    })
+    .from(saleBills)
+    .where(eq(saleBills.id, saleId));
+  if (!bill) throw new Error("Bill not found");
+  if (bill.cancelled) throw new Error("This bill is cancelled");
+
+  const paidPaise = Math.min(bill.totalPaise, bill.paidPaise + amountPaise);
+  await db.update(saleBills).set({ paidPaise }).where(eq(saleBills.id, saleId));
+  await logActivity(db, {
+    event: "sale.payment",
+    summary: `Payment received on ${bill.billNo}: ${formatRupees(paidPaise - bill.paidPaise)}`,
+    entity: "sale",
+    entityId: saleId,
+  });
+  return { paidPaise, totalPaise: bill.totalPaise, creditPaise: bill.totalPaise - paidPaise };
+}
+
 export type SaleBillLineDetail = {
   itemName: string;
   unit: string;

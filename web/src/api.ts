@@ -55,6 +55,7 @@ export type Customer = {
   email: string | null;
   billCount: number;
   billedPaise: number;
+  creditPaise: number;
   lastBillDate: string | null;
 };
 
@@ -171,7 +172,18 @@ export const api = {
   addInvestment: (body: { investorName: string; amountPaise: number; date: string; note?: string }) =>
     request<{ ok: boolean; id: number }>("/api/investments", { method: "POST", body: JSON.stringify(body) }),
   deleteInvestment: (id: number) => request<{ ok: boolean }>(`/api/investments/${id}`, { method: "DELETE" }),
-  stats: () => request<{ stats: { today_sales: number; month_sales: number; month_profit: number; month_expenses: number; low_stock: number } }>("/api/stats"),
+  stats: () =>
+    request<{
+      stats: {
+        today_sales: number;
+        month_sales: number;
+        month_profit: number;
+        month_expenses: number;
+        credit_paise: number;
+        credit_bills: number;
+        low_stock: number;
+      };
+    }>("/api/stats"),
   purchases: () => request<{ purchases: Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }> }>("/api/purchases"),
   addPurchase: (body: { itemId: number; qty: number; unitPricePaise: number; expensesPaise?: number; date: string; supplierName?: string; paymentMode?: string }) =>
     request<{ purchase: { purchaseId: number } }>("/api/purchases", { method: "POST", body: JSON.stringify(body) }),
@@ -220,6 +232,11 @@ export const api = {
   finYearReport: (finYear: string) => request<{ report: FinYearReport }>(`/api/reports/fin-year?fy=${finYear}`),
   dealProfits: (finYear: string) => request<{ deals: DealProfit[] }>(`/api/reports/deals?fy=${finYear}`),
   usage: () => request<{ usage: UsageRow[] }>("/api/usage"),
+  recordPayment: (id: number, amountPaise: number) =>
+    request<{ payment: { paidPaise: number; totalPaise: number; creditPaise: number } }>(
+      `/api/bills/${id}/payment`,
+      { method: "POST", body: JSON.stringify({ amountPaise }) },
+    ),
   customers: (search?: string) =>
     request<{ customers: Customer[] }>(`/api/customers${search ? `?search=${encodeURIComponent(search)}` : ""}`),
   saveCustomer: (body: { name: string; phone?: string; address?: string; gstin?: string; email?: string }) =>

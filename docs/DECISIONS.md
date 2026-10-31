@@ -59,3 +59,5 @@
 - 2026-10-31 · `customers` is a real MASTER: one row per client, matched by phone → GSTIN → name · billing used to insert a new customer row for every bill, so the same client was stored again and again; now the details are updated in place (empty fields never wipe what is known)
 - 2026-10-31 · The phone is stored as digits only · "98765 43210" and "+91 9876543210" must find the same client in the master
 - 2026-10-31 · New web screen *Customers* (CONTACTS group) with search, bill count and billed total, plus a customer picker on the billing form · the client details are saved into the master with the bill, and a saved client can be picked instead of retyped
+- 2026-10-31 · Credit (udhaar) is shown as a tag: a bill that is not fully paid shows "Credit ₹X", the dashboard shows the total credit given, and the customer master shows each client's outstanding credit · the unpaid part of a live bill (total − paid) is the credit; cancelled bills never count
+- 2026-10-31 · `recordBillPayment` adds a payment to a bill (never above the bill total) and logs `sale.payment` · without it a credit bill could never be cleared — the tag would be a dead end

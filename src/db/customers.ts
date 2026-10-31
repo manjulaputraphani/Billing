@@ -32,6 +32,8 @@ export type CustomerRow = {
   billCount: number;
   /** What they have been billed in total (paise). */
   billedPaise: number;
+  /** Credit still outstanding on their bills (paise). */
+  creditPaise: number;
   lastBillDate: string | null;
 };
 
@@ -82,7 +84,7 @@ export async function findCustomer(
 
   const found = rows[0];
   if (!found) return null;
-  return { ...found, billCount: 0, billedPaise: 0, lastBillDate: null };
+  return { ...found, billCount: 0, billedPaise: 0, creditPaise: 0, lastBillDate: null };
 }
 
 /**
@@ -119,7 +121,7 @@ export async function saveCustomer(db: Db, input: unknown): Promise<CustomerRow>
       entity: "customer",
       entityId: updated.id,
     });
-    return { ...updated, billCount: 0, billedPaise: 0, lastBillDate: null };
+    return { ...updated, billCount: 0, billedPaise: 0, creditPaise: 0, lastBillDate: null };
   }
 
   const [created] = await db
@@ -132,7 +134,7 @@ export async function saveCustomer(db: Db, input: unknown): Promise<CustomerRow>
     entity: "customer",
     entityId: created.id,
   });
-  return { ...created, billCount: 0, billedPaise: 0, lastBillDate: null };
+  return { ...created, billCount: 0, billedPaise: 0, creditPaise: 0, lastBillDate: null };
 }
 
 /** The customer master, newest activity first, with a name/phone/GSTIN search. */
@@ -148,6 +150,9 @@ export async function listCustomers(db: Db, search?: string): Promise<CustomerRo
       email: customers.email,
       billCount: sql<number>`count(${saleBills.id})`.mapWith(Number),
       billedPaise: sql<number>`coalesce(sum(${saleBills.totalPaise}), 0)`.mapWith(Number),
+      // Credit still due: the unpaid part of their live (not cancelled) bills.
+      creditPaise:
+        sql<number>`coalesce(sum(case when ${saleBills.cancelled} = false and ${saleBills.paidPaise} < ${saleBills.totalPaise} then ${saleBills.totalPaise} - ${saleBills.paidPaise} else 0 end), 0)`.mapWith(Number),
       lastBillDate: sql<string | null>`max(${saleBills.saleDate})`.mapWith(String),
     })
     .from(customers)
@@ -196,7 +201,7 @@ export async function updateCustomer(db: Db, id: number, input: unknown): Promis
     entity: "customer",
     entityId: updated.id,
   });
-  return { ...updated, billCount: 0, billedPaise: 0, lastBillDate: null };
+  return { ...updated, billCount: 0, billedPaise: 0, creditPaise: 0, lastBillDate: null };
 }
 
 /** Remove a customer from the master (only when no bill uses them). */
@@ -238,7 +243,7 @@ export async function findCustomerByGstin(db: Db, gstin: string): Promise<Custom
     .limit(1);
   const found = rows[0];
   if (!found) return null;
-  return { ...found, billCount: 0, billedPaise: 0, lastBillDate: null };
+  return { ...found, billCount: 0, billedPaise: 0, creditPaise: 0, lastBillDate: null };
 }
 
 /** Customers whose details start with the given text (picker helper). */
