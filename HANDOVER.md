@@ -1,6 +1,6 @@
 # HANDOVER (keep under 60 lines — overwrite each time, history is in git)
 
-Last updated: 2026-10-31 23:55 by GLM-5.2 (OpenCode)
+Last updated: 2026-11-01 00:01 by GLM-5.2 (OpenCode)
 Tool: OpenCode
 
 ## Current state
@@ -34,13 +34,16 @@ and **role-based permissions (Owner / CA / Staff) on web + desktop**.
 - **Web deployed 2026-10-31 23:38** — RBAC live (version 6ad2069c, bundle Cy5q1SPZ / CEYERYce).
 - Worker `sdhhe-api`: assets from `web/dist` + API. Deploy: `cd web && npm run build` →
   `cd ../web-worker && ./node_modules/.bin/wrangler deploy`.
-- Desktop: build installers with `npm run tauri build` (assets in `dist/` are already rebuilt).
+- Desktop: **built 2026-11-01 00:00** — `src-tauri/target/release/bundle/macos/Stock Tracker.app`
+  (7.19 MiB) and `.../dmg/Stock Tracker_1.0.0_aarch64.dmg` (3.41 MiB). `tauri.conf.json`
+  bundle targets changed from Windows-only to `"all"` so macOS bundles are produced.
 - Secrets: `DATABASE_URL`, `SESSION_SECRET`. DB: Neon `SriDurgaHariHaraEnterprises`.
 - Members: owner **B PHANI KUMAR** (7569208757), staff **Chaluvaraj** (9019744242).
 
 ## Next tasks (priority)
-1. Verify live: Team → Roles & permissions; add a CA member with Access until; check tabs/API.
-2. Run `npm run tauri build` and install the desktop to verify the desktop RBAC end to end.
+1. Install the new `.dmg` and verify desktop RBAC end to end (CA/Staff tabs, 403-equivalent
+   guards, roles grid, access-until).
+2. Verify live web Team → Roles & permissions; add a CA member with Access until.
 3. Decide whether Delivery is charged into the invoice total (currently expense-only).
 4. T-4 lot-wise FY report; T-5 sale preview batch breakdown. Add `login-bg.webp`; enable email;
    rotate owner password; save Playwright suites. Desktop-only: AI, print/PDF, Excel, offline,
