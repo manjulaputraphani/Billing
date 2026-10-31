@@ -1,7 +1,7 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db, TxDb } from "./client";
-import { batches, items, purchases } from "./schema";
+import { batches, items, purchases, saleItems } from "./schema";
 import { logActivity } from "./activity";
 
 export const ITEM_UNITS = ["kg", "l", "pcs"] as const;
@@ -137,13 +137,19 @@ export async function updateItem(db: Db, id: number, input: unknown): Promise<It
   return { ...updated, stockLeftBase: await getStockLeft(db, id) };
 }
 
-export async function deleteItem(db: Db, id: number): Promise<void> {
+export async function deleteItem(db: Db | TxDb, id: number): Promise<void> {
   const used = await db
     .select({ id: purchases.id })
     .from(purchases)
     .where(eq(purchases.itemId, id))
     .limit(1);
   if (used.length > 0) throw new Error("Item has purchases");
+  const sold = await db
+    .select({ id: saleItems.id })
+    .from(saleItems)
+    .where(eq(saleItems.itemId, id))
+    .limit(1);
+  if (sold.length > 0) throw new Error("Item is used in a bill — it cannot be deleted");
   await db.delete(items).where(eq(items.id, id));
   await logActivity(db, {
     event: "item.delete",

@@ -41,7 +41,7 @@ const GROUPS: { heading: string; links: Link[] }[] = [
 export default function Layout() {
   return (
     <div className="flex min-h-screen bg-bg text-ink">
-      <aside className="flex w-60 shrink-0 flex-col bg-nav text-nav-text">
+      <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col overflow-y-auto bg-nav text-nav-text">
         <div className="flex items-center gap-3 border-b border-nav-line px-4 py-5">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-nav-text/15 text-nav-text">
             <CoffeeIcon />

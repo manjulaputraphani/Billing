@@ -52,3 +52,7 @@
 - 2026-10-31 · Coffee-bean sidebar texture is an inline SVG data-URI on a `::before` layer at 4–5 % opacity, behind the text · no image file, and the text contrast is unchanged
 - 2026-10-31 · The 14-day chart draws its own y-axis (₹0 … max, Indian short form ₹1,200 / ₹1.2L) with 4 gridlines, and bars with a value of 0 are not rendered · a zero stub reads as "there was activity"; the tooltip shows on hover and on tap for the future Android app
 - 2026-10-31 · The desktop rail is `sticky top-0 h-screen` and the mobile navigation moved into a side drawer · the rail no longer scrolls away with the page; below 768 px the header shows icons only (menu / theme / sign out) and the grouped nav opens as a left drawer that closes when a link is picked
+- 2026-10-31 · Editing or deleting a purchase rebuilds that item's cost pool from the open batches · the weighted-average pool otherwise drifts away from the batches and the reported profit stops matching the stock
+- 2026-10-31 · Purchase expenses are prorated over the quantity still on hand when a pool is rebuilt · the transport paid for a purchase that was partly sold leaves with the sold part
+- 2026-10-31 · The chart uses pointer events with a short "recent touch" guard · a tap on a phone fires compatibility mouse events straight after, which were closing the tooltip again
+- 2026-10-31 · The item-thumbnail letter circles use the soft chip colours (sage/gold tint + dark ink) · the saturated sage and gold backgrounds failed WCAG AA for the letter

@@ -209,7 +209,7 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
   const rows = (await sql`
     select id, name, phone, password_hash, role, active, pending
     from app_users where phone = ${phone.phone} limit 1
-  `) as { id: number; name: string; password_hash: string; role: string; active: boolean }[];
+  `) as { id: number; name: string; password_hash: string; role: string; active: boolean; pending: boolean }[];
 
   const user = rows[0];
   if (!user) {
@@ -288,9 +288,9 @@ async function decryptText(env: Env, payload: string): Promise<string | null> {
   try {
     const key = await aesKey(env);
     const plain = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: b64decode(ivPart) },
+      { name: "AES-GCM", iv: b64decode(ivPart) as unknown as BufferSource },
       key,
-      b64decode(cipherPart),
+      b64decode(cipherPart) as unknown as BufferSource,
     );
     return new TextDecoder().decode(plain);
   } catch {
@@ -330,7 +330,7 @@ async function sendOwnerMail(
 /** Best-effort owner alert; never breaks the action that triggered it. */
 async function notifyOwners(
   env: Env,
-  event: "signup" | "member",
+  event: "signup" | "member" | "bill",
   subject: string,
   html: string,
 ): Promise<void> {

@@ -100,4 +100,16 @@ describe("weighted average cost", () => {
     expect(pool).toEqual({ qtyBase: 0, valuePaise: 0 });
     expect(avgCostPaise(pool, KG)).toBe(0);
   });
+
+  it("keeps the purchase expenses with the stock that is still on hand", () => {
+    // 200 kg bought with ₹300 transport, 50 kg already sold → 150 kg left
+    // carries 300 × (150/200) = ₹225 of the transport.
+    const pool = poolFromBatches(
+      [{ qtyRemaining: 150_000, qtyOriginal: 200_000, unitPricePaise: 10_200, expensesPaise: 30_000 }],
+      KG,
+    );
+    expect(pool.qtyBase).toBe(150_000);
+    expect(pool.valuePaise).toBe(1_530_000 + 22_500); // ₹15 300 + ₹225
+    expect(avgCostPaise(pool, KG)).toBe(10_350); // ₹103.50 per kg
+  });
 });

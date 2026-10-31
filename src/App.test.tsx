@@ -37,6 +37,7 @@ const USER = {
   phone: "9876543210",
   role: "owner" as const,
   active: true,
+  pending: false,
   passwordHash: "hash",
 };
 

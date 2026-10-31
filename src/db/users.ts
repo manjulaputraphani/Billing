@@ -69,6 +69,7 @@ export async function createUser(
       phone: appUsers.phone,
       role: appUsers.role,
       active: appUsers.active,
+      pending: appUsers.pending,
     });
 
   await logActivity(db, {

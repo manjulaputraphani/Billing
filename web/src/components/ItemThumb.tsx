@@ -10,11 +10,14 @@ export type ThumbItem = {
   imageUrl?: string | null;
 };
 
-/** A few in-theme tints so the list looks lively without breaking the palette. */
+/**
+ * A few in-theme tints so the list looks lively without breaking the palette.
+ * Every pair keeps the letter readable (WCAG AA on the tinted circle).
+ */
 const TINTS = [
   "bg-primary text-on-primary",
-  "bg-secondary text-on-primary",
-  "bg-accent text-accent-ink",
+  "bg-secondary-soft text-secondary-ink",
+  "bg-accent-soft text-accent-ink",
   "bg-surface-3 text-ink",
 ];
 

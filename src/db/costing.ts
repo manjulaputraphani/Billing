@@ -13,7 +13,7 @@
  */
 import { and, eq, sql } from "drizzle-orm";
 import type { Db, TxDb } from "./client";
-import { batches, items, settings } from "./schema";
+import { batches, items, purchases, settings } from "./schema";
 import { baseFactor, type Unit } from "../logic/units";
 import {
   addPurchaseToPool,
@@ -143,21 +143,43 @@ export async function returnToItemPool(
 }
 
 /**
+ * Rebuild the pool of one item from its open batches (purchase expenses
+ * prorated over the quantity on hand). Use it after a purchase is edited or
+ * deleted, so the weighted-average cost keeps matching the batches.
+ */
+export async function rebuildItemPool(db: Queryable, itemId: number): Promise<CostPool> {
+  const [item] = await db
+    .select({ unit: items.unit })
+    .from(items)
+    .where(eq(items.id, itemId))
+    .limit(1);
+  const unit = (item?.unit ?? "pcs") as Unit;
+
+  const open = await db
+    .select({
+      qtyRemaining: batches.qtyRemaining,
+      qtyOriginal: batches.qtyOriginal,
+      unitPricePaise: batches.unitPricePaise,
+      expensesPaise: purchases.expensesPaise,
+    })
+    .from(batches)
+    .innerJoin(purchases, eq(purchases.id, batches.purchaseId))
+    .where(and(eq(batches.itemId, itemId), sql`${batches.qtyRemaining} > 0`));
+
+  const pool = poolFromBatches(open, baseFactor(unit));
+  await saveCostPool(db, itemId, pool, unit);
+  return pool;
+}
+
+/**
  * Rebuild every pool from the open batches — one-off backfill after the switch
  * to weighted average, and a repair tool.
  */
 export async function rebuildAllCostPools(db: Queryable): Promise<number> {
-  const rows = await db
-    .select({ id: items.id, unit: items.unit })
-    .from(items);
+  const rows = await db.select({ id: items.id }).from(items);
   let updated = 0;
   for (const item of rows) {
-    const open = await db
-      .select({ qtyRemaining: batches.qtyRemaining, unitPricePaise: batches.unitPricePaise })
-      .from(batches)
-      .where(and(eq(batches.itemId, item.id), sql`${batches.qtyRemaining} > 0`));
-    const pool = poolFromBatches(open, baseFactor(item.unit as Unit));
-    await saveCostPool(db, item.id, pool, item.unit as Unit);
+    await rebuildItemPool(db, item.id);
     updated += 1;
   }
   return updated;

@@ -58,7 +58,7 @@ export default function ItemPicker({
             className="fixed inset-0 z-20 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-lg">
+          <div className="absolute left-0 right-0 z-30 mt-1 max-h-[min(18rem,45vh)] overflow-auto rounded-xl border border-line bg-surface p-1 shadow-lg">
             <input
               className="input mb-1"
               placeholder="Search items…"

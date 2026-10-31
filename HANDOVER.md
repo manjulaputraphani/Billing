@@ -42,9 +42,8 @@ Both editions share the coffee theme, weighted-average costing, FY reports and l
 2. **Enable email**: Resend key + MAIL_FROM → Send test; desktop Gmail app password → Send test.
 3. **Rotate the owner password** (short/exposed) via Team → Reset password.
 4. Save the Playwright suites into the repo (`web/tests/`) — they currently live only in TMPDIR.
-5. Fix the PRE-EXISTING tsc errors: `src/db/users.ts` `createAppUser().returning()` misses `pending`
-   (same in `src/App.test.tsx`, `src/pages/Lock.test.tsx`, `src/pages/Settings.test.tsx`); the worker
-   also has `pending`, `Uint8Array` and `notify` type errors (`web-worker/tsconfig.json` added).
+5. ~~Fix the PRE-EXISTING tsc errors~~ — DONE: all three typechecks are clean now (root, web,
+   web-worker) and `npm run build` (desktop) succeeds again.
 6. Link purchase/sale expenses to their purchase/deal in the UI (columns exist, forms only set the
    type) · `tablesFilter` guard in drizzle.config; drop the interim `sales` table.
 7. Still desktop-only: Suggestions/Ask AI (Ollama), print/Save-as-PDF, Excel export, offline,
@@ -53,6 +52,6 @@ Both editions share the coffee theme, weighted-average costing, FY reports and l
 ## Commands
 - Web local: `cd web-worker && ./node_modules/.bin/wrangler dev` (:8787 = web/dist + API) ·
   `cd web && npm run dev` (:5173) · `cd web && npm run typecheck`
-- Tests: `npx vitest run --reporter=dot` (237 green) · `npx tsc --noEmit` (8 pre-existing errors)
+- Tests: `npx vitest run --reporter=dot` (238 green) · `npx tsc --noEmit` clean (root + web + worker)
 - e2e skipped (no DATABASE_URL_TEST). The Neon **WebSocket** pool cannot open connections in this
   sandbox → billing/stock-write paths can only be exercised on the user's machine or in Workers.

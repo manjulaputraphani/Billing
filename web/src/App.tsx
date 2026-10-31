@@ -204,6 +204,16 @@ export default function App() {
 
   useEffect(() => watchSystemTheme(), []);
 
+  /** Close the mobile drawer when the window grows into the desktop layout. */
+  useEffect(() => {
+    const wide = window.matchMedia("(min-width: 768px)");
+    const close = () => {
+      if (wide.matches) setMenuOpen(false);
+    };
+    wide.addEventListener("change", close);
+    return () => wide.removeEventListener("change", close);
+  }, []);
+
   /** The financial years available for the FY selector. */
   useEffect(() => {
     if (!user || view !== "reports") return;

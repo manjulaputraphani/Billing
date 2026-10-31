@@ -118,6 +118,20 @@ export async function finYearReport(db: Db, label: string): Promise<FinYearRepor
       ),
     );
 
+  // Purchase expenses that are not attached to a purchase are counted on their
+  // own (the ones linked to a purchase are already inside purchases.expenses_paise).
+  const [standalonePurchase] = await db
+    .select({ amountPaise: sql<number>`coalesce(sum(${expenses.amountPaise}), 0)`.mapWith(Number) })
+    .from(expenses)
+    .where(
+      and(
+        eq(expenses.expenseType, "purchase"),
+        isNull(expenses.relatedPurchaseId),
+        gte(expenses.expenseDate, startDate),
+        lte(expenses.expenseDate, endDate),
+      ),
+    );
+
   const [general] = await db
     .select({ amountPaise: sql<number>`coalesce(sum(${expenses.amountPaise}), 0)`.mapWith(Number) })
     .from(expenses)
@@ -133,6 +147,7 @@ export async function finYearReport(db: Db, label: string): Promise<FinYearRepor
 
   const grossProfitPaise = sales.turnoverPaise - cogs.cogsPaise;
   const saleExpensesPaise = sales.saleExpensesPaise + standaloneSale.amountPaise;
+  const purchaseExpensesPaise = buy.purchaseExpensesPaise + standalonePurchase.amountPaise;
   const netProfitPaise = grossProfitPaise - saleExpensesPaise - general.amountPaise;
 
   return {
@@ -144,8 +159,8 @@ export async function finYearReport(db: Db, label: string): Promise<FinYearRepor
     gstPaise: sales.gstPaise,
     salesCount: sales.salesCount,
     purchaseValuePaise: buy.purchaseValuePaise,
-    purchaseExpensesPaise: buy.purchaseExpensesPaise,
-    totalPurchasesPaise: buy.purchaseValuePaise + buy.purchaseExpensesPaise,
+    purchaseExpensesPaise,
+    totalPurchasesPaise: buy.purchaseValuePaise + purchaseExpensesPaise,
     cogsPaise: cogs.cogsPaise,
     grossProfitPaise,
     saleExpensesPaise,

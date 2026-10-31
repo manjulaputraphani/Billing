@@ -111,11 +111,17 @@ export function returnToPool(
 }
 
 /**
- * Rebuild a pool from the open batches (one-time backfill / repair).
- * Value = Σ (qty × unit price); the average follows from the pool.
+ * Rebuild a pool from the open batches (one-off backfill / repair).
+ * Value = Σ (qty × unit price) + the purchase expenses of those batches,
+ * prorated over the quantity still on hand.
  */
 export function poolFromBatches(
-  openBatches: readonly { qtyRemaining: number; unitPricePaise: number }[],
+  openBatches: readonly {
+    qtyRemaining: number;
+    unitPricePaise: number;
+    expensesPaise?: number;
+    qtyOriginal?: number;
+  }[],
   factor: number,
 ): CostPool {
   let qtyBase = 0;
@@ -124,6 +130,13 @@ export function poolFromBatches(
     if (batch.qtyRemaining <= 0) continue;
     qtyBase += batch.qtyRemaining;
     valuePaise += purchaseValuePaise(batch.qtyRemaining, batch.unitPricePaise, factor);
+    // The transport/loading of that purchase belongs to the stock that is still
+    // on hand — the part already sold carries its share.
+    const expenses = batch.expensesPaise ?? 0;
+    const original = batch.qtyOriginal ?? 0;
+    if (expenses > 0 && original > 0) {
+      valuePaise += Math.round((expenses * batch.qtyRemaining) / original);
+    }
   }
   return { qtyBase, valuePaise };
 }

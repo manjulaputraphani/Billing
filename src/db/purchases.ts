@@ -5,6 +5,7 @@ import { batches, items, movementBatchLinks, purchases, stockMovements, supplier
 import { baseFactor, costPaise, formatQuantity, formatRupees, toBase, type Unit } from "../logic/units";
 import { replayItem, type ReplayMovement } from "../logic/replay";
 import { logActivity } from "./activity";
+import { rebuildItemPool } from "./costing";
 
 export const PAYMENT_MODES = ["Cash", "UPI", "Card", "Credit"] as const;
 
@@ -400,6 +401,8 @@ export async function updatePurchase(
     }
 
     await replayAndWriteBack(tx, row.itemId, factor);
+    // Keep the weighted-average pool in step with the new batches.
+    await rebuildItemPool(tx, row.itemId);
 
     await logActivity(tx, {
       event: "purchase.update",
@@ -456,6 +459,8 @@ export async function deletePurchase(url: string, purchaseId: number): Promise<v
     );
 
     await replayAndWriteBack(tx, row.itemId, factor);
+    // Keep the weighted-average pool in step with the remaining batches.
+    await rebuildItemPool(tx, row.itemId);
 
     await logActivity(tx, {
       event: "purchase.delete",

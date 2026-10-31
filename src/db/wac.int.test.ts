@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { resetAll, setupTestDb, testDbUrl } from "./test-utils";
 import { createItem } from "./items";
-import { addPurchase } from "./purchases";
+import { addPurchase, deletePurchase, updatePurchase } from "./purchases";
 import { createSaleBill } from "./billing";
 import { getCostPool } from "./costing";
 import { items, saleItems } from "./schema";
@@ -79,6 +79,46 @@ suite("weighted average cost — profit and turnover", () => {
       const [row] = await db.select().from(items).where(eq(items.id, item.id));
       expect(row.avgCostPaise).toBe(10_233);
       expect(row.stockValuePaise).toBe(2_865_333); // ₹28 653.33 left
+    },
+  );
+
+  it(
+    "keeps the cost pool in step when a purchase is edited or deleted",
+    { timeout: 60_000 },
+    async () => {
+      const url = testDbUrl();
+      if (!url || !db) return;
+
+      const item = await createItem(db, { name: "Tea Leaves", unit: "kg", minStockBase: 0 });
+      const purchase = await addPurchase(db, {
+        itemId: item.id,
+        qty: 100,
+        unitPricePaise: 10_000,
+        expensesPaise: 30_000, // ₹300 transport
+        date: "2026-08-01",
+      });
+
+      const afterBuy = await getCostPool(db, item.id);
+      expect(afterBuy.valuePaise).toBe(1_030_000); // ₹10 300
+      expect(afterBuy.avgCostPaise).toBe(10_300); // ₹103 per kg
+
+      // Edit the purchase: the pool must follow the new batches.
+      await updatePurchase(url, purchase.purchaseId, {
+        qty: 200,
+        unitPricePaise: 10_200,
+        date: "2026-08-01",
+      });
+      const afterEdit = await getCostPool(db, item.id);
+      expect(afterEdit.qtyBase).toBe(200_000); // 200 kg
+      expect(afterEdit.valuePaise).toBe(2_040_000 + 30_000); // ₹20 400 + ₹300 transport
+      expect(afterEdit.avgCostPaise).toBe(10_350); // ₹103.50 per kg
+
+      // Delete it: the pool must be empty again.
+      await deletePurchase(url, purchase.purchaseId);
+      const afterDelete = await getCostPool(db, item.id);
+      expect(afterDelete.qtyBase).toBe(0);
+      expect(afterDelete.valuePaise).toBe(0);
+      expect(afterDelete.avgCostPaise).toBe(0);
     },
   );
 });

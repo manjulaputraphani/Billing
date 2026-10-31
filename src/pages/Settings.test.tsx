@@ -84,8 +84,8 @@ beforeEach(() => {
   vi.mocked(logActivity).mockReset().mockResolvedValue(undefined);
   vi.mocked(getAuditActor).mockReturnValue({ userId: 1, name: "Phani", role: "owner" });
   vi.mocked(listAppUsers).mockReset().mockResolvedValue([
-    { id: 1, name: "Phani", phone: "9876543210", role: "owner", active: true },
-    { id: 2, name: "Ravi", phone: "9123456780", role: "staff", active: true },
+    { id: 1, name: "Phani", phone: "9876543210", role: "owner", active: true, pending: false },
+    { id: 2, name: "Ravi", phone: "9123456780", role: "staff", active: true, pending: false },
   ]);
   vi.mocked(createUser).mockReset().mockResolvedValue({
     id: 3,
@@ -93,6 +93,7 @@ beforeEach(() => {
     phone: "9000000000",
     role: "staff",
     active: true,
+    pending: false,
   });
   vi.mocked(setUserActive).mockReset().mockResolvedValue(undefined);
 });

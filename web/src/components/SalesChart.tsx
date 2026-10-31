@@ -5,7 +5,7 @@
  * - hover (desktop) and tap (mobile) shows a tooltip with date, sales and expenses
  * - bars with a value of 0 are not drawn at all
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export type DailyPoint = { date: string; sales: string; expenses: string };
 
@@ -36,6 +36,11 @@ const GRID_LINES = 4; // 0 → max in 4 steps (5 lines)
 
 export default function SalesChart({ data }: { data: DailyPoint[] }) {
   const [active, setActive] = useState<number | null>(null);
+  // A tap fires compatibility mouse events right after the touch (pointerenter /
+  // pointerleave with pointerType "mouse"). Those must not close the tooltip
+  // again, so a short window after a touch is ignored.
+  const lastTouch = useRef(0);
+  const touchedRecently = () => Date.now() - lastTouch.current < 800;
 
   const points = data.map((day) => ({
     date: day.date,
@@ -81,10 +86,18 @@ export default function SalesChart({ data }: { data: DailyPoint[] }) {
                 <div
                   key={point.date}
                   className="flex h-full flex-1 cursor-default flex-col items-center justify-end gap-[2px]"
-                  onMouseEnter={() => setActive(index)}
-                  onMouseLeave={() => setActive((current) => (current === index ? null : current))}
-                  onClick={() => setActive((current) => (current === index ? null : index))}
-                  onTouchStart={() => setActive(index)}
+                  onPointerEnter={(event) => {
+                    if (event.pointerType === "touch") lastTouch.current = Date.now();
+                    setActive(index);
+                  }}
+                  onPointerLeave={() => {
+                    if (touchedRecently()) return; // the mouse events after a tap
+                    setActive((current) => (current === index ? null : current));
+                  }}
+                  onPointerDown={(event) => {
+                    if (event.pointerType === "touch") lastTouch.current = Date.now();
+                    setActive(index);
+                  }}
                 >
                   <div className="flex h-full w-full items-end justify-center gap-[2px]">
                     {point.sales > 0 && (
