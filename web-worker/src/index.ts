@@ -238,6 +238,60 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
   );
 }
 
+type NotifyConfig = { emails: string[]; signup: boolean; member: boolean; bill: boolean };
+
+async function readNotify(env: Env): Promise<NotifyConfig> {
+  const sql = neon(env.DATABASE_URL as string) as unknown as {
+    query: (text: string, values?: unknown[]) => Promise<Record<string, unknown>[]>;
+  };
+  const rows = await sql.query("select key, value from settings where key in ('notify_emails','notify_signup','notify_member','notify_bill')");
+  const map = new Map(rows.map((r) => [String(r.key), String(r.value)]));
+  const shop = await getShopDetails(getDb(env.DATABASE_URL as string));
+  const raw = map.get("notify_emails") ?? shop.email;
+  return {
+    emails: raw.split(/[,;]/).map((e) => e.trim()).filter(Boolean),
+    signup: map.get("notify_signup") !== "off",
+    member: map.get("notify_member") !== "off",
+    bill: map.get("notify_bill") !== "off",
+  };
+}
+
+async function sendOwnerMail(
+  env: Env,
+  recipients: string[],
+  subject: string,
+  html: string,
+): Promise<boolean> {
+  if (!env.RESEND_API_KEY || recipients.length === 0) return false;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      from: env.MAIL_FROM || "SREE DURGA HARIHARA ENTERPRISES <onboarding@resend.dev>",
+      to: recipients,
+      subject,
+      html,
+    }),
+  });
+  return res.ok;
+}
+
+/** Best-effort owner alert; never breaks the action that triggered it. */
+async function notifyOwners(
+  env: Env,
+  event: "signup" | "member",
+  subject: string,
+  html: string,
+): Promise<void> {
+  try {
+    const cfg = await readNotify(env);
+    if (!cfg[event]) return;
+    await sendOwnerMail(env, cfg.emails, subject, html);
+  } catch (err) {
+    console.error("notify failed:", err);
+  }
+}
+
 async function sqlQuery(env: Env, text: string, params: unknown[] = []) {
   const sql = neon(env.DATABASE_URL as string) as unknown as {
     query: (queryText: string, values?: unknown[]) => Promise<Record<string, unknown>[]>;
@@ -296,6 +350,12 @@ export default {
         env,
         "insert into app_users (name, phone, password_hash, role, active, pending) values ($1,$2,$3,'staff',false,true)",
         [name, phone.phone, hashPasswordPhc(password)],
+      );
+      await notifyOwners(
+        env,
+        "signup",
+        `New account request — ${name}`,
+        `<p><b>${name}</b> (${phone.phone}) requested an account.</p><p>Approve it in the app: Team → Approve.</p>`,
       );
       return json({ ok: true, pending: true }, { status: 201 });
     }
@@ -445,6 +505,7 @@ export default {
               [name, phone.phone, hashPasswordPhc(password), "staff"],
             );
             await asActor(actor, () => logActivity(db, { event: "user.create", summary: `Member added: ${name} (staff)`, entity: "user", entityId: Number(created[0].id) }));
+            await notifyOwners(env, "member", `Member added — ${name}`, `<p><b>${name}</b> (${phone.phone}) was added as staff by ${session.name}.</p>`);
             return json({ user: created[0] });
           }
 
@@ -455,12 +516,14 @@ export default {
               const role = body.role === "owner" ? "owner" : "staff";
               await sqlQuery(env, "update app_users set pending = false, active = true, role = $1 where id = $2", [role, id]);
               await asActor(actor, () => logActivity(db, { event: "user.approve", summary: `Member #${id} approved as ${role}`, entity: "user", entityId: id }));
+              await notifyOwners(env, "member", `Member approved — #${id}`, `<p>Member #${id} was approved as <b>${role}</b> by ${session.name}.</p>`);
               return json({ ok: true, role });
             }
             if (match[2] === "role") {
               const role = body.role === "owner" ? "owner" : "staff";
               await sqlQuery(env, "update app_users set role = $1 where id = $2", [role, id]);
               await asActor(actor, () => logActivity(db, { event: "user.role", summary: `Member #${id} role set to ${role}`, entity: "user", entityId: id }));
+              await notifyOwners(env, "member", `Member role changed — #${id}`, `<p>Member #${id} is now <b>${role}</b> (by ${session.name}).</p>`);
               return json({ ok: true, role });
             }
             if (match[2] === "reject") {
