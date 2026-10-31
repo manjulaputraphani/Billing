@@ -111,6 +111,18 @@ export function buildBillHtml(bill: SaleBillDetail, shop: ShopDetails): string {
     .cancelled{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
     .cancelled span{border:5px solid #b91c1c;color:#b91c1c;font-size:54px;font-weight:900;letter-spacing:.2em;padding:10px 26px;transform:rotate(-24deg);opacity:.35}
     .pagefoot{margin-top:10px;display:flex;justify-content:space-between;color:#555;font-size:10px;border-top:1px solid #ccc;padding-top:4px}
+    /* Narrow screens (the in-app preview on a phone) — stack the invoice blocks. */
+    @media (max-width:600px){
+      .page{padding:10px}
+      header{flex-direction:column;gap:8px}
+      .invbox{min-width:0;width:100%}
+      .parties{flex-direction:column;gap:8px}
+      .bottom{flex-direction:column;gap:8px}
+      footer{flex-direction:column;align-items:stretch;gap:10px}
+      .sign{min-width:0;width:100%}
+      .watermark span{font-size:72px}
+      .pagefoot{flex-direction:column;gap:2px}
+    }
   </style></head><body>
   <div class="page">
     <div class="watermark"><span>${escapeHtml(mark)}</span></div>

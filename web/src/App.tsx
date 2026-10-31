@@ -1384,7 +1384,7 @@ export default function App() {
                 <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Customers</h1>
                 <p className="text-sm text-muted">Saved client details — picked by name when you bill.</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   className="input max-w-52"
                   placeholder="Search name, phone, GSTIN…"
@@ -2434,7 +2434,7 @@ export default function App() {
                       </span>
                     </span>
                     {member.pending ? (
-                      <span className="flex items-center gap-2">
+                      <span className="flex flex-wrap items-center gap-2">
                         <select
                           className="input"
                           value={approveRole[member.id] ?? "staff"}
@@ -2447,7 +2447,7 @@ export default function App() {
                         <button className="btn-mini btn-mini-danger" onClick={() => void api.rejectUser(member.id).then(loadMembers).then(() => setTeamStatus("Request rejected"))}>Reject</button>
                       </span>
                     ) : !isSelf ? (
-                      <span className="flex items-center gap-2">
+                      <span className="flex flex-wrap items-center gap-2">
                         <select
                           className="input"
                           value={member.role}
@@ -2633,7 +2633,7 @@ export default function App() {
                   <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Activity</h1>
                   <p className="text-sm text-muted">{shown.length} events · who did what, when</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <select className="input max-w-52" value={activityFilter} onChange={(e) => setActivityFilter(e.currentTarget.value)}>
                     <option value="">All members</option>
                     {actors.map((actor) => (
