@@ -6,7 +6,7 @@ import { computeUsage } from "../logic/stockCheck";
 import { baseFactor, formatQuantity, type Unit } from "../logic/units";
 import { takeFromPool } from "../logic/weightedCost";
 import { getCostingMethod, getCostPool, saveCostPool } from "./costing";
-import { logActivity } from "./activity";
+import { getAuditActor, logActivity } from "./activity";
 import type { Db } from "./client";
 
 export const STOCK_ENTRY_TYPES = ["STOCK_CHECK", "USAGE", "WASTAGE"] as const;
@@ -171,6 +171,8 @@ export async function saveStockEntry(url: string, input: unknown): Promise<Stock
         enteredQtyLeft: data.type === "STOCK_CHECK" ? (data.enteredLeft ?? null) : null,
         movementDate: data.date,
         note: data.note?.trim() || null,
+        actor: getAuditActor().name,
+        createdAt: new Date(),
       })
       .returning({ id: stockMovements.id });
 

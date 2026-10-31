@@ -90,6 +90,9 @@ export const stockMovements = pgTable(
     enteredQtyLeft: integer("entered_qty_left"),
     movementDate: date("movement_date").notNull(),
     note: text("note"),
+    /** Member who entered it (saved at write time, not derived later). */
+    actor: text("actor"),
+    createdAt: timestamp("created_at", { withTimezone: true }),
   },
   (t) => [
     check(

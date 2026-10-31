@@ -18,6 +18,7 @@ import {
 } from "./api";
 import { buildBillHtml } from "../../src/lib/printBill";
 import type { ShopDetails } from "../../src/db/settings";
+import { formatDate, formatDateTime } from "./format";
 import ThemeToggle from "./ThemeToggle";
 import { watchSystemTheme } from "./theme";
 import EmptyState from "./components/EmptyState";
@@ -1232,7 +1233,7 @@ export default function App() {
               <div>
                 <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Profit &amp; turnover</h1>
                 <p className="text-sm text-muted">
-                  {report ? `Financial year ${report.finYear} · ${report.startDate} to ${report.endDate}` : "Pick a financial year."}
+                  {report ? `Financial year ${report.finYear} · ${formatDate(report.startDate)} to ${formatDate(report.endDate)}` : "Pick a financial year."}
                 </p>
               </div>
               <select className="input max-w-44" value={finYear} onChange={(e) => setFinYear(e.currentTarget.value)}>
@@ -1287,7 +1288,7 @@ export default function App() {
                       {deals.map((deal) => (
                         <tr key={deal.saleId} className="border-t border-line">
                           <td className="px-3 py-2 font-medium">{deal.billNo}</td>
-                          <td className="px-3 py-2">{deal.date}</td>
+                          <td className="px-3 py-2">{formatDate(deal.date)}</td>
                           <td className="px-3 py-2">{deal.customerName ?? "Walk-in"}</td>
                           <td className="px-3 py-2 text-right">{money(deal.saleValuePaise)}</td>
                           <td className="px-3 py-2 text-right">{money(deal.cogsPaise)}</td>
@@ -1492,7 +1493,7 @@ export default function App() {
                   <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
                   <tbody>{purchasesList.map((p) => (
                     <tr key={p.id} className="border-t border-line">
-                      <td className="px-3 py-2">{p.purchase_date}</td>
+                      <td className="px-3 py-2">{formatDate(p.purchase_date)}</td>
                       <td className="px-3 py-2 font-medium">{p.name}</td>
                       <td className="px-3 py-2">{qty(p.qty_base, p.unit)}</td>
                       <td className="px-3 py-2 text-right">{money(p.total_paise)}</td>
@@ -1515,7 +1516,7 @@ export default function App() {
                 <p className="text-sm text-muted">Record usage, wastage or the stock counted on the shelf.</p>
               </div>
 
-              <div className="card max-w-3xl space-y-3 p-4">
+              <div className="card space-y-3 p-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <label className="label" htmlFor="stock-item">Item</label>
@@ -1583,37 +1584,47 @@ export default function App() {
               <div className="card overflow-x-auto">
                 <div className="flex items-center justify-between px-4 py-3">
                   <h2 className="text-sm font-medium">Recent entries</h2>
-                  <span className="text-xs text-muted">Last 30</span>
+                  <span className="text-xs text-muted">Last 30 entries</span>
                 </div>
                 {stockEntries.length === 0 ? (
                   <p className="px-4 pb-4 text-sm text-muted">No stock entries yet.</p>
                 ) : (
-                  <table className="w-full min-w-[720px] text-left text-sm">
+                  <table className="w-full min-w-[760px] text-left text-sm">
+                    <colgroup>
+                      <col className="w-[16%]" />
+                      <col className="w-[24%]" />
+                      <col className="w-[13%]" />
+                      <col className="w-[15%]" />
+                      <col className="w-[18%]" />
+                      <col className="w-[14%]" />
+                    </colgroup>
                     <thead>
                       <tr>
-                        <th className="px-3 py-2">Date</th>
-                        <th className="px-3 py-2">Item</th>
-                        <th className="px-3 py-2">Type</th>
-                        <th className="px-3 py-2 text-right">Quantity</th>
-                        <th className="px-3 py-2">Note</th>
-                        <th className="px-3 py-2">User</th>
+                        <th className="px-4 py-2">Date</th>
+                        <th className="px-4 py-2">Item</th>
+                        <th className="px-4 py-2">Type</th>
+                        <th className="px-4 py-2 text-right">Quantity</th>
+                        <th className="px-4 py-2">Note</th>
+                        <th className="px-4 py-2">User</th>
                       </tr>
                     </thead>
                     <tbody>
                       {stockEntries.map((row) => (
                         <tr key={row.id} className="border-t border-line">
-                          <td className="px-3 py-2">{row.date}</td>
-                          <td className="px-3 py-2 font-medium">{row.item}</td>
-                          <td className="px-3 py-2">
+                          <td className="whitespace-nowrap px-4 py-2">
+                            {row.createdAt ? formatDateTime(row.createdAt) : formatDate(row.date)}
+                          </td>
+                          <td className="px-4 py-2 font-medium">{row.item}</td>
+                          <td className="px-4 py-2">
                             <span className={`badge ${
                               row.type === "STOCK_CHECK" ? "badge-info" : row.type === "WASTAGE" ? "badge-bad" : "badge-warn"
                             }`}>
                               {STOCK_TYPE_LABEL[row.type] ?? row.type}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-right">{qty(row.qtyBase, row.unit)}</td>
-                          <td className="px-3 py-2">{row.note ?? "—"}</td>
-                          <td className="px-3 py-2">{row.user ?? "—"}</td>
+                          <td className="px-4 py-2 text-right">{qty(row.qtyBase, row.unit)}</td>
+                          <td className="break-words px-4 py-2">{row.note ?? "—"}</td>
+                          <td className="whitespace-nowrap px-4 py-2">{row.user ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1647,7 +1658,7 @@ export default function App() {
                 <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Paid to</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
                 <tbody>{expensesList.map((x) => (
                   <tr key={x.id} className="border-t border-line">
-                    <td className="px-3 py-2">{x.date}</td>
+                    <td className="px-3 py-2">{formatDate(x.date)}</td>
                     <td className="px-3 py-2 font-medium">{x.category}</td>
                     <td className="px-3 py-2">{x.paidTo ?? "—"}</td>
                     <td className="px-3 py-2 text-right">{money(x.amountPaise)}</td>
@@ -1681,7 +1692,7 @@ export default function App() {
                   <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Investor</th><th className="px-3 py-2 text-right">Amount</th><th /></tr></thead>
                   <tbody>{investments.map((row) => (
                     <tr key={row.id} className="border-t border-line">
-                      <td className="px-3 py-2">{row.invested_on}</td>
+                      <td className="px-3 py-2">{formatDate(row.invested_on)}</td>
                       <td className="px-3 py-2 font-medium">{row.investor_name}</td>
                       <td className="px-3 py-2 text-right">{money(row.amount_paise)}</td>
                       <td className="px-3 py-2 text-right"><button className="btn-mini btn-mini-danger" onClick={() => void removeInvestment(row.id)}><IconTrash /> Delete</button></td>
@@ -1729,7 +1740,7 @@ export default function App() {
                     {bills.map((row) => (
                       <tr key={row.id} className="border-t border-line">
                         <td className="px-3 py-2 font-medium">{row.billNo}</td>
-                        <td className="px-3 py-2">{row.saleDate}</td>
+                        <td className="px-3 py-2">{formatDate(row.saleDate)}</td>
                         <td className="px-3 py-2">{row.customerName ?? "Walk-in"}</td>
                         <td className="px-3 py-2 text-right">{money(row.totalPaise)}</td>
                         <td className="px-3 py-2">
@@ -2134,7 +2145,7 @@ export default function App() {
                                         {open ? <IconClose size={13} /> : <IconEye />}#{row.batchId}
                                       </span>
                                     </td>
-                                    <td className="px-3 py-2">{row.purchaseDate}</td>
+                                    <td className="px-3 py-2">{formatDate(row.purchaseDate)}</td>
                                     <td className="px-3 py-2">{row.supplierName ?? "—"}</td>
                                     <td className="px-3 py-2 text-right">{qty(row.qtyOriginal, lotLedger.unit)}</td>
                                     <td className="px-3 py-2 text-right">{money(row.unitPricePaise)}</td>
@@ -2168,7 +2179,7 @@ export default function App() {
                                                 {row.sales.map((sale) => (
                                                   <tr key={`${row.batchId}-${sale.billNo}-${sale.saleDate}`} className="border-t border-line/60">
                                                     <td className="px-2 py-1 font-medium">{sale.billNo}</td>
-                                                    <td className="px-2 py-1">{sale.saleDate}</td>
+                                                    <td className="px-2 py-1">{formatDate(sale.saleDate)}</td>
                                                     <td className="px-2 py-1">{sale.customerName ?? "—"}</td>
                                                     <td className="px-2 py-1 text-right">{qty(sale.qtyTaken, lotLedger.unit)}</td>
                                                     <td className="px-2 py-1 text-right">{money(sale.unitPricePaise)}</td>

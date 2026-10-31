@@ -27,10 +27,15 @@ function rateText(rateBp: number): string {
   return String(Number((rateBp / 200).toFixed(2)));
 }
 
-/** "2026-05-14" → "14-05-2026" (Indian bill style). */
+/** "2026-05-14" → "14 May 2026". */
 function billDate(iso: string): string {
-  const [year, month, day] = iso.slice(0, 10).split("-");
-  return year && month && day ? `${day}-${month}-${year}` : iso;
+  const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return iso;
+  return new Date(year, month - 1, day).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /** Full SDHHE-style GST invoice as printable HTML (pure — easy to test). */

@@ -171,6 +171,7 @@ export type StockEntryRow = {
   qtyBase: number;
   note: string | null;
   user: string | null;
+  createdAt: string | null;
 };
 
 export type ActivityRow = {

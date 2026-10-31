@@ -861,7 +861,7 @@ export default {
           env,
           `with sm as (
              select m.id, m.item_id, m.type, m.qty_change, m.entered_qty_left, m.note,
-                    m.movement_date::text as date, i.name as item, i.unit,
+                    m.movement_date::text as date, m.actor, m.created_at, i.name as item, i.unit,
                     row_number() over (partition by m.item_id, m.type order by m.id) as rn
              from stock_movements m
              join items i on i.id = m.item_id
@@ -877,7 +877,9 @@ export default {
                   case when sm.type = 'STOCK_CHECK'
                        then coalesce(sm.entered_qty_left, 0)
                        else abs(sm.qty_change) end as "qtyBase",
-                  sm.note, al.actor as "user"
+                  sm.note,
+                  coalesce(sm.actor, al.actor) as "user",
+                  sm.created_at::text as "createdAt"
            from sm
            left join al on al.entity_id = sm.item_id
              and al.event = 'stock.' || lower(sm.type)
