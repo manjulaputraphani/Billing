@@ -416,13 +416,19 @@ export default {
             return json({ user: created[0] });
           }
 
-          const match = url.pathname.match(/^\/api\/users\/(\d+)\/(password|active|approve|reject)$/);
+          const match = url.pathname.match(/^\/api\/users\/(\d+)\/(password|active|approve|reject|role)$/);
           if (match && request.method === "POST") {
             const id = Number(match[1]);
             if (match[2] === "approve") {
               const role = body.role === "owner" ? "owner" : "staff";
               await sqlQuery(env, "update app_users set pending = false, active = true, role = $1 where id = $2", [role, id]);
               await asActor(actor, () => logActivity(db, { event: "user.approve", summary: `Member #${id} approved as ${role}`, entity: "user", entityId: id }));
+              return json({ ok: true, role });
+            }
+            if (match[2] === "role") {
+              const role = body.role === "owner" ? "owner" : "staff";
+              await sqlQuery(env, "update app_users set role = $1 where id = $2", [role, id]);
+              await asActor(actor, () => logActivity(db, { event: "user.role", summary: `Member #${id} role set to ${role}`, entity: "user", entityId: id }));
               return json({ ok: true, role });
             }
             if (match[2] === "reject") {

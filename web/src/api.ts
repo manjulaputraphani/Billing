@@ -83,6 +83,8 @@ export const api = {
       body: JSON.stringify({ name, phone, password }),
     }),
   users: () => request<{ users: Member[] }>("/api/users"),
+  setUserRole: (id: number, role: "staff" | "owner") =>
+    request<{ ok: boolean; role: string }>(`/api/users/${id}/role`, { method: "POST", body: JSON.stringify({ role }) }),
   approveUser: (id: number, role: "staff" | "owner") =>
     request<{ ok: boolean; role: string }>(`/api/users/${id}/approve`, { method: "POST", body: JSON.stringify({ role }) }),
   rejectUser: (id: number) => request<{ ok: boolean }>(`/api/users/${id}/reject`, { method: "POST" }),

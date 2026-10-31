@@ -29,6 +29,7 @@ export default function App() {
   const [teamStatus, setTeamStatus] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<Member | null>(null);
   const [resetPassword, setResetPassword] = useState("");
+  const [approveRole, setApproveRole] = useState<Record<number, "staff" | "owner">>({});
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [phone, setPhone] = useState("");
@@ -353,13 +354,32 @@ export default function App() {
                     {!member.pending && !member.active && <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700">disabled</span>}
                   </span>
                   {member.pending ? (
-                    <span className="space-x-3">
-                      <button className="text-sm text-emerald-700 underline" onClick={() => void api.approveUser(member.id, "staff").then(loadMembers).then(() => setTeamStatus(`${member.name} approved as staff`))}>Approve staff</button>
-                      <button className="text-sm text-emerald-700 underline" onClick={() => void api.approveUser(member.id, "owner").then(loadMembers).then(() => setTeamStatus(`${member.name} approved as owner`))}>Approve owner</button>
+                    <span className="flex items-center gap-2">
+                      <select
+                        className="input"
+                        value={approveRole[member.id] ?? "staff"}
+                        onChange={(e) => setApproveRole({ ...approveRole, [member.id]: e.currentTarget.value as "staff" | "owner" })}
+                      >
+                        <option value="staff">Staff</option>
+                        <option value="owner">Owner</option>
+                      </select>
+                      <button className="text-sm text-emerald-700 underline" onClick={() => void api.approveUser(member.id, approveRole[member.id] ?? "staff").then(loadMembers).then(() => setTeamStatus(`${member.name} approved`))}>Approve</button>
                       <button className="text-sm text-red-700 underline" onClick={() => void api.rejectUser(member.id).then(loadMembers).then(() => setTeamStatus("Request rejected"))}>Reject</button>
                     </span>
                   ) : (
-                    <span className="space-x-3">
+                    <span className="flex items-center gap-2">
+                      <select
+                        className="input"
+                        value={member.role}
+                        disabled={member.phone === "7569208757"}
+                        onChange={(e) => {
+                          const role = e.currentTarget.value as "staff" | "owner";
+                          void api.setUserRole(member.id, role).then(loadMembers).then(() => setTeamStatus(`${member.name} is now ${role}`));
+                        }}
+                      >
+                        <option value="staff">Staff</option>
+                        <option value="owner">Owner</option>
+                      </select>
                       <button className="text-sm underline" onClick={() => { setResetTarget(member); setResetPassword(""); }}>Reset password</button>
                       <button className={`text-sm underline ${member.active ? "text-red-700" : "text-emerald-700"}`} onClick={() => void toggleMember(member)}>
                         {member.active ? "Deactivate" : "Enable"}
