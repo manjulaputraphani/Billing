@@ -5,7 +5,7 @@ Tool: OpenCode
 
 ## Current task
 **Login workstream approved** (docs/PLAN_LOGIN.md) — NOT built yet. PIN login still works for now.
-Next: **W6 deploy** (Cloudflare Pages + /api proxy; needs wrangler login/token + Node 22). W1–W5 DONE.
+Next: **N1 notifications** (docs/PLAN_NOTIFICATIONS.md): notify owners on signup/member changes and when staff create bills; web uses Resend (no SMTP). Live: https://sdhhe-api.blvphani.workers.dev (W1–W4e, W5, deployed).
 
 ## Approved decisions (2026-10-31)
 - Login: type **phone + password** (min 6 chars, argon2id hash in DB).
