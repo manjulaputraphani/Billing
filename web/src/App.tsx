@@ -1164,34 +1164,20 @@ export default function App() {
             </div>
 
             {showLowStock && (
-              <div className="card overflow-x-auto">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <h2 className="text-sm font-medium">Low stock items</h2>
-                  <button className="btn-mini" onClick={() => setShowLowStock(false)}>Close</button>
-                </div>
-                {lowStockItems.length === 0 ? (
-                  <p className="px-4 pb-4 text-sm text-muted">All items are above their minimum stock.</p>
-                ) : (
-                  <table className="w-full min-w-[520px] text-left text-sm">
-                    <thead>
-                      <tr>
-                        <th className="px-3 py-2">Item</th>
-                        <th className="px-3 py-2 text-right">Stock left</th>
-                        <th className="px-3 py-2 text-right">Minimum</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lowStockItems.map((item) => (
-                        <tr key={item.id} className="border-t border-line">
-                          <td className="px-3 py-2 font-medium">{item.name}</td>
-                          <td className="px-3 py-2 text-right text-accent-ink">{qty(item.stockLeftBase, item.unit)}</td>
-                          <td className="px-3 py-2 text-right">{qty(item.minStockBase, item.unit)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+              <ResponsiveTable
+                title="Low stock items"
+                headerRight={<button className="btn-mini" onClick={() => setShowLowStock(false)}>Close</button>}
+                rows={lowStockItems}
+                rowKey={(item) => item.id}
+                minWidthClass="min-w-[520px]"
+                widths={["w-[50%]", "w-[25%]", "w-[25%]"]}
+                columns={[
+                  { key: "item", header: "Item", cell: (item) => <span className="font-medium">{item.name}</span> },
+                  { key: "stock", header: "Stock left", align: "right", cell: (item) => <span className="text-accent-ink">{qty(item.stockLeftBase, item.unit)}</span> },
+                  { key: "min", header: "Minimum", align: "right", cell: (item) => qty(item.minStockBase, item.unit) },
+                ]}
+                empty={<p className="text-sm text-muted">All items are above their minimum stock.</p>}
+              />
             )}
 
             {/* Quick add expense — one row, defaults to general. */}
@@ -1304,74 +1290,45 @@ export default function App() {
                   ))}
                 </div>
 
-                <div className="card overflow-x-auto">
-                  <table className="w-full min-w-[560px] text-left text-sm">
-                    <thead>
-                      <tr>
-                        <th className="px-3 py-2">Deal</th>
-                        <th className="px-3 py-2">Date</th>
-                        <th className="px-3 py-2">Customer</th>
-                        <th className="px-3 py-2 text-right">Sale value</th>
-                        <th className="px-3 py-2 text-right">COGS</th>
-                        <th className="px-3 py-2 text-right">Gross</th>
-                        <th className="px-3 py-2 text-right">Sale exp.</th>
-                        <th className="px-3 py-2 text-right">Net profit</th>
-                        <th className="px-3 py-2 text-right">%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {deals.length === 0 && (
-                        <tr>
-                          <td className="px-3 py-4 text-muted" colSpan={9}>
-                            No deals in this financial year.
-                          </td>
-                        </tr>
-                      )}
-                      {deals.map((deal) => (
-                        <tr key={deal.saleId} className="border-t border-line">
-                          <td className="px-3 py-2 font-medium">{deal.billNo}</td>
-                          <td className="px-3 py-2">{formatDate(deal.date)}</td>
-                          <td className="px-3 py-2">{deal.customerName ?? "Walk-in"}</td>
-                          <td className="px-3 py-2 text-right">{money(deal.saleValuePaise)}</td>
-                          <td className="px-3 py-2 text-right">{money(deal.cogsPaise)}</td>
-                          <td className="px-3 py-2 text-right">{money(deal.grossProfitPaise)}</td>
-                          <td className="px-3 py-2 text-right">{money(deal.saleExpensesPaise)}</td>
-                          <td className="px-3 py-2 text-right font-medium">{money(deal.netProfitPaise)}</td>
-                          <td className="px-3 py-2 text-right">
-                            <span className={`badge ${deal.profitPercent >= 0 ? "badge-ok" : "badge-bad"}`}>{deal.profitPercent}%</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ResponsiveTable
+                  rows={deals}
+                  rowKey={(deal) => deal.saleId}
+                  minWidthClass="min-w-[720px]"
+                  widths={["w-[10%]", "w-[12%]", "w-[18%]", "w-[12%]", "w-[11%]", "w-[11%]", "w-[10%]", "w-[10%]", "w-[6%]"]}
+                  columns={[
+                    { key: "deal", header: "Deal", cell: (deal) => <span className="font-medium">{deal.billNo}</span> },
+                    { key: "date", header: "Date", cell: (deal) => formatDate(deal.date), className: "whitespace-nowrap" },
+                    { key: "customer", header: "Customer", cell: (deal) => deal.customerName ?? "Walk-in" },
+                    { key: "sale", header: "Sale value", align: "right", cell: (deal) => money(deal.saleValuePaise) },
+                    { key: "cogs", header: "COGS", align: "right", cell: (deal) => money(deal.cogsPaise) },
+                    { key: "gross", header: "Gross", align: "right", cell: (deal) => money(deal.grossProfitPaise) },
+                    { key: "saleExp", header: "Sale exp.", align: "right", cell: (deal) => money(deal.saleExpensesPaise) },
+                    { key: "net", header: "Net profit", align: "right", cell: (deal) => <span className="font-medium">{money(deal.netProfitPaise)}</span> },
+                    {
+                      key: "percent",
+                      header: "%",
+                      align: "right",
+                      cell: (deal) => <span className={`badge ${deal.profitPercent >= 0 ? "badge-ok" : "badge-bad"}`}>{deal.profitPercent}%</span>,
+                    },
+                  ]}
+                  empty={<p className="text-sm text-muted">No deals in this financial year.</p>}
+                />
 
-                <div className="card overflow-x-auto">
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <h2 className="text-sm font-medium">Closing stock</h2>
-                    <span className="text-sm text-muted">{money(report.closingStockValuePaise)}</span>
-                  </div>
-                  <table className="w-full min-w-[520px] text-left text-sm">
-                    <thead>
-                      <tr>
-                        <th className="px-3 py-2">Item</th>
-                        <th className="px-3 py-2 text-right">Quantity</th>
-                        <th className="px-3 py-2 text-right">Avg cost</th>
-                        <th className="px-3 py-2 text-right">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {report.closingStock.filter((row) => row.qtyBase > 0).map((row) => (
-                        <tr key={row.itemId} className="border-t border-line">
-                          <td className="px-3 py-2 font-medium">{row.name}</td>
-                          <td className="px-3 py-2 text-right">{qty(row.qtyBase, row.unit)}</td>
-                          <td className="px-3 py-2 text-right">{money(row.avgCostPaise)}</td>
-                          <td className="px-3 py-2 text-right">{money(row.valuePaise)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ResponsiveTable
+                  title="Closing stock"
+                  headerRight={<span className="text-sm text-muted">{money(report.closingStockValuePaise)}</span>}
+                  rows={report.closingStock.filter((row) => row.qtyBase > 0)}
+                  rowKey={(row) => row.itemId}
+                  minWidthClass="min-w-[520px]"
+                  widths={["w-[40%]", "w-[20%]", "w-[20%]", "w-[20%]"]}
+                  columns={[
+                    { key: "item", header: "Item", cell: (row) => <span className="font-medium">{row.name}</span> },
+                    { key: "qty", header: "Quantity", align: "right", cell: (row) => qty(row.qtyBase, row.unit) },
+                    { key: "avg", header: "Avg cost", align: "right", cell: (row) => money(row.avgCostPaise) },
+                    { key: "value", header: "Value", align: "right", cell: (row) => money(row.valuePaise) },
+                  ]}
+                  empty={<p className="text-sm text-muted">No stock on hand.</p>}
+                />
               </>
             )}
           </section>
@@ -1418,8 +1375,81 @@ export default function App() {
                 </div>
               </div>
             )}
-            <div className="card overflow-x-auto">
-              {customers.length === 0 ? (
+            <ResponsiveTable
+              rows={customers}
+              rowKey={(customer) => customer.id}
+              minWidthClass="min-w-[720px]"
+              widths={["w-[22%]", "w-[14%]", "w-[16%]", "w-[9%]", "w-[13%]", "w-[12%]", "w-[14%]"]}
+              columns={[
+                {
+                  key: "customer",
+                  header: "Customer",
+                  cell: (customer) => (
+                    <span className="flex items-center gap-2">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-[11px] font-semibold text-secondary-ink">
+                        {customer.name.trim().charAt(0).toUpperCase()}
+                      </span>
+                      <span className="font-medium">{customer.name}</span>
+                    </span>
+                  ),
+                },
+                { key: "phone", header: "Phone", cell: (customer) => customer.phone ?? "—" },
+                { key: "gstin", header: "GSTIN", cell: (customer) => customer.gstin ?? "—" },
+                { key: "bills", header: "Bills", align: "right", cell: (customer) => customer.billCount },
+                { key: "billed", header: "Billed", align: "right", cell: (customer) => money(customer.billedPaise) },
+                {
+                  key: "credit",
+                  header: "Credit",
+                  align: "right",
+                  cell: (customer) =>
+                    customer.creditPaise > 0 ? (
+                      <span className="badge badge-warn">{money(customer.creditPaise)}</span>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    ),
+                },
+                {
+                  key: "actions",
+                  header: "",
+                  align: "right",
+                  mobileLabel: "Actions",
+                  cell: (customer) => (
+                    <span className="flex flex-wrap justify-end gap-2">
+                      <button
+                        className="btn-mini"
+                        onClick={() =>
+                          setCustomerForm({
+                            id: customer.id,
+                            name: customer.name,
+                            phone: customer.phone ?? "",
+                            email: customer.email ?? "",
+                            gstin: customer.gstin ?? "",
+                            address: customer.address ?? "",
+                          })
+                        }
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn-mini btn-mini-danger"
+                        onClick={async () => {
+                          if (!window.confirm(`Remove ${customer.name} from the customer master?`)) return;
+                          try {
+                            await api.deleteCustomer(customer.id);
+                            setCustomers((await api.customers(customerSearch)).customers);
+                            setCustomerMsg(`${customer.name} removed`);
+                          } catch (err) {
+                            setCustomerMsg(err instanceof Error ? err.message : String(err));
+                          }
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </span>
+                  ),
+                },
+              ]}
+              empty={
                 <EmptyState
                   illustration="invoices"
                   title="No customers yet"
@@ -1427,81 +1457,8 @@ export default function App() {
                   actionLabel="New bill"
                   onAction={() => { setView("billing"); setBill(null); }}
                 />
-              ) : (
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead>
-                    <tr>
-                      <th className="px-3 py-2">Customer</th>
-                      <th className="px-3 py-2">Phone</th>
-                      <th className="px-3 py-2">GSTIN</th>
-                      <th className="px-3 py-2 text-right">Bills</th>
-                      <th className="px-3 py-2 text-right">Billed</th>
-                      <th className="px-3 py-2 text-right">Credit</th>
-                      <th className="px-3 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customers.map((customer) => (
-                      <tr key={customer.id} className="border-t border-line">
-                        <td className="px-3 py-2 font-medium">
-                          <span className="flex items-center gap-2">
-                            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-[11px] font-semibold text-secondary-ink">
-                              {customer.name.trim().charAt(0).toUpperCase()}
-                            </span>
-                            {customer.name}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">{customer.phone ?? "—"}</td>
-                        <td className="px-3 py-2">{customer.gstin ?? "—"}</td>
-                        <td className="px-3 py-2 text-right">{customer.billCount}</td>
-                        <td className="px-3 py-2 text-right">{money(customer.billedPaise)}</td>
-                        <td className="px-3 py-2 text-right">
-                          {customer.creditPaise > 0 ? (
-                            <span className="badge badge-warn">{money(customer.creditPaise)}</span>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <span className="flex justify-end gap-2">
-                            <button
-                              className="btn-mini"
-                              onClick={() =>
-                                setCustomerForm({
-                                  id: customer.id,
-                                  name: customer.name,
-                                  phone: customer.phone ?? "",
-                                  email: customer.email ?? "",
-                                  gstin: customer.gstin ?? "",
-                                  address: customer.address ?? "",
-                                })
-                              }
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="btn-mini btn-mini-danger"
-                              onClick={async () => {
-                                if (!window.confirm(`Remove ${customer.name} from the customer master?`)) return;
-                                try {
-                                  await api.deleteCustomer(customer.id);
-                                  setCustomers((await api.customers(customerSearch)).customers);
-                                  setCustomerMsg(`${customer.name} removed`);
-                                } catch (err) {
-                                  setCustomerMsg(err instanceof Error ? err.message : String(err));
-                                }
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+              }
+            />
             {customerMsg && <p role="status" className="text-sm text-muted">{customerMsg}</p>}
           </section>
         )}
@@ -1815,19 +1772,29 @@ export default function App() {
               {investmentMsg && <p role="status" className="text-sm text-muted">{investmentMsg}</p>}
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
-              <div className="card overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left text-sm">
-                  <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Investor</th><th className="px-3 py-2 text-right">Amount</th><th /></tr></thead>
-                  <tbody>{investments.map((row) => (
-                    <tr key={row.id} className="border-t border-line">
-                      <td className="px-3 py-2">{formatDate(row.invested_on)}</td>
-                      <td className="px-3 py-2 font-medium">{row.investor_name}</td>
-                      <td className="px-3 py-2 text-right">{money(row.amount_paise)}</td>
-                      <td className="px-3 py-2 text-right"><button className="btn-mini btn-mini-danger" onClick={() => void removeInvestment(row.id)}><IconTrash /> Delete</button></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
+              <ResponsiveTable
+                rows={investments}
+                rowKey={(row) => row.id}
+                minWidthClass="min-w-[520px]"
+                widths={["w-[25%]", "w-[35%]", "w-[25%]", "w-[15%]"]}
+                columns={[
+                  { key: "date", header: "Date", cell: (row) => formatDate(row.invested_on), className: "whitespace-nowrap" },
+                  { key: "investor", header: "Investor", cell: (row) => <span className="font-medium">{row.investor_name}</span> },
+                  { key: "amount", header: "Amount", align: "right", cell: (row) => money(row.amount_paise) },
+                  {
+                    key: "actions",
+                    header: "",
+                    align: "right",
+                    mobileLabel: "Actions",
+                    cell: (row) => (
+                      <button className="btn-mini btn-mini-danger" onClick={() => void removeInvestment(row.id)}>
+                        <IconTrash /> Delete
+                      </button>
+                    ),
+                  },
+                ]}
+                empty={<p className="text-sm text-muted">No investments yet.</p>}
+              />
               <div className="card p-4">
                 <h2 className="mb-3 text-sm font-medium">By investor</h2>
                 {investments.length === 0 ? (
@@ -1843,8 +1810,77 @@ export default function App() {
         {view === "bills" && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Invoices</h1>
-            <div className="card overflow-x-auto">
-              {bills.length === 0 ? (
+            <ResponsiveTable
+              rows={bills}
+              rowKey={(row) => row.id}
+              minWidthClass="min-w-[640px]"
+              widths={["w-[16%]", "w-[13%]", "w-[20%]", "w-[14%]", "w-[15%]", "w-[22%]"]}
+              columns={[
+                { key: "billNo", header: "Bill no", cell: (row) => <span className="font-medium">{row.billNo}</span> },
+                { key: "date", header: "Date", cell: (row) => formatDate(row.saleDate), className: "whitespace-nowrap" },
+                { key: "customer", header: "Customer", cell: (row) => row.customerName ?? "Walk-in" },
+                { key: "total", header: "Total", align: "right", cell: (row) => money(row.totalPaise) },
+                {
+                  key: "status",
+                  header: "Status",
+                  cell: (row) =>
+                    row.cancelled ? (
+                      <span className="badge badge-bad">Cancelled</span>
+                    ) : row.paidPaise < row.totalPaise ? (
+                      <span className="badge badge-warn" title="Credit still due">
+                        Credit {money(row.totalPaise - row.paidPaise)}
+                      </span>
+                    ) : (
+                      <span className="badge badge-ok">Paid</span>
+                    ),
+                },
+                {
+                  key: "actions",
+                  header: "",
+                  align: "right",
+                  mobileLabel: "Actions",
+                  cell: (row) => {
+                    if (row.cancelled) return <span className="btn-mini">Cancelled</span>;
+                    const view = <button className="btn-mini" onClick={() => void openBill(row.id)}><IconEye /> View</button>;
+                    if (row.paidPaise >= row.totalPaise) return view;
+                    return (
+                      <span className="flex flex-wrap justify-end gap-2">
+                        <button
+                          className="btn-mini"
+                          onClick={async () => {
+                            const input = window.prompt(
+                              `Amount received (bill ${row.billNo})`,
+                              ((row.totalPaise - row.paidPaise) / 100).toFixed(2),
+                            );
+                            if (input === null) return;
+                            const amount = Math.round(Number(input) * 100);
+                            if (!Number.isFinite(amount) || amount <= 0) {
+                              setError("Enter a valid amount");
+                              return;
+                            }
+                            try {
+                              const res = await api.recordPayment(row.id, amount);
+                              setBills((await api.bills()).bills);
+                              setStats((await api.stats()).stats);
+                              setError(
+                                res.payment.creditPaise > 0
+                                  ? `₹${(res.payment.creditPaise / 100).toFixed(2)} credit still due`
+                                  : "Payment received — bill fully paid",
+                              );
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : String(err));
+                            }
+                          }}
+                        >
+                          Record payment
+                        </button>
+                        {view}
+                      </span>
+                    );
+                  },
+                },
+              ]}
+              empty={
                 <EmptyState
                   illustration="invoices"
                   title="No invoices yet"
@@ -1852,82 +1888,8 @@ export default function App() {
                   actionLabel="New bill"
                   onAction={() => { setView("billing"); setBill(null); }}
                 />
-              ) : (
-                <table className="w-full min-w-[560px] text-left text-sm">
-                  <thead>
-                    <tr>
-                      <th className="px-3 py-2">Bill no</th>
-                      <th className="px-3 py-2">Date</th>
-                      <th className="px-3 py-2">Customer</th>
-                      <th className="px-3 py-2 text-right">Total</th>
-                      <th className="px-3 py-2">Status</th>
-                      <th className="px-3 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bills.map((row) => (
-                      <tr key={row.id} className="border-t border-line">
-                        <td className="px-3 py-2 font-medium">{row.billNo}</td>
-                        <td className="px-3 py-2">{formatDate(row.saleDate)}</td>
-                        <td className="px-3 py-2">{row.customerName ?? "Walk-in"}</td>
-                        <td className="px-3 py-2 text-right">{money(row.totalPaise)}</td>
-                        <td className="px-3 py-2">
-                          {row.cancelled ? (
-                            <span className="badge badge-bad">Cancelled</span>
-                          ) : row.paidPaise < row.totalPaise ? (
-                            <span className="badge badge-warn" title="Credit still due">
-                              Credit {money(row.totalPaise - row.paidPaise)}
-                            </span>
-                          ) : (
-                            <span className="badge badge-ok">Paid</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {row.cancelled ? (
-                            <span className="btn-mini">Cancelled</span>
-                          ) : row.paidPaise < row.totalPaise ? (
-                            <span className="flex items-center justify-end gap-2">
-                              <button
-                                className="btn-mini"
-                                onClick={async () => {
-                                  const input = window.prompt(
-                                    `Amount received (bill ${row.billNo})`,
-                                    ((row.totalPaise - row.paidPaise) / 100).toFixed(2),
-                                  );
-                                  if (input === null) return;
-                                  const amount = Math.round(Number(input) * 100);
-                                  if (!Number.isFinite(amount) || amount <= 0) {
-                                    setError("Enter a valid amount");
-                                    return;
-                                  }
-                                  try {
-                                    const res = await api.recordPayment(row.id, amount);
-                                    setBills((await api.bills()).bills);
-                                    setStats((await api.stats()).stats);
-                                    setError(
-                                      res.payment.creditPaise > 0
-                                        ? `₹${(res.payment.creditPaise / 100).toFixed(2)} credit still due`
-                                        : "Payment received — bill fully paid",
-                                    );
-                                  } catch (err) {
-                                    setError(err instanceof Error ? err.message : String(err));
-                                  }
-                                }}
-                              >
-                                Record payment
-                              </button>
-                              <button className="btn-mini" onClick={() => void openBill(row.id)}><IconEye /> View</button>
-                            </span>
-                          ) : (
-                            <button className="btn-mini" onClick={() => void openBill(row.id)}><IconEye /> View</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+              }
+            />
 
             {bill && shop && (
               <section className="space-y-3">
@@ -2031,30 +1993,28 @@ export default function App() {
                   </div>
 
                   {billLines.length > 0 ? (
-                    <div className="mt-4 overflow-x-auto rounded-lg border border-line">
-                      <table className="w-full min-w-[520px] text-left text-sm">
-                        <thead className="bg-surface-2">
-                          <tr>
-                            <th className="px-3 py-2">Item</th>
-                            <th className="px-3 py-2 text-right">Qty</th>
-                            <th className="px-3 py-2 text-right">Rate</th>
-                            <th className="px-3 py-2 text-right">Amount</th>
-                            <th className="px-3 py-2" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {billLines.map((l, idx) => (
-                            <tr key={idx} className="border-t border-line">
-                              <td className="px-3 py-2 font-medium">{l.name}</td>
-                              <td className="px-3 py-2 text-right">{qty(l.qtyBase, l.unit)}</td>
-                              <td className="px-3 py-2 text-right">{money(l.ratePaise)}</td>
-                              <td className="px-3 py-2 text-right">{money(l.totalPaise)}</td>
-                              <td className="px-3 py-2 text-right"><button className="btn-mini" onClick={() => setBillLines(billLines.filter((_, i) => i !== idx))}>Remove</button></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    <ResponsiveTable
+                      className="mt-4 shadow-none"
+                      rows={billLines.map((line, idx) => ({ ...line, idx }))}
+                      rowKey={(line) => line.idx}
+                      minWidthClass="min-w-[520px]"
+                      widths={["w-[38%]", "w-[15%]", "w-[15%]", "w-[17%]", "w-[15%]"]}
+                      columns={[
+                        { key: "item", header: "Item", cell: (line) => <span className="font-medium">{line.name}</span> },
+                        { key: "qty", header: "Qty", align: "right", cell: (line) => qty(line.qtyBase, line.unit) },
+                        { key: "rate", header: "Rate", align: "right", cell: (line) => money(line.ratePaise) },
+                        { key: "amount", header: "Amount", align: "right", cell: (line) => money(line.totalPaise) },
+                        {
+                          key: "remove",
+                          header: "",
+                          align: "right",
+                          mobileLabel: "Actions",
+                          cell: (line) => (
+                            <button className="btn-mini" onClick={() => setBillLines(billLines.filter((_, i) => i !== line.idx))}>Remove</button>
+                          ),
+                        },
+                      ]}
+                    />
                   ) : (
                     <p className="mt-4 rounded-lg bg-surface-2 px-3 py-3 text-center text-sm text-muted">
                       No items yet — pick an item, enter qty &amp; rate, then Add.
@@ -2165,8 +2125,56 @@ export default function App() {
               </div>
             )}
             {itemsMsg && <p role="status" className="text-sm text-muted">{itemsMsg}</p>}
-            {items.length === 0 ? (
-              <div className="card p-4">
+            <ResponsiveTable
+              rows={items}
+              rowKey={(item) => item.id}
+              minWidthClass="min-w-[640px]"
+              widths={["w-[32%]", "w-[10%]", "w-[18%]", "w-[16%]", "w-[24%]"]}
+              columns={[
+                {
+                  key: "item",
+                  header: "Item",
+                  cell: (item) => (
+                    <span className="flex items-center gap-2">
+                      <ItemThumb item={item} />
+                      <span className="font-medium">{item.name}</span>
+                    </span>
+                  ),
+                },
+                { key: "unit", header: "Unit", cell: (item) => item.unit },
+                { key: "category", header: "Category", cell: (item) => item.category ?? "—" },
+                { key: "stock", header: "Stock left", align: "right", cell: (item) => qty(item.stockLeftBase, item.unit) },
+                {
+                  key: "actions",
+                  header: "",
+                  align: "right",
+                  mobileLabel: "Actions",
+                  cell: (item) => (
+                    <span className="flex flex-wrap justify-end gap-2">
+                      <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "", imageUrl: item.imageUrl ?? "" })}><IconEdit /> Edit</button>
+                      <button className="btn-mini" onClick={() => void openLots(item)}>Lots</button>
+                      {user.role === "owner" && (
+                        <button
+                          className="btn-mini btn-mini-danger"
+                          onClick={async () => {
+                            if (!window.confirm(`Delete ${item.name}?`)) return;
+                            try {
+                              await api.deleteItem(item.id);
+                              setItems((await api.items()).items);
+                              setItemsMsg(`${item.name} deleted`);
+                            } catch (err) {
+                              setItemsMsg(err instanceof Error ? err.message : String(err));
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </span>
+                  ),
+                },
+              ]}
+              empty={
                 <EmptyState
                   illustration="items"
                   title="No items yet"
@@ -2174,58 +2182,8 @@ export default function App() {
                   actionLabel="Add item"
                   onAction={() => setItemForm({ id: null, name: "", unit: "kg", category: "", minStock: "", imageUrl: "" })}
                 />
-              </div>
-            ) : (
-              <div className="card overflow-x-auto">
-                <table className="w-full min-w-[560px] text-left text-sm">
-                  <thead>
-                    <tr>
-                      <th className="px-3 py-2">Item</th>
-                      <th className="px-3 py-2">Unit</th>
-                      <th className="px-3 py-2">Category</th>
-                      <th className="px-3 py-2 text-right">Stock left</th>
-                      <th className="px-3 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item) => (
-                      <tr key={item.id} className="border-t border-line">
-                        <td className="px-3 py-2">
-                          <span className="flex items-center gap-2">
-                            <ItemThumb item={item} />
-                            <span className="font-medium">{item.name}</span>
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">{item.unit}</td>
-                        <td className="px-3 py-2">{item.category ?? "—"}</td>
-                        <td className="px-3 py-2 text-right">{qty(item.stockLeftBase, item.unit)}</td>
-                        <td className="px-3 py-2 text-right">
-                          <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "", imageUrl: item.imageUrl ?? "" })}><IconEdit /> Edit</button>
-                          <button className="btn-mini ml-2" onClick={() => void openLots(item)}>Lots</button>
-                          {user.role === "owner" && (
-                            <button
-                              className="btn-mini btn-mini-danger ml-2"
-                              onClick={async () => {
-                                if (!window.confirm(`Delete ${item.name}?`)) return;
-                                try {
-                                  await api.deleteItem(item.id);
-                                  setItems((await api.items()).items);
-                                  setItemsMsg(`${item.name} deleted`);
-                                } catch (err) {
-                                  setItemsMsg(err instanceof Error ? err.message : String(err));
-                                }
-                              }}
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+              }
+            />
 
             {lotItem && (
               <section className="space-y-3">
@@ -2243,7 +2201,8 @@ export default function App() {
                     {lotLedger.batches.length === 0 ? (
                       <div className="card p-4 text-sm text-muted">No purchase lots for this item yet.</div>
                     ) : (
-                      <div className="card overflow-x-auto">
+                      <div className="card">
+                        <div className="hidden overflow-x-auto sm:block">
                         <table className="w-full min-w-[860px] text-left text-sm">
                           <thead>
                             <tr>
@@ -2328,6 +2287,50 @@ export default function App() {
                             })}
                           </tbody>
                         </table>
+                        </div>
+                        <div className="space-y-2 p-3 sm:hidden">
+                          {lotLedger.batches.map((row) => {
+                            const open = expandedLot === row.batchId;
+                            return (
+                              <div key={row.batchId} className="rounded-lg border border-line p-3">
+                                <button
+                                  type="button"
+                                  className="flex w-full items-center justify-between gap-2 text-left"
+                                  onClick={() => setExpandedLot(open ? null : row.batchId)}
+                                >
+                                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                                    {open ? <IconClose size={13} /> : <IconEye />}#{row.batchId} · {formatDate(row.purchaseDate)}
+                                  </span>
+                                  <span className="text-xs text-muted">{open ? "Hide sales" : "Sales"}</span>
+                                </button>
+                                <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                  <div className="flex justify-between gap-2"><span className="text-muted">Bought</span><span>{qty(row.qtyOriginal, lotLedger.unit)}</span></div>
+                                  <div className="flex justify-between gap-2"><span className="text-muted">Unit cost</span><span>{money(row.unitPricePaise)}</span></div>
+                                  <div className="flex justify-between gap-2"><span className="text-muted">Sold qty</span><span>{qty(row.qtySold, lotLedger.unit)}</span></div>
+                                  <div className="flex justify-between gap-2"><span className="text-muted">Sold value</span><span>{money(row.soldValuePaise)}</span></div>
+                                  <div className="flex justify-between gap-2"><span className="text-muted">Profit</span><span className={row.profitPaise >= 0 ? "text-success-ink" : "text-error-ink"}>{money(row.profitPaise)}</span></div>
+                                  <div className="flex justify-between gap-2"><span className="text-muted">Pending</span><span>{qty(row.qtyRemaining, lotLedger.unit)}</span></div>
+                                  <div className="flex justify-between gap-2"><span className="text-muted">Pending value</span><span>{money(row.pendingValuePaise)}</span></div>
+                                  <div className="flex justify-between gap-2"><span className="text-muted">Supplier</span><span className="truncate">{row.supplierName ?? "—"}</span></div>
+                                </div>
+                                {open && (
+                                  <div className="mt-2 space-y-1.5 border-t border-line pt-2 text-xs">
+                                    {row.sales.length === 0 ? (
+                                      <p className="text-muted">Nothing sold from this lot yet.</p>
+                                    ) : (
+                                      row.sales.map((sale) => (
+                                        <div key={`${row.batchId}-${sale.billNo}-${sale.saleDate}`} className="flex items-center justify-between gap-2">
+                                          <span className="min-w-0 truncate">{sale.billNo} · {formatDate(sale.saleDate)}</span>
+                                          <span className="shrink-0 text-muted">{qty(sale.qtyTaken, lotLedger.unit)} · {money(sale.profitPaise)}</span>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </>
@@ -2341,67 +2344,64 @@ export default function App() {
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Team</h1>
             {usage.length > 0 && (
-              <div className="card overflow-x-auto">
-                <div className="flex items-start gap-2 px-4 py-3">
-                  <IconBarChart size={16} className="mt-0.5 shrink-0 text-muted" />
-                  <div>
-                    <h2 className="text-sm font-medium">Usage</h2>
-                    <p className="text-xs text-muted">Who logged in, when they signed out and how long they were active.</p>
+              <ResponsiveTable
+                title={
+                  <div className="flex items-start gap-2">
+                    <IconBarChart size={16} className="mt-0.5 shrink-0 text-muted" />
+                    <div>
+                      <h2 className="text-sm font-medium">Usage</h2>
+                      <p className="text-xs text-muted">Who logged in, when they signed out and how long they were active.</p>
+                    </div>
                   </div>
-                </div>
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead>
-                    <tr>
-                      <th className="px-4 py-2">Member</th>
-                      <th className="px-4 py-2 text-right">Sessions</th>
-                      <th className="px-4 py-2 text-right">Active time</th>
-                      <th className="px-4 py-2">Last login</th>
-                      <th className="px-4 py-2">Last logout</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usage.map((row) => {
+                }
+                rows={usage}
+                rowKey={(row) => row.userId}
+                minWidthClass="min-w-[720px]"
+                widths={["w-[30%]", "w-[10%]", "w-[14%]", "w-[23%]", "w-[23%]"]}
+                columns={[
+                  {
+                    key: "member",
+                    header: "Member",
+                    cell: (row) => (
+                      <span className="flex items-center gap-2">
+                        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-[11px] font-semibold text-secondary-ink">
+                          {initials(row.name)}
+                        </span>
+                        <span className="flex flex-wrap items-center gap-2 font-medium">
+                          {row.name}
+                          {row.role === "owner" ? (
+                            <span className="badge badge-warn inline-flex items-center gap-1"><IconCrown size={12} /> Owner</span>
+                          ) : (
+                            <span className="badge badge-info inline-flex items-center gap-1"><IconUser size={12} /> Staff</span>
+                          )}
+                        </span>
+                      </span>
+                    ),
+                  },
+                  { key: "sessions", header: "Sessions", align: "right", cell: (row) => row.sessions },
+                  { key: "active", header: "Active time", align: "right", cell: (row) => formatDuration(row.activeSeconds) },
+                  { key: "login", header: "Last login", cell: (row) => (row.lastLoginAt ? formatDateTime(row.lastLoginAt) : "—"), className: "whitespace-nowrap" },
+                  {
+                    key: "logout",
+                    header: "Last logout",
+                    className: "whitespace-nowrap",
+                    cell: (row) => {
                       const online =
                         row.lastLoginAt != null &&
                         (row.lastLogoutAt == null || new Date(row.lastLoginAt) > new Date(row.lastLogoutAt));
-                      return (
-                        <tr key={row.userId} className="border-t border-line">
-                          <td className="px-4 py-2">
-                            <span className="flex items-center gap-2">
-                              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-[11px] font-semibold text-secondary-ink">
-                                {initials(row.name)}
-                              </span>
-                              <span className="flex flex-wrap items-center gap-2 font-medium">
-                                {row.name}
-                                {row.role === "owner" ? (
-                                  <span className="badge badge-warn inline-flex items-center gap-1"><IconCrown size={12} /> Owner</span>
-                                ) : (
-                                  <span className="badge badge-info inline-flex items-center gap-1"><IconUser size={12} /> Staff</span>
-                                )}
-                              </span>
-                            </span>
-                          </td>
-                          <td className="px-4 py-2 text-right">{row.sessions}</td>
-                          <td className="px-4 py-2 text-right">{formatDuration(row.activeSeconds)}</td>
-                          <td className="whitespace-nowrap px-4 py-2">{row.lastLoginAt ? formatDateTime(row.lastLoginAt) : "—"}</td>
-                          <td className="whitespace-nowrap px-4 py-2">
-                            {online ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs text-success-ink">
-                                <span className="size-2 rounded-full bg-success" aria-hidden="true" />
-                                Online now
-                              </span>
-                            ) : row.lastLogoutAt ? (
-                              formatDateTime(row.lastLogoutAt)
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      if (online) {
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-success-ink">
+                            <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+                            Online now
+                          </span>
+                        );
+                      }
+                      return row.lastLogoutAt ? formatDateTime(row.lastLogoutAt) : "—";
+                    },
+                  },
+                ]}
+              />
             )}
 
             {/* Members */}
