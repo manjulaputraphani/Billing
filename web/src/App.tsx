@@ -7,12 +7,13 @@ import {
   type BillDetail,
   type BillRow,
   type Item,
+  type Member,
   type User,
 } from "./api";
 import { buildBillHtml } from "../../src/lib/printBill";
 import type { ShopDetails } from "../../src/db/settings";
 
-type View = "bills" | "items" | "activity";
+type View = "bills" | "items" | "activity" | "team";
 
 export default function App() {
   const [checking, setChecking] = useState(true);
@@ -21,6 +22,13 @@ export default function App() {
   const [bills, setBills] = useState<BillRow[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [memberName, setMemberName] = useState("");
+  const [memberPhone, setMemberPhone] = useState("");
+  const [memberPassword, setMemberPassword] = useState("");
+  const [teamStatus, setTeamStatus] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<Member | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [phone, setPhone] = useState("");
@@ -37,8 +45,13 @@ export default function App() {
       .finally(() => setChecking(false));
   }, []);
 
+  async function loadMembers() {
+    setMembers((await api.users()).users);
+  }
+
   useEffect(() => {
     if (!user) return;
+    if (user.role === "owner") void loadMembers().catch(() => setMembers([]));
     void Promise.all([api.bills().then((r) => setBills(r.bills)), api.items().then((r) => setItems(r.items)), api.activity().then((r) => setActivity(r.activity)), api.shop().then((r) => setShop(r.shop as unknown as ShopDetails))]).catch((err) =>
       setError(err instanceof Error ? err.message : String(err)),
     );
@@ -55,6 +68,42 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function addMember() {
+    setTeamStatus(null);
+    try {
+      await api.addUser(memberName, memberPhone, memberPassword);
+      setTeamStatus("Member added");
+      setMemberName("");
+      setMemberPhone("");
+      setMemberPassword("");
+      await loadMembers();
+    } catch (err) {
+      setTeamStatus(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function saveResetPassword() {
+    if (!resetTarget) return;
+    try {
+      await api.resetUserPassword(resetTarget.id, resetPassword);
+      setTeamStatus(`Password reset for ${resetTarget.name}`);
+      setResetTarget(null);
+      setResetPassword("");
+    } catch (err) {
+      setTeamStatus(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function toggleMember(member: Member) {
+    try {
+      await api.setUserActive(member.id, !member.active);
+      setTeamStatus(`${member.name} ${member.active ? "disabled" : "enabled"}`);
+      await loadMembers();
+    } catch (err) {
+      setTeamStatus(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -117,6 +166,7 @@ export default function App() {
     { key: "bills", label: "Invoices" },
     { key: "items", label: "Items" },
     { key: "activity", label: "Activity" },
+    ...(user.role === "owner" ? [{ key: "team" as View, label: "Team" }] : []),
   ];
 
   return (
@@ -228,6 +278,43 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </section>
+        )}
+
+        {view === "team" && user.role === "owner" && (
+          <section className="space-y-4">
+            <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
+            <div className="card space-y-3 p-4">
+              {members.map((member) => (
+                <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2 text-sm last:border-0">
+                  <span>
+                    <b>{member.name}</b> · {member.phone} · {member.role}
+                    {!member.active && <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700">disabled</span>}
+                  </span>
+                  <span className="space-x-3">
+                    <button className="text-sm underline" onClick={() => { setResetTarget(member); setResetPassword(""); }}>Reset password</button>
+                    <button className={`text-sm underline ${member.active ? "text-red-700" : "text-emerald-700"}`} onClick={() => void toggleMember(member)}>
+                      {member.active ? "Deactivate" : "Enable"}
+                    </button>
+                  </span>
+                </div>
+              ))}
+              {resetTarget && (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-stone-50 p-3">
+                  <span className="text-sm">New password for <b>{resetTarget.name}</b>:</span>
+                  <input className="input flex-1" type="password" value={resetPassword} onChange={(e) => setResetPassword(e.currentTarget.value)} />
+                  <button className="btn btn-primary" onClick={() => void saveResetPassword()}>Save</button>
+                  <button className="text-sm underline" onClick={() => setResetTarget(null)}>Cancel</button>
+                </div>
+              )}
+              <div className="grid gap-2 sm:grid-cols-3">
+                <input className="input" placeholder="Name" value={memberName} onChange={(e) => setMemberName(e.currentTarget.value)} />
+                <input className="input" placeholder="Phone (10 digits)" value={memberPhone} onChange={(e) => setMemberPhone(e.currentTarget.value)} />
+                <input className="input" type="password" placeholder="Password (6+)" value={memberPassword} onChange={(e) => setMemberPassword(e.currentTarget.value)} />
+              </div>
+              <button className="btn btn-primary" onClick={() => void addMember()}>Add member</button>
+              {teamStatus && <p role="status" className="text-sm text-stone-600">{teamStatus}</p>}
             </div>
           </section>
         )}

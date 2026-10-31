@@ -43,6 +43,8 @@ export type BillDetail = BillRow & {
   lines: BillLine[];
 };
 
+export type Member = { id: number; name: string; phone: string; role: "owner" | "staff"; active: boolean };
+
 export type ActivityRow = {
   id: number;
   at: string;
@@ -75,6 +77,13 @@ export const api = {
   bill: (id: number) => request<{ bill: BillDetail }>(`/api/bills/${id}`),
   activity: () => request<{ activity: ActivityRow[] }>("/api/activity?limit=25"),
   shop: () => request<{ shop: Record<string, string> }>("/api/shop"),
+  users: () => request<{ users: Member[] }>("/api/users"),
+  addUser: (name: string, phone: string, password: string) =>
+    request<{ user: Member }>("/api/users", { method: "POST", body: JSON.stringify({ name, phone, password }) }),
+  resetUserPassword: (id: number, password: string) =>
+    request<{ ok: boolean }>(`/api/users/${id}/password`, { method: "POST", body: JSON.stringify({ password }) }),
+  setUserActive: (id: number, active: boolean) =>
+    request<{ ok: boolean }>(`/api/users/${id}/active`, { method: "POST", body: JSON.stringify({ active }) }),
   emailBill: (id: number) => request<{ ok: boolean; to?: string }>(`/api/bills/${id}/email`, { method: "POST" }),
 };
 

@@ -5,7 +5,7 @@
  */
 import { neon } from "@neondatabase/serverless";
 import { argon2id } from "@noble/hashes/argon2.js";
-import { normalizePhone } from "../../src/logic/auth";
+import { normalizePhone, validatePassword } from "../../src/logic/auth";
 import { getDb, withTransaction } from "../../src/db/client";
 import { sql } from "drizzle-orm";
 import { listItems } from "../../src/db/items";
@@ -142,6 +142,17 @@ function verifyArgon2(password: string, hash: string): boolean {
   return diff === 0;
 }
 
+function hashPasswordPhc(password: string): string {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const digest = argon2id(new TextEncoder().encode(password), salt, {
+    m: 19456,
+    t: 2,
+    p: 1,
+    dkLen: 32,
+  });
+  return `$argon2id$v=19$m=19456,t=2,p=1$${b64encode(salt)}$${b64encode(digest)}`;
+}
+
 function sessionCookie(token: string, url: URL): string {
   const secure = url.protocol === "https:" ? "; Secure" : "";
   return `${COOKIE}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}${secure}`;
@@ -222,6 +233,13 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
     { user: { id: session.uid, name: session.name, role: session.role } },
     { headers: { "Set-Cookie": sessionCookie(token, url) } },
   );
+}
+
+async function sqlQuery(env: Env, text: string, params: unknown[] = []) {
+  const sql = neon(env.DATABASE_URL as string) as unknown as {
+    query: (queryText: string, values?: unknown[]) => Promise<Record<string, unknown>[]>;
+  };
+  return sql.query(text, params);
 }
 
 export default {
@@ -345,6 +363,51 @@ export default {
       if (url.pathname === "/api/shop" && request.method === "PUT") {
         await asActor(actor, () => saveShopDetails(db, body));
         return json({ ok: true });
+      }
+
+      // ---- Web team management (owner only) ----
+      if (url.pathname === "/api/users" || url.pathname.startsWith("/api/users/")) {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+
+          if (url.pathname === "/api/users" && request.method === "GET") {
+            const rows = await sqlQuery(env, `select id, name, phone, role, active from app_users order by id`);
+            return json({ users: rows });
+          }
+
+
+          if (url.pathname === "/api/users" && request.method === "POST") {
+            const name = String(body.name ?? "").trim();
+            const phone = normalizePhone(String(body.phone ?? ""));
+            const password = String(body.password ?? "");
+            if (!name) return json({ error: "Name is required" }, { status: 400 });
+            if (!phone.valid) return json({ error: phone.reason }, { status: 400 });
+            const pw = validatePassword(password);
+            if (!pw.valid) return json({ error: pw.reason }, { status: 400 });
+            const existing = await sqlQuery(env, `select id from app_users where phone = $1`, [phone.phone]);
+            if (existing.length) return json({ error: "That phone number already has an account" }, { status: 400 });
+            const created = await sqlQuery(
+              env,
+              `insert into app_users (name, phone, password_hash, role) values ($1,$2,$3,$4) returning id, name, phone, role, active`,
+              [name, phone.phone, hashPasswordPhc(password), "staff"],
+            );
+            await asActor(actor, () => logActivity(db, { event: "user.create", summary: `Member added: ${name} (staff)`, entity: "user", entityId: Number(created[0].id) }));
+            return json({ user: created[0] });
+          }
+
+          const match = url.pathname.match(/^\/api\/users\/(\d+)\/(password|active)$/);
+          if (match && request.method === "POST") {
+            const id = Number(match[1]);
+            if (match[2] === "password") {
+              const pw = validatePassword(String(body.password ?? ""));
+              if (!pw.valid) return json({ error: pw.reason }, { status: 400 });
+              await sqlQuery(env, `update app_users set password_hash = $1 where id = $2`, [hashPasswordPhc(String(body.password)), id]);
+              await asActor(actor, () => logActivity(db, { event: "user.password", summary: `Password reset for member #${id}`, entity: "user", entityId: id }));
+            } else {
+              await sqlQuery(env, `update app_users set active = $1 where id = $2`, [Boolean(body.active), id]);
+              await asActor(actor, () => logActivity(db, { event: body.active ? "user.enable" : "user.disable", summary: `Member #${id} ${body.active ? "enabled" : "disabled"}`, entity: "user", entityId: id }));
+            }
+            return json({ ok: true });
+          }
       }
 
       // ---- W5 email a bill (Resend API) ----
