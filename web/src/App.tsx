@@ -409,6 +409,16 @@ export default function App() {
   const billGstPaise = Math.round((billTaxable * Number(billGst || "0")) / 10000);
   const billTotal = billTaxable + billGstPaise;
 
+  // GST split: the first two digits of a GSTIN are the state code. Same state
+  // as the shop → CGST + SGST; otherwise → IGST.
+  const shopStateCode = (shop?.gstin ?? "").trim().slice(0, 2).toUpperCase();
+  const customerStateCode = (billCustomer.gstin ?? "").trim().slice(0, 2).toUpperCase();
+  const gstIntraState =
+    shopStateCode.length === 2 && customerStateCode.length === 2 && shopStateCode === customerStateCode;
+  const gstRatePercent = Number(billGst || 0) / 100;
+  const cgstPaise = Math.round(billGstPaise / 2);
+  const sgstPaise = billGstPaise - cgstPaise;
+
   async function saveBill() {
     setBillMsg(null);
     if (billLines.length === 0) {
@@ -1836,19 +1846,19 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="label">Customer name</label>
-                      <input className="input" placeholder="Walk-in or name" value={billCustomer.name} onChange={(e) => setBillCustomer({ ...billCustomer, name: e.currentTarget.value })} />
+                      <input className="input h-10" placeholder="Walk-in or name" value={billCustomer.name} onChange={(e) => setBillCustomer({ ...billCustomer, name: e.currentTarget.value })} />
                     </div>
                     <div className="space-y-1">
                       <label className="label">Phone</label>
-                      <input className="input" placeholder="Phone" value={billCustomer.phone} onChange={(e) => setBillCustomer({ ...billCustomer, phone: e.currentTarget.value })} />
+                      <input className="input h-10" placeholder="Phone" value={billCustomer.phone} onChange={(e) => setBillCustomer({ ...billCustomer, phone: e.currentTarget.value })} />
                     </div>
                     <div className="space-y-1">
                       <label className="label">Email (for bill)</label>
-                      <input className="input" placeholder="Email" value={billCustomer.email} onChange={(e) => setBillCustomer({ ...billCustomer, email: e.currentTarget.value })} />
+                      <input className="input h-10" placeholder="Email" value={billCustomer.email} onChange={(e) => setBillCustomer({ ...billCustomer, email: e.currentTarget.value })} />
                     </div>
                     <div className="space-y-1 sm:col-span-2">
                       <label className="label">GSTIN</label>
-                      <input className="input max-w-sm" placeholder="29ABCDE1234F1Z5" value={billCustomer.gstin} onChange={(e) => setBillCustomer({ ...billCustomer, gstin: e.currentTarget.value.toUpperCase() })} />
+                      <input className="input h-10 max-w-sm" placeholder="e.g. 29ABCDE1234F1Z5" value={billCustomer.gstin} onChange={(e) => setBillCustomer({ ...billCustomer, gstin: e.currentTarget.value.toUpperCase() })} />
                     </div>
                   </div>
                   <p className="mt-2 text-xs text-muted">
@@ -1863,22 +1873,22 @@ export default function App() {
                   <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Items</h2>
                   <div className="grid items-end gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
                     <div className="space-y-1">
-                      <label className="label">Item</label>
+                      <label className="label h-5 whitespace-nowrap leading-5">Item</label>
                       <ItemPicker items={items} value={draft.itemId} onChange={(id) => setDraft({ ...draft, itemId: id })} />
                     </div>
                     <div className="space-y-1">
-                      <label className="label">Qty ({items.find((i) => i.id === draft.itemId)?.unit ?? "unit"})</label>
-                      <input className="input" type="number" placeholder="0" value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: e.currentTarget.value })} />
+                      <label className="label h-5 whitespace-nowrap leading-5">Qty ({items.find((i) => i.id === draft.itemId)?.unit ?? "unit"})</label>
+                      <input className="input h-10" type="number" placeholder="0" value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: e.currentTarget.value })} />
                     </div>
                     <div className="space-y-1">
-                      <label className="label">Rate ₹</label>
-                      <input className="input" type="number" placeholder="0" value={draft.rate} onChange={(e) => setDraft({ ...draft, rate: e.currentTarget.value })} />
+                      <label className="label h-5 whitespace-nowrap leading-5">Rate ₹</label>
+                      <input className="input h-10" type="number" placeholder="0" value={draft.rate} onChange={(e) => setDraft({ ...draft, rate: e.currentTarget.value })} />
                     </div>
                     <div className="space-y-1">
-                      <label className="label">HSN</label>
-                      <input className="input" placeholder="—" value={draft.hsn} onChange={(e) => setDraft({ ...draft, hsn: e.currentTarget.value })} />
+                      <label className="label h-5 whitespace-nowrap leading-5">HSN</label>
+                      <input className="input h-10" placeholder="—" value={draft.hsn} onChange={(e) => setDraft({ ...draft, hsn: e.currentTarget.value })} />
                     </div>
-                    <button className="btn btn-primary whitespace-nowrap" onClick={addBillLine}><IconPlus size={15} /> Add</button>
+                    <button className="btn btn-primary h-10 whitespace-nowrap" onClick={addBillLine}>+ Add</button>
                   </div>
 
                   {billLines.length > 0 ? (
@@ -1916,46 +1926,49 @@ export default function App() {
 
               {/* Right: sticky summary */}
               <div className="lg:col-span-1">
-                <div className="card space-y-4 p-4 lg:sticky lg:top-4">
+                <div className="card space-y-4 p-4 lg:sticky lg:top-6 lg:mr-8">
                   <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Summary</h2>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <label className="label">Date</label>
-                      <input className="input" type="date" value={billDate} onChange={(e) => setBillDate(e.currentTarget.value)} />
+                      <input className="input h-10" type="date" value={billDate} onChange={(e) => setBillDate(e.currentTarget.value)} />
                     </div>
                     <div className="space-y-1">
                       <label className="label">Payment</label>
-                      <select className="input" value={billMode} onChange={(e) => setBillMode(e.currentTarget.value)}>
+                      <select className="input h-10" value={billMode} onChange={(e) => setBillMode(e.currentTarget.value)}>
                         <option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option>
                       </select>
                     </div>
                     <div className="space-y-1">
                       <label className="label">GST rate</label>
-                      <select className="input" value={billGst} onChange={(e) => setBillGst(e.currentTarget.value)}>
+                      <select className="input h-10" value={billGst} onChange={(e) => setBillGst(e.currentTarget.value)}>
                         <option value="0">0%</option><option value="500">5%</option><option value="1200">12%</option><option value="1800">18%</option><option value="2800">28%</option>
                       </select>
                     </div>
                     <div className="space-y-1">
                       <label className="label">Discount ₹</label>
-                      <input className="input" type="number" placeholder="0" value={billDiscount} onChange={(e) => setBillDiscount(e.currentTarget.value)} />
+                      <input className="input h-10" type="number" placeholder="0" value={billDiscount} onChange={(e) => setBillDiscount(e.currentTarget.value)} />
                     </div>
                     <div className="col-span-2 space-y-1">
                       <label className="label">Delivery / sale expenses ₹</label>
-                      <input className="input" type="number" placeholder="0" value={billSaleExpenses} onChange={(e) => setBillSaleExpenses(e.currentTarget.value)} />
+                      <input className="input h-10" type="number" placeholder="0" value={billSaleExpenses} onChange={(e) => setBillSaleExpenses(e.currentTarget.value)} />
                     </div>
                   </div>
 
                   {/* Totals breakdown */}
                   <dl className="space-y-1.5 border-t border-line pt-3 text-sm">
                     <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd>{money(billSubtotal)}</dd></div>
-                    {billDiscountPaise > 0 && (
-                      <div className="flex justify-between"><dt className="text-muted">Discount</dt><dd>− {money(billDiscountPaise)}</dd></div>
+                    {gstIntraState ? (
+                      <>
+                        <div className="flex justify-between"><dt className="text-muted">CGST ({gstRatePercent / 2}%)</dt><dd>{money(cgstPaise)}</dd></div>
+                        <div className="flex justify-between"><dt className="text-muted">SGST ({gstRatePercent / 2}%)</dt><dd>{money(sgstPaise)}</dd></div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between"><dt className="text-muted">IGST ({gstRatePercent}%)</dt><dd>{money(billGstPaise)}</dd></div>
                     )}
-                    <div className="flex justify-between"><dt className="text-muted">GST ({Number(billGst || 0) / 100}%)</dt><dd>{money(billGstPaise)}</dd></div>
-                    {Number(billSaleExpenses || 0) > 0 && (
-                      <div className="flex justify-between"><dt className="text-muted">Delivery</dt><dd>{money(Math.round(Number(billSaleExpenses) * 100))}</dd></div>
-                    )}
+                    <div className="flex justify-between"><dt className="text-muted">Discount (−)</dt><dd>− {money(billDiscountPaise)}</dd></div>
+                    <div className="flex justify-between"><dt className="text-muted">Delivery (+)</dt><dd>+ {money(Math.round(Number(billSaleExpenses || 0) * 100))}</dd></div>
                   </dl>
                   <div className="flex items-center justify-between border-t border-line pt-3">
                     <span className="text-sm font-semibold uppercase tracking-wider text-muted">Total</span>

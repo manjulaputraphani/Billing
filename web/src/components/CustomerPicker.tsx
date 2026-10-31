@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Customer } from "../api";
+import { IconSearch } from "./icons";
 
 /**
  * Customer picker for the billing screen: search the master, pick a client and
@@ -38,13 +39,13 @@ export default function CustomerPicker({
     <div className="relative">
       <button
         type="button"
-        className="input flex w-full items-center gap-2 text-left"
+        className="input flex h-10 w-full items-center gap-2 py-0 text-left"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-semibold text-on-primary">
-          {(value?.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+          {value ? (value.name.trim().charAt(0).toUpperCase() || "?") : <IconSearch size={15} />}
         </span>
         <span className="min-w-0 flex-1 truncate">
           {value ? value.name : <span className="text-muted">{placeholder}</span>}

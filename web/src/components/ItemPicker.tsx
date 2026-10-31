@@ -4,6 +4,7 @@
  */
 import { useMemo, useState } from "react";
 import ItemThumb, { type ThumbItem } from "./ItemThumb";
+import { IconSearch } from "./icons";
 
 export type PickerItem = ThumbItem & { id: number; unit: string; stockLeftBase?: number };
 
@@ -32,7 +33,7 @@ export default function ItemPicker({
     <div className="relative">
       <button
         type="button"
-        className="input flex w-full items-center gap-2 text-left"
+        className="input flex h-10 w-full items-center gap-2 py-0 text-left"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
@@ -44,7 +45,9 @@ export default function ItemPicker({
           </>
         ) : (
           <>
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-xs text-muted">?</span>
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-muted">
+              <IconSearch size={15} />
+            </span>
             <span className="min-w-0 flex-1 truncate text-muted">{placeholder}</span>
           </>
         )}
