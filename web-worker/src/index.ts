@@ -197,7 +197,7 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
 
   const sql = neon(env.DATABASE_URL as string);
   const rows = (await sql`
-    select id, name, phone, password_hash, role, active
+    select id, name, phone, password_hash, role, active, pending
     from app_users where phone = ${phone.phone} limit 1
   `) as { id: number; name: string; password_hash: string; role: string; active: boolean }[];
 
@@ -205,6 +205,9 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
   if (!user) {
     recordFailure(phone.phone);
     return json({ error: "No account found for this number" }, { status: 404 });
+  }
+  if (user.pending) {
+    return json({ error: "Account awaiting owner approval" }, { status: 403 });
   }
   if (!user.active) {
     return json({ error: "This account is disabled — ask the owner" }, { status: 403 });
@@ -276,6 +279,25 @@ export default {
       const session = await readSession(request, env.SESSION_SECRET);
       if (!session) return json({ error: "Not signed in" }, { status: 401 });
       return json({ user: { id: session.uid, name: session.name, role: session.role } });
+    }
+
+    if (url.pathname === "/api/auth/signup" && request.method === "POST") {
+      const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+      const name = String(body.name ?? "").trim();
+      const phone = normalizePhone(String(body.phone ?? ""));
+      const password = String(body.password ?? "");
+      if (!name) return json({ error: "Name is required" }, { status: 400 });
+      if (!phone.valid) return json({ error: phone.reason }, { status: 400 });
+      const pw = validatePassword(password);
+      if (!pw.valid) return json({ error: pw.reason }, { status: 400 });
+      const existing = await sqlQuery(env, "select id from app_users where phone = $1", [phone.phone]);
+      if (existing.length) return json({ error: "That phone number already has an account" }, { status: 400 });
+      await sqlQuery(
+        env,
+        "insert into app_users (name, phone, password_hash, role, active, pending) values ($1,$2,$3,'staff',false,true)",
+        [name, phone.phone, hashPasswordPhc(password)],
+      );
+      return json({ ok: true, pending: true }, { status: 201 });
     }
 
     // ---- W3 read API (session required) ----
@@ -370,7 +392,7 @@ export default {
         if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
 
           if (url.pathname === "/api/users" && request.method === "GET") {
-            const rows = await sqlQuery(env, `select id, name, phone, role, active from app_users order by id`);
+            const rows = await sqlQuery(env, `select id, name, phone, role, active, pending from app_users order by id`);
             return json({ users: rows });
           }
 
@@ -394,9 +416,20 @@ export default {
             return json({ user: created[0] });
           }
 
-          const match = url.pathname.match(/^\/api\/users\/(\d+)\/(password|active)$/);
+          const match = url.pathname.match(/^\/api\/users\/(\d+)\/(password|active|approve|reject)$/);
           if (match && request.method === "POST") {
             const id = Number(match[1]);
+            if (match[2] === "approve") {
+              const role = body.role === "owner" ? "owner" : "staff";
+              await sqlQuery(env, "update app_users set pending = false, active = true, role = $1 where id = $2", [role, id]);
+              await asActor(actor, () => logActivity(db, { event: "user.approve", summary: `Member #${id} approved as ${role}`, entity: "user", entityId: id }));
+              return json({ ok: true, role });
+            }
+            if (match[2] === "reject") {
+              await sqlQuery(env, "delete from app_users where id = $1 and pending = true", [id]);
+              await asActor(actor, () => logActivity(db, { event: "user.reject", summary: `Member request #${id} rejected`, entity: "user", entityId: id }));
+              return json({ ok: true });
+            }
             if (match[2] === "password") {
               const pw = validatePassword(String(body.password ?? ""));
               if (!pw.valid) return json({ error: pw.reason }, { status: 400 });

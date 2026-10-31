@@ -171,6 +171,7 @@ export const appUsers = pgTable(
     passwordHash: text("password_hash").notNull(),
     role: text("role").notNull().default("staff"),
     active: boolean("active").notNull().default(true),
+    pending: boolean("pending").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [check("app_users_role_valid", sql`${t.role} in ('owner','staff')`)],

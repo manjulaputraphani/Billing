@@ -11,6 +11,7 @@ export type AppUser = {
   phone: string;
   role: "owner" | "staff";
   active: boolean;
+  pending: boolean;
 };
 
 export type AppUserWithHash = AppUser & { passwordHash: string };
@@ -30,6 +31,7 @@ export async function findUserByPhone(db: Db, phone: string): Promise<AppUserWit
       phone: appUsers.phone,
       role: appUsers.role,
       active: appUsers.active,
+      pending: appUsers.pending,
       passwordHash: appUsers.passwordHash,
     })
     .from(appUsers)
@@ -87,6 +89,7 @@ export async function listAppUsers(db: Db): Promise<AppUser[]> {
       phone: appUsers.phone,
       role: appUsers.role,
       active: appUsers.active,
+      pending: appUsers.pending,
     })
     .from(appUsers)
     .orderBy(asc(appUsers.id));

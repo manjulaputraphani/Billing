@@ -35,6 +35,12 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [signupName, setSignupName] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirm, setSignupConfirm] = useState("");
+  const [signupStatus, setSignupStatus] = useState<string | null>(null);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,6 +62,29 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err)),
     );
   }, [user]);
+
+  async function requestAccount(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSignupStatus(null);
+    if (signupPassword !== signupConfirm) {
+      setError("Passwords do not match");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.signup(signupName, signupPhone, signupPassword);
+      setSignupStatus("Request sent — the owner must approve this account before you can sign in.");
+      setSignupName("");
+      setSignupPhone("");
+      setSignupPassword("");
+      setSignupConfirm("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function signIn(e: FormEvent) {
     e.preventDefault();
@@ -145,18 +174,48 @@ export default function App() {
               <p className="text-sm text-stone-500">Sign in to the web edition.</p>
             </div>
           </div>
-          <form className="space-y-4" onSubmit={signIn}>
-            <div>
-              <label className="label" htmlFor="phone">Phone number</label>
-              <input id="phone" className="input" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} autoFocus />
-            </div>
-            <div>
-              <label className="label" htmlFor="password">Password</label>
-              <input id="password" type="password" className="input" value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
-            </div>
-            {error && <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-            <button className="btn btn-primary w-full" type="submit" disabled={busy}>Sign in</button>
-          </form>
+          {authMode === "login" ? (
+            <form className="space-y-4" onSubmit={signIn}>
+              <div>
+                <label className="label" htmlFor="phone">Phone number</label>
+                <input id="phone" className="input" value={phone} onChange={(e) => setPhone(e.currentTarget.value)} autoFocus />
+              </div>
+              <div>
+                <label className="label" htmlFor="password">Password</label>
+                <input id="password" type="password" className="input" value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
+              </div>
+              {error && <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+              <button className="btn btn-primary w-full" type="submit" disabled={busy}>Sign in</button>
+              <button type="button" className="w-full text-sm text-stone-500 underline" onClick={() => { setAuthMode("signup"); setError(null); setSignupStatus(null); }}>
+                Create account
+              </button>
+            </form>
+          ) : (
+            <form className="space-y-4" onSubmit={requestAccount}>
+              <div>
+                <label className="label" htmlFor="signup-name">Your name</label>
+                <input id="signup-name" className="input" value={signupName} onChange={(e) => setSignupName(e.currentTarget.value)} autoFocus />
+              </div>
+              <div>
+                <label className="label" htmlFor="signup-phone">Phone number</label>
+                <input id="signup-phone" className="input" value={signupPhone} onChange={(e) => setSignupPhone(e.currentTarget.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="signup-password">Password (6+)</label>
+                <input id="signup-password" type="password" className="input" value={signupPassword} onChange={(e) => setSignupPassword(e.currentTarget.value)} />
+              </div>
+              <div>
+                <label className="label" htmlFor="signup-confirm">Confirm password</label>
+                <input id="signup-confirm" type="password" className="input" value={signupConfirm} onChange={(e) => setSignupConfirm(e.currentTarget.value)} />
+              </div>
+              {error && <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+              {signupStatus && <p role="status" className="rounded bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{signupStatus}</p>}
+              <button className="btn btn-primary w-full" type="submit" disabled={busy}>Request account</button>
+              <button type="button" className="w-full text-sm text-stone-500 underline" onClick={() => { setAuthMode("login"); setError(null); }}>
+                Back to sign in
+              </button>
+            </form>
+          )}
         </div>
       </main>
     );
@@ -290,14 +349,23 @@ export default function App() {
                 <div key={member.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2 text-sm last:border-0">
                   <span>
                     <b>{member.name}</b> · {member.phone} · {member.role}
-                    {!member.active && <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700">disabled</span>}
+                    {member.pending && <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">awaiting approval</span>}
+                    {!member.pending && !member.active && <span className="ml-2 rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700">disabled</span>}
                   </span>
-                  <span className="space-x-3">
-                    <button className="text-sm underline" onClick={() => { setResetTarget(member); setResetPassword(""); }}>Reset password</button>
-                    <button className={`text-sm underline ${member.active ? "text-red-700" : "text-emerald-700"}`} onClick={() => void toggleMember(member)}>
-                      {member.active ? "Deactivate" : "Enable"}
-                    </button>
-                  </span>
+                  {member.pending ? (
+                    <span className="space-x-3">
+                      <button className="text-sm text-emerald-700 underline" onClick={() => void api.approveUser(member.id, "staff").then(loadMembers).then(() => setTeamStatus(`${member.name} approved as staff`))}>Approve staff</button>
+                      <button className="text-sm text-emerald-700 underline" onClick={() => void api.approveUser(member.id, "owner").then(loadMembers).then(() => setTeamStatus(`${member.name} approved as owner`))}>Approve owner</button>
+                      <button className="text-sm text-red-700 underline" onClick={() => void api.rejectUser(member.id).then(loadMembers).then(() => setTeamStatus("Request rejected"))}>Reject</button>
+                    </span>
+                  ) : (
+                    <span className="space-x-3">
+                      <button className="text-sm underline" onClick={() => { setResetTarget(member); setResetPassword(""); }}>Reset password</button>
+                      <button className={`text-sm underline ${member.active ? "text-red-700" : "text-emerald-700"}`} onClick={() => void toggleMember(member)}>
+                        {member.active ? "Deactivate" : "Enable"}
+                      </button>
+                    </span>
+                  )}
                 </div>
               ))}
               {resetTarget && (

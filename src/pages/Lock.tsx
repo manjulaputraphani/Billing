@@ -103,6 +103,10 @@ export default function Lock({ url, onLogin }: Props) {
         setError("No account found for this number");
         return;
       }
+      if (user.pending) {
+        setError("This account is awaiting owner approval");
+        return;
+      }
       if (!user.active) {
         setError("This account is disabled — ask the owner");
         return;
