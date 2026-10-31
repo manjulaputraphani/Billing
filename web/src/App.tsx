@@ -757,7 +757,7 @@ export default function App() {
                       <td className="px-3 py-2">{row.invested_on}</td>
                       <td className="px-3 py-2 font-medium">{row.investor_name}</td>
                       <td className="px-3 py-2 text-right">{money(row.amount_paise)}</td>
-                      <td className="px-3 py-2 text-right"><button className="text-xs text-red-700 underline" onClick={() => void removeInvestment(row.id)}>Delete</button></td>
+                      <td className="px-3 py-2 text-right"><button className="btn-mini btn-mini-danger" onClick={() => void removeInvestment(row.id)}>Delete</button></td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -802,7 +802,7 @@ export default function App() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <button className="text-sm underline" onClick={() => void openBill(row.id)}>View</button>
+                        <button className="btn-mini" onClick={() => void openBill(row.id)}>View</button>
                       </td>
                     </tr>
                   ))}
@@ -816,7 +816,7 @@ export default function App() {
                   <h2 className="text-lg font-semibold tracking-tight">Bill preview</h2>
                   <div className="flex items-center gap-3">
                     <button className="btn btn-primary" onClick={() => void emailBill(bill.id)}>Email bill</button>
-                    <button className="text-sm underline" onClick={() => setBill(null)}>Close</button>
+                    <button className="btn-mini" onClick={() => setBill(null)}>Close</button>
                   </div>
                 </div>
                 {emailStatus && <p className="text-sm text-stone-600" role="status">{emailStatus}</p>}
@@ -856,7 +856,7 @@ export default function App() {
                       <td className="px-2 py-1">{l.name}</td>
                       <td className="px-2 py-1">{qty(l.qtyBase, l.unit)}</td>
                       <td className="px-2 py-1 text-right">{money(l.totalPaise)}</td>
-                      <td className="px-2 py-1 text-right"><button className="text-xs underline" onClick={() => setBillLines(billLines.filter((_, i) => i !== idx))}>Remove</button></td>
+                      <td className="px-2 py-1 text-right"><button className="btn-mini" onClick={() => setBillLines(billLines.filter((_, i) => i !== idx))}>Remove</button></td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -874,7 +874,7 @@ export default function App() {
               </div>
               <p className="text-sm text-stone-600">Subtotal {money(billSubtotal)} · GST {money(billGstPaise)} · <b>Total {money(billTotal)}</b></p>
               {billMsg && <p role="status" className="rounded bg-stone-50 px-3 py-2 text-sm">{billMsg}</p>}
-              {lastBillId && <button className="btn" style={{ border: "1px solid #d6d3d1", background: "#fff" }} onClick={() => void openBill(lastBillId).then(() => setView("bills"))}>View last bill</button>}
+              {lastBillId && <button className="btn" className="btn btn-secondary" onClick={() => void openBill(lastBillId).then(() => setView("bills"))}>View last bill</button>}
             </div>
           </section>
         )}
@@ -895,7 +895,7 @@ export default function App() {
                   <input className="input" placeholder="Category" value={itemForm.category} onChange={(e) => setItemForm({ ...itemForm, category: e.currentTarget.value })} />
                   <div className="flex gap-2">
                     <button className="btn btn-primary" onClick={() => void saveItem()}>Save</button>
-                    <button className="text-sm underline" onClick={() => setItemForm(null)}>Cancel</button>
+                    <button className="btn-mini" onClick={() => setItemForm(null)}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -920,7 +920,7 @@ export default function App() {
                       <td className="px-3 py-2">{item.category ?? "—"}</td>
                       <td className="px-3 py-2 text-right">{qty(item.stockLeftBase, item.unit)}</td>
                       <td className="px-3 py-2 text-right">
-                        <button className="text-sm underline" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "" })}>Edit</button>
+                        <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "" })}>Edit</button>
                         {user.role === "owner" && (
                           <button
                             className="ml-3 text-sm text-red-700 underline"
@@ -968,8 +968,8 @@ export default function App() {
                         <option value="staff">Staff</option>
                         <option value="owner">Owner</option>
                       </select>
-                      <button className="text-sm text-emerald-700 underline" onClick={() => void api.approveUser(member.id, approveRole[member.id] ?? "staff").then(loadMembers).then(() => setTeamStatus(`${member.name} approved`))}>Approve</button>
-                      <button className="text-sm text-red-700 underline" onClick={() => void api.rejectUser(member.id).then(loadMembers).then(() => setTeamStatus("Request rejected"))}>Reject</button>
+                      <button className="btn-mini btn-mini-ok" onClick={() => void api.approveUser(member.id, approveRole[member.id] ?? "staff").then(loadMembers).then(() => setTeamStatus(`${member.name} approved`))}>Approve</button>
+                      <button className="btn-mini btn-mini-danger" onClick={() => void api.rejectUser(member.id).then(loadMembers).then(() => setTeamStatus("Request rejected"))}>Reject</button>
                     </span>
                   ) : (
                     <span className="flex items-center gap-2">
@@ -985,8 +985,8 @@ export default function App() {
                         <option value="staff">Staff</option>
                         <option value="owner">Owner</option>
                       </select>
-                      <button className="text-sm underline" onClick={() => { setResetTarget(member); setResetPassword(""); }}>Reset password</button>
-                      <button className={`text-sm underline ${member.active ? "text-red-700" : "text-emerald-700"}`} onClick={() => void toggleMember(member)}>
+                      <button className="btn-mini" onClick={() => { setResetTarget(member); setResetPassword(""); }}>Reset password</button>
+                      <button className={`btn-mini ${member.active ? "btn-mini-danger" : "btn-mini-ok"}`} onClick={() => void toggleMember(member)}>
                         {member.active ? "Deactivate" : "Enable"}
                       </button>
                     </span>
@@ -998,7 +998,7 @@ export default function App() {
                   <span className="text-sm">New password for <b>{resetTarget.name}</b>:</span>
                   <input className="input flex-1" type="password" value={resetPassword} onChange={(e) => setResetPassword(e.currentTarget.value)} />
                   <button className="btn btn-primary" onClick={() => void saveResetPassword()}>Save</button>
-                  <button className="text-sm underline" onClick={() => setResetTarget(null)}>Cancel</button>
+                  <button className="btn-mini" onClick={() => setResetTarget(null)}>Cancel</button>
                 </div>
               )}
               <div className="grid gap-2 sm:grid-cols-3">
@@ -1039,7 +1039,7 @@ export default function App() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <button className="btn btn-primary" onClick={() => void saveNotify()}>Save settings</button>
-                <button className="btn" style={{ border: "1px solid #d6d3d1", background: "#fff" }} onClick={() => void testNotify()}>Send test email</button>
+                <button className="btn" className="btn btn-secondary" onClick={() => void testNotify()}>Send test email</button>
               </div>
               {notifyStatus && <p role="status" className="text-sm text-stone-600">{notifyStatus}</p>}
             </div>
