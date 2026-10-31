@@ -342,19 +342,19 @@ export default function Settings({
       <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">Security</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted">
             Secrets live in this Mac's Keychain — never in files or the database. The PIN is stored
             only as an argon2id hash.
           </p>
         </div>
-        <ul className="space-y-1 rounded-xl bg-stone-50 px-3 py-2 text-sm">
-          <li className={stored?.pin ? "text-emerald-700" : "text-amber-700"}>
+        <ul className="space-y-1 rounded-xl bg-surface-2 px-3 py-2 text-sm">
+          <li className={stored?.pin ? "text-success-ink" : "text-accent-ink"}>
             PIN: {stored ? (stored.pin ? "set" : "not set") : "checking…"}
           </li>
-          <li className={stored?.db ? "text-emerald-700" : "text-amber-700"}>
+          <li className={stored?.db ? "text-success-ink" : "text-accent-ink"}>
             Database connection: {stored ? (stored.db ? "saved" : "not saved") : "checking…"}
           </li>
-          <li className={stored?.aiKey ? "text-emerald-700" : "text-gray-500"}>
+          <li className={stored?.aiKey ? "text-success-ink" : "text-muted"}>
             AI cloud key: {stored ? (stored.aiKey ? "saved" : "not saved") : "checking…"}
           </li>
         </ul>
@@ -366,7 +366,7 @@ export default function Settings({
       <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">Change PIN</h2>
-          <p className="text-sm text-gray-500">Requested every time the app starts.</p>
+          <p className="text-sm text-muted">Requested every time the app starts.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1">
@@ -413,12 +413,12 @@ export default function Settings({
           </div>
         </div>
         {pinError && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
             {pinError}
           </p>
         )}
         {pinStatus && !pinError && (
-          <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">
             {pinStatus}
           </p>
         )}
@@ -436,14 +436,14 @@ export default function Settings({
         <section className="space-y-3 card p-4" data-testid="members-card">
           <div>
             <h2 className="text-sm font-medium">Users (members)</h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted">
               Owner only. Members sign in with their phone number and password.
             </p>
           </div>
           {members.length === 0 ? (
-            <p className="text-sm text-gray-500">No members yet.</p>
+            <p className="text-sm text-muted">No members yet.</p>
           ) : (
-            <ul className="divide-y divide-gray-100 text-sm">
+            <ul className="divide-y divide-line text-sm">
               {members.map((member) => (
                 <li key={member.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
                   <span>
@@ -466,7 +466,7 @@ export default function Settings({
                     </button>
                     <button
                       type="button"
-                      className={`text-sm underline ${member.active ? "text-red-700" : "text-emerald-700"}`}
+                      className={`text-sm underline ${member.active ? "text-error-ink" : "text-success-ink"}`}
                       onClick={() => void toggleMember(member)}
                     >
                       {member.active ? "Deactivate" : "Enable"}
@@ -499,7 +499,7 @@ export default function Settings({
           </button>
 
           {resetTarget && (
-            <div className="space-y-2 rounded-xl bg-stone-50 p-3">
+            <div className="space-y-2 rounded-xl bg-surface-2 p-3">
               <p className="text-sm">New password for <b>{resetTarget.name}</b></p>
               <div className="flex gap-2">
                 <input
@@ -518,14 +518,14 @@ export default function Settings({
               </div>
             </div>
           )}
-          {membersStatus && <p role="status" className="text-sm text-emerald-700">{membersStatus}</p>}
+          {membersStatus && <p role="status" className="text-sm text-success-ink">{membersStatus}</p>}
         </section>
       )}
 
       <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">Email (send bills)</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted">
             Gmail SMTP + app password. Bills go out from your own address as HTML invoices.
           </p>
         </div>
@@ -560,7 +560,7 @@ export default function Settings({
             <button type="button" className="btn-ghost" onClick={() => void saveEmailKey()}>Save password</button>
           </div>
         </div>
-        {emailStatus && <p role="status" className="text-sm text-gray-600">{emailStatus}</p>}
+        {emailStatus && <p role="status" className="text-sm text-ink">{emailStatus}</p>}
         <div className="space-y-1">
           <label className="label" htmlFor="email-test-to">Send test to (optional)</label>
           <input id="email-test-to" type="email" className="input w-full" placeholder="Defaults to the From email"
@@ -575,7 +575,7 @@ export default function Settings({
       <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">Shop details</h2>
-          <p className="text-sm text-gray-500">Printed on every GST bill.</p>
+          <p className="text-sm text-muted">Printed on every GST bill.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
@@ -647,7 +647,7 @@ export default function Settings({
           </div>
         </div>
 
-        <p className="pt-1 text-[13px] font-medium text-stone-700">Bank details (printed on the bill)</p>
+        <p className="pt-1 text-[13px] font-medium text-ink">Bank details (printed on the bill)</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label className="label" htmlFor="shop-bank-name">
@@ -695,7 +695,7 @@ export default function Settings({
           </div>
         </div>
         {shopStatus && (
-          <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">
             {shopStatus}
           </p>
         )}
@@ -707,13 +707,13 @@ export default function Settings({
       <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">Connection</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted">
             Remove the saved database connection and PIN from this computer.
           </p>
         </div>
         <button
           type="button"
-          className="rounded border border-red-300 px-3 py-1 text-sm text-red-700 hover:bg-red-50"
+          className="rounded border border-error/50 px-3 py-1 text-sm text-error-ink hover:bg-error-soft"
           onClick={() => setConfirming(true)}
         >
           Reset connection
@@ -723,7 +723,7 @@ export default function Settings({
       <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">AI assistant</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted">
             Optional. The app always shows rule-based suggestions without it.
           </p>
         </div>
@@ -793,14 +793,14 @@ export default function Settings({
             {aiKeySaved && (
               <button
                 type="button"
-                className="btn-ghost text-red-700 hover:bg-red-50"
+                className="btn-ghost text-error-ink hover:bg-error-soft"
                 onClick={() => void removeAiKey()}
               >
                 Remove key
               </button>
             )}
           </div>
-          {aiKeySaved && <p className="text-xs text-green-700">Key saved ✓</p>}
+          {aiKeySaved && <p className="text-xs text-success-ink">Key saved ✓</p>}
         </div>
 
         <div className="flex items-center gap-3">
@@ -811,16 +811,16 @@ export default function Settings({
           >
             Test AI
           </button>
-          {aiStatus && <span className="text-sm text-gray-600">{aiStatus}</span>}
+          {aiStatus && <span className="text-sm text-ink">{aiStatus}</span>}
         </div>
       </section>
 
-      <p className="text-sm text-gray-500">More settings coming soon.</p>
+      <p className="text-sm text-muted">More settings coming soon.</p>
 
       <section className="space-y-3 card p-4">
         <div>
           <h2 className="text-sm font-medium">Recent activity</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted">
             Logins, locks and every change — stored in the database.
           </p>
         </div>
@@ -845,15 +845,15 @@ export default function Settings({
           </div>
         )}
         {activity.length === 0 ? (
-          <p className="text-sm text-gray-500">No activity recorded yet.</p>
+          <p className="text-sm text-muted">No activity recorded yet.</p>
         ) : (
-          <ul className="divide-y divide-gray-100 text-sm">
+          <ul className="divide-y divide-line text-sm">
             {activity
               .filter((row) => !activityFilter || row.actor === activityFilter)
               .map((row) => (
               <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
                 <span>{row.summary}</span>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted">
                   {new Date(row.at).toLocaleString()} · {row.actor}
                 </span>
               </li>
@@ -861,17 +861,17 @@ export default function Settings({
           </ul>
         )}
         {activity.length > 0 && activityFilter && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted">
             Showing {activity.filter((row) => row.actor === activityFilter).length} event(s) for{" "}
             {activityFilter}.
           </p>
         )}
       </section>
 
-      <p className="text-xs text-gray-400">Stock Tracker v{version ?? "—"}</p>
+      <p className="text-xs text-muted">Stock Tracker v{version ?? "—"}</p>
 
       {error && (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
           {error}
         </p>
       )}
@@ -881,13 +881,13 @@ export default function Settings({
           role="dialog"
           aria-modal="true"
           aria-labelledby="reset-title"
-          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-scrim p-4"
         >
           <div className="w-full max-w-sm space-y-4 card p-5">
             <h2 id="reset-title" className="text-lg font-semibold">
               Reset connection?
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink">
               This removes the saved database connection and PIN from this computer. Your data in
               the database is not deleted.
             </p>
@@ -902,7 +902,7 @@ export default function Settings({
               </button>
               <button
                 type="button"
-                className="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded bg-error px-3 py-1 text-sm font-medium text-on-error disabled:opacity-50"
                 onClick={resetConnection}
                 disabled={busy}
               >

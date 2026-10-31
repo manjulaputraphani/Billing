@@ -144,7 +144,7 @@ export default function Sales() {
         </div>
 
         {itemId !== "" && (
-          <p className="rounded bg-gray-50 px-3 py-2 text-sm">
+          <p className="rounded bg-surface-2 px-3 py-2 text-sm">
             Current stock: {formatQuantity(currentStock, unit)}
           </p>
         )}
@@ -205,18 +205,18 @@ export default function Sales() {
         </div>
 
         {preview?.error && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
             {preview.error}
           </p>
         )}
 
         {preview?.plan && (
-          <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm" role="status">
+          <div className="rounded border border-line bg-surface-2 px-3 py-2 text-sm" role="status">
             <p>
               Revenue {formatRupees(preview.plan.revenuePaise)} · Left{" "}
               {formatQuantity(preview.plan.leftQty, unit)}
             </p>
-            <p className="text-gray-600">
+            <p className="text-ink">
               Cost {formatRupees(preview.plan.totalCostPaise)} · stock worth{" "}
               {formatRupees(preview.plan.leftValuePaise)}
             </p>
@@ -224,12 +224,12 @@ export default function Sales() {
         )}
 
         {error && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
             {error}
           </p>
         )}
         {success && !error && (
-          <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">
             {success}
           </p>
         )}
@@ -246,11 +246,11 @@ export default function Sales() {
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Sold details</h2>
         {recent.length === 0 ? (
-          <p className="text-sm text-gray-500">No sales yet.</p>
+          <p className="text-sm text-muted">No sales yet.</p>
         ) : (
           <table className="w-full card text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
+              <tr className="border-b border-line text-left text-muted">
                 <th className="px-3 py-2 font-medium">Date</th>
                 <th className="px-3 py-2 font-medium">Item</th>
                 <th className="px-3 py-2 font-medium">Qty</th>
@@ -261,7 +261,7 @@ export default function Sales() {
             </thead>
             <tbody>
               {recent.map((row) => (
-                <tr key={row.id} className="border-b border-gray-100 last:border-0">
+                <tr key={row.id} className="border-b border-line last:border-0">
                   <td className="px-3 py-2">{row.soldAt}</td>
                   <td className="px-3 py-2">{row.itemName}</td>
                   <td className="px-3 py-2">{formatQuantity(row.qtyBase, row.unit as Unit)}</td>
@@ -269,7 +269,7 @@ export default function Sales() {
                     {formatRupees(row.unitPricePaise)} / {row.unit}
                   </td>
                   <td className="px-3 py-2">{formatRupees(row.totalPaise)}</td>
-                  <td className="px-3 py-2 text-gray-500">{row.note ?? ""}</td>
+                  <td className="px-3 py-2 text-muted">{row.note ?? ""}</td>
                 </tr>
               ))}
             </tbody>

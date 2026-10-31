@@ -137,7 +137,7 @@ export default function Purchases() {
 
       <div className="flex flex-wrap items-end gap-3 card p-3">
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600" htmlFor="filter-item">
+          <label className="block text-xs font-medium text-ink" htmlFor="filter-item">
             Item
           </label>
           <select
@@ -156,7 +156,7 @@ export default function Purchases() {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600" htmlFor="filter-from">
+          <label className="block text-xs font-medium text-ink" htmlFor="filter-from">
             From
           </label>
           <input
@@ -169,7 +169,7 @@ export default function Purchases() {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600" htmlFor="filter-to">
+          <label className="block text-xs font-medium text-ink" htmlFor="filter-to">
             To
           </label>
           <input
@@ -191,14 +191,14 @@ export default function Purchases() {
       </div>
 
       {error && (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
           {error}
         </p>
       )}
 
       <div className="overflow-x-auto card">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-gray-600">
+          <thead className="border-b border-line bg-surface-2 text-ink">
             <tr>
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Item</th>
@@ -213,20 +213,20 @@ export default function Purchases() {
           <tbody>
             {loading && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={8}>
+                <td className="px-3 py-4 text-muted" colSpan={8}>
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={8}>
+                <td className="px-3 py-4 text-muted" colSpan={8}>
                   No purchases yet.
                 </td>
               </tr>
             )}
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-gray-100 last:border-0">
+              <tr key={row.id} className="border-b border-line last:border-0">
                 <td className="px-3 py-2">{row.date}</td>
                 <td className="px-3 py-2 font-medium">{row.itemName}</td>
                 <td className="px-3 py-2 text-right">
@@ -234,7 +234,7 @@ export default function Purchases() {
                 </td>
                 <td className="px-3 py-2 text-right">{formatRupees(row.unitPricePaise)}</td>
                 <td className="px-3 py-2 text-right">{formatRupees(row.totalPaise)}</td>
-                <td className="px-3 py-2 text-gray-600">{row.supplier ?? "—"}</td>
+                <td className="px-3 py-2 text-ink">{row.supplier ?? "—"}</td>
                 <td className="px-3 py-2 text-right">
                   {formatQuantity(row.qtyRemaining, row.unit as Unit)}
                 </td>
@@ -242,7 +242,7 @@ export default function Purchases() {
                   <button type="button" className="mr-2 text-sm underline" onClick={() => openEdit(row)}>
                     Edit
                   </button>
-                  <button type="button" className="text-sm text-red-700 underline" onClick={() => setDeleting(row)}>
+                  <button type="button" className="text-sm text-error-ink underline" onClick={() => setDeleting(row)}>
                     Delete
                   </button>
                 </td>
@@ -257,10 +257,10 @@ export default function Purchases() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="edit-purchase-title"
-          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-scrim p-4"
         >
           <form
-            className="w-full max-w-md space-y-3 rounded bg-white p-5 shadow-lg"
+            className="w-full max-w-md space-y-3 rounded bg-surface p-5 shadow-lg"
             onSubmit={saveEdit}
           >
             <h2 id="edit-purchase-title" className="text-lg font-semibold">
@@ -378,13 +378,13 @@ export default function Purchases() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-purchase-title"
-          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-scrim p-4"
         >
-          <div className="w-full max-w-sm space-y-4 rounded bg-white p-5 shadow-lg">
+          <div className="w-full max-w-sm space-y-4 rounded bg-surface p-5 shadow-lg">
             <h2 id="delete-purchase-title" className="text-lg font-semibold">
               Delete this purchase?
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink">
               {deleting.itemName} · {formatQuantity(deleting.qtyBase, deleting.unit as Unit)} on{" "}
               {deleting.date}. Later stock checks and usage for this item will be recalculated.
             </p>
@@ -399,7 +399,7 @@ export default function Purchases() {
               </button>
               <button
                 type="button"
-                className="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded bg-error px-3 py-1 text-sm font-medium text-on-error disabled:opacity-50"
                 onClick={confirmDelete}
                 disabled={busy}
               >

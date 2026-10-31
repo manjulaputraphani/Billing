@@ -160,12 +160,12 @@ export default function Bills() {
       </div>
 
       {error && (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
           {error}
         </p>
       )}
       {success && !error && (
-        <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+        <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">
           {success}
         </p>
       )}
@@ -187,20 +187,20 @@ export default function Bills() {
           <tbody>
             {loading && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={8}>
+                <td className="px-3 py-4 text-muted" colSpan={8}>
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && filtered.length === 0 && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={8}>
+                <td className="px-3 py-4 text-muted" colSpan={8}>
                   No bills yet — create one in GST Billing.
                 </td>
               </tr>
             )}
             {filtered.map((row) => (
-              <tr key={row.id} className="border-t border-gray-100">
+              <tr key={row.id} className="border-t border-line">
                 <td className="px-3 py-2 font-medium">{row.billNo}</td>
                 <td className="px-3 py-2">{row.saleDate}</td>
                 <td className="px-3 py-2">{row.customerName ?? "Walk-in"}</td>
@@ -225,7 +225,7 @@ export default function Bills() {
                   {!row.cancelled && (
                     <button
                       type="button"
-                      className="text-sm text-red-700 underline"
+                      className="text-sm text-error-ink underline"
                       onClick={() => setCancelTarget(row)}
                     >
                       Cancel
@@ -250,7 +250,7 @@ export default function Bills() {
               )}
               <button
                 type="button"
-                className="text-sm text-gray-600 underline"
+                className="text-sm text-ink underline"
                 onClick={() => setDetail(null)}
               >
                 Close
@@ -258,7 +258,7 @@ export default function Bills() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
             <iframe
               title={`Bill ${detail.billNo}`}
               data-testid="bill-preview-iframe"
@@ -288,7 +288,7 @@ export default function Bills() {
             {!detail.cancelled && (
               <button
                 type="button"
-                className="btn-ghost text-red-700 hover:bg-red-50"
+                className="btn-ghost text-error-ink hover:bg-error-soft"
                 data-testid="bills-cancel"
                 onClick={() => {
                   const row = rows.find((r) => r.id === detail.id) ?? null;
@@ -298,7 +298,7 @@ export default function Bills() {
                 Cancel bill
               </button>
             )}
-            {emailStatus && <span className="self-center text-sm text-emerald-700">{emailStatus}</span>}
+            {emailStatus && <span className="self-center text-sm text-success-ink">{emailStatus}</span>}
           </div>
         </section>
       )}
@@ -309,13 +309,13 @@ export default function Bills() {
           aria-modal="true"
           aria-labelledby="cancel-bill-title"
           data-testid="bills-cancel-modal"
-          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-scrim p-4"
         >
           <div className="w-full max-w-sm space-y-4 card p-5">
             <h2 id="cancel-bill-title" className="text-lg font-semibold">
               Cancel {cancelTarget.billNo}?
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink">
               The bill stays visible as cancelled, and the sold quantity is put back into its
               original stock batches.
             </p>
@@ -330,7 +330,7 @@ export default function Bills() {
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-xl bg-error px-4 py-2 text-sm font-medium text-on-error disabled:opacity-50"
                 data-testid="bills-confirm-cancel"
                 onClick={() => void confirmCancel()}
                 disabled={busy}

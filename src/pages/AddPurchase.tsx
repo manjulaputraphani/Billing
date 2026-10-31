@@ -190,13 +190,13 @@ export default function AddPurchase() {
         </div>
 
         {last && (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted">
             Last price: {formatRupees(last.unitPricePaise)} ({last.date})
           </p>
         )}
 
-        <div className="flex items-center justify-between rounded bg-gray-50 px-3 py-2">
-          <span className="text-sm text-gray-600">Total</span>
+        <div className="flex items-center justify-between rounded bg-surface-2 px-3 py-2">
+          <span className="text-sm text-ink">Total</span>
           <span className="text-lg font-semibold" aria-live="polite">
             {formatRupees(totalPaise)}
           </span>
@@ -266,12 +266,12 @@ export default function AddPurchase() {
         </div>
 
         {error && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
             {error}
           </p>
         )}
         {success && !error && (
-          <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">
             {success}
           </p>
         )}

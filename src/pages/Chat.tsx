@@ -57,7 +57,7 @@ export default function Chat() {
   return (
     <div className="space-y-4">
       <h1 className="page-title">Ask about your shop</h1>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted">
         The assistant can only read your data. It cannot add, change or delete anything.
       </p>
 
@@ -66,7 +66,7 @@ export default function Chat() {
           <button
             key={chip}
             type="button"
-            className="rounded-full border border-gray-300 px-3 py-1 text-xs"
+            className="rounded-full border border-line px-3 py-1 text-xs"
             onClick={() => void send(chip)}
             disabled={busy}
           >
@@ -76,24 +76,24 @@ export default function Chat() {
       </div>
 
       <div className="min-h-48 space-y-2 card p-3">
-        {bubbles.length === 0 && <p className="text-sm text-gray-400">Ask a question to start.</p>}
+        {bubbles.length === 0 && <p className="text-sm text-muted">Ask a question to start.</p>}
         {bubbles.map((bubble, index) => (
           <p
             key={index}
             className={`max-w-[80%] rounded px-3 py-2 text-sm ${
               bubble.role === "user"
-                ? "ml-auto bg-gray-900 text-white"
-                : "bg-gray-100 text-gray-900"
+                ? "ml-auto bg-nav text-nav-text"
+                : "bg-surface-2 text-ink"
             }`}
           >
             {bubble.content}
           </p>
         ))}
-        {busy && <p className="text-sm text-gray-500">Thinking…</p>}
+        {busy && <p className="text-sm text-muted">Thinking…</p>}
       </div>
 
       {error && (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
           {error}
         </p>
       )}

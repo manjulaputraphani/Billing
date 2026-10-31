@@ -16,9 +16,9 @@ function currentMonth(): string {
 }
 
 const TONE: Record<number, string> = {
-  1: "border-red-200 bg-red-50",
-  2: "border-amber-200 bg-amber-50",
-  3: "border-gray-200 bg-white",
+  1: "border-error/40 bg-error-soft",
+  2: "border-accent/40 bg-accent-soft",
+  3: "border-line bg-surface",
 };
 
 export default function Suggestions() {
@@ -107,25 +107,25 @@ export default function Suggestions() {
         </div>
       </header>
 
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted">
         Calculated from your own numbers — no AI involved.
       </p>
 
       {error && (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
           {error}
         </p>
       )}
 
       {aiNotice && (
-        <p role="status" className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p role="status" className="rounded bg-accent-soft px-3 py-2 text-sm text-accent-ink">
           {aiNotice}
         </p>
       )}
 
       {aiItems && aiItems.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-gray-500">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted">
             Explained by AI
           </h2>
           <ul className="space-y-2">
@@ -138,10 +138,10 @@ export default function Suggestions() {
         </section>
       )}
 
-      {loading && <p className="text-sm text-gray-500">Loading…</p>}
+      {loading && <p className="text-sm text-muted">Loading…</p>}
 
       {!loading && suggestions.length === 0 && (
-        <section className="rounded border border-dashed border-gray-300 p-6 text-center text-gray-500">
+        <section className="rounded border border-dashed border-line p-6 text-center text-muted">
           Nothing to flag right now.
         </section>
       )}
@@ -154,13 +154,13 @@ export default function Suggestions() {
           >
             <div>
               <p className="text-sm">{suggestion.message}</p>
-              <p className="mt-1 text-xs uppercase tracking-wide text-gray-500">
+              <p className="mt-1 text-xs uppercase tracking-wide text-muted">
                 {suggestion.type.replace("_", " ")}
               </p>
             </div>
             <button
               type="button"
-              className="shrink-0 rounded border border-gray-300 px-2 py-1 text-xs"
+              className="shrink-0 rounded border border-line px-2 py-1 text-xs"
               onClick={() => void dismiss(suggestion)}
             >
               Dismiss

@@ -4,6 +4,8 @@ import { countUsers, createUser, findUserByPhone, type AppUser } from "../db/use
 import { logActivity, setAuditActor } from "../db/activity";
 import { deleteSecret, SECRET_KEYS, verifyPassword } from "../lib/secrets";
 import { normalizePhone } from "../logic/auth";
+import CoffeeIcon from "../components/CoffeeIcon";
+import ThemeToggle from "../components/ThemeToggle";
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 60_000;
@@ -133,24 +135,27 @@ export default function Lock({ url, onLogin }: Props) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f6f4] p-6">
+    <main className="flex min-h-screen items-center justify-center bg-bg p-6">
       <div className="card w-full max-w-sm p-6">
-        <header className="mb-6 flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[9px] font-bold tracking-[0.08em] text-white">
-            SDHHE
-          </span>
-          <span className="space-y-0.5">
-            <h1 className="text-[13px] font-semibold uppercase leading-snug tracking-[0.06em]">
-              SREE DURGA HARIHARA ENTERPRISES
-            </h1>
-            <p className="text-sm text-gray-500">
-              {firstRun === null
-                ? "Loading…"
-                : firstRun
-                  ? "First run — create the owner account."
-                  : "Sign in with your phone number and password."}
-            </p>
-          </span>
+        <header className="mb-6 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-on-primary">
+              <CoffeeIcon />
+            </span>
+            <span className="space-y-0.5">
+              <h1 className="text-[13px] font-semibold uppercase leading-snug tracking-[0.06em]">
+                SREE DURGA HARIHARA ENTERPRISES
+              </h1>
+              <p className="text-sm text-muted">
+                {firstRun === null
+                  ? "Loading…"
+                  : firstRun
+                    ? "First run — create the owner account."
+                    : "Sign in with your phone number and password."}
+              </p>
+            </span>
+          </div>
+          <ThemeToggle />
         </header>
 
         {firstRun === null ? null : firstRun ? (
@@ -208,7 +213,7 @@ export default function Lock({ url, onLogin }: Props) {
               />
             </div>
             {error && (
-              <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
                 {error}
               </p>
             )}
@@ -249,12 +254,12 @@ export default function Lock({ url, onLogin }: Props) {
             </div>
 
             {isLocked ? (
-              <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
                 Too many wrong attempts. Try again in {secondsLeft}s.
               </p>
             ) : (
               error && (
-                <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
                   {error}
                 </p>
               )

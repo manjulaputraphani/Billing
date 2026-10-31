@@ -149,14 +149,14 @@ export default function StockCheck() {
         </div>
 
         {itemId !== "" && (
-          <div className="rounded bg-gray-50 p-3 text-sm">
+          <div className="rounded bg-surface-2 p-3 text-sm">
             <p className="font-medium">
               Current stock: {formatQuantity(currentStock, unit)}
             </p>
             {batches.length === 0 ? (
-              <p className="text-gray-500">No open batches for this item.</p>
+              <p className="text-muted">No open batches for this item.</p>
             ) : (
-              <ul className="mt-1 space-y-0.5 text-gray-600">
+              <ul className="mt-1 space-y-0.5 text-ink">
                 {batches.map((b) => (
                   <li key={b.id}>
                     {formatQuantity(b.qtyRemaining, unit)} @ {formatRupees(b.unitPricePaise)} (
@@ -174,7 +174,7 @@ export default function StockCheck() {
               key={mode.type}
               type="button"
               className={`rounded px-3 py-1 text-sm ${
-                type === mode.type ? "bg-gray-900 text-white" : "border border-gray-300"
+                type === mode.type ? "bg-primary text-on-primary" : "border border-line"
               }`}
               onClick={() => {
                 setType(mode.type);
@@ -230,26 +230,26 @@ export default function StockCheck() {
         </div>
 
         {preview?.error && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
             {preview.error}
           </p>
         )}
 
         {preview?.plan && (
-          <div className="space-y-1 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm" role="status">
+          <div className="space-y-1 rounded border border-line bg-surface-2 px-3 py-2 text-sm" role="status">
             <p>
               Used {formatQuantity(preview.plan.used, unit)} · Cost{" "}
               {formatRupees(preview.plan.totalCostPaise)}
             </p>
             {preview.plan.takes.length > 0 && (
-              <p className="text-gray-600">
+              <p className="text-ink">
                 From:{" "}
                 {preview.plan.takes
                   .map((t) => `${formatQuantity(t.qty, unit)} @ ${formatRupees(t.unitPricePaise)}`)
                   .join(" + ")}
               </p>
             )}
-            <p className="text-gray-600">
+            <p className="text-ink">
               Left {formatQuantity(preview.plan.leftQty, unit)} worth{" "}
               {formatRupees(preview.plan.leftValuePaise)}
             </p>
@@ -257,12 +257,12 @@ export default function StockCheck() {
         )}
 
         {error && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
             {error}
           </p>
         )}
         {success && !error && (
-          <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">
             {success}
           </p>
         )}

@@ -194,7 +194,7 @@ export default function Expenses() {
 
       <div className="flex flex-wrap items-end gap-3 card p-3">
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600" htmlFor="expense-month">
+          <label className="block text-xs font-medium text-ink" htmlFor="expense-month">
             Month
           </label>
           <input
@@ -206,7 +206,7 @@ export default function Expenses() {
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600" htmlFor="expense-category-filter">
+          <label className="block text-xs font-medium text-ink" htmlFor="expense-category-filter">
             Category
           </label>
           <select
@@ -226,14 +226,14 @@ export default function Expenses() {
       </div>
 
       {error && !form && (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
           {error}
         </p>
       )}
 
       <div className="overflow-x-auto card">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-gray-600">
+          <thead className="border-b border-line bg-surface-2 text-ink">
             <tr>
               <th className="px-3 py-2">Date</th>
               <th className="px-3 py-2">Category</th>
@@ -248,25 +248,25 @@ export default function Expenses() {
           <tbody>
             {loading && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={8}>
+                <td className="px-3 py-4 text-muted" colSpan={8}>
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={8}>
+                <td className="px-3 py-4 text-muted" colSpan={8}>
                   No expenses this month.
                 </td>
               </tr>
             )}
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-gray-100 last:border-0">
+              <tr key={row.id} className="border-b border-line last:border-0">
                 <td className="px-3 py-2">{row.date}</td>
                 <td className="px-3 py-2 font-medium">{row.category}</td>
-                <td className="px-3 py-2 text-gray-600">{row.paidTo ?? "—"}</td>
+                <td className="px-3 py-2 text-ink">{row.paidTo ?? "—"}</td>
                 <td className="px-3 py-2 text-right">{formatRupees(row.amountPaise)}</td>
-                <td className="px-3 py-2 text-gray-600">{row.paymentMode ?? "—"}</td>
+                <td className="px-3 py-2 text-ink">{row.paymentMode ?? "—"}</td>
                 <td className="px-3 py-2">
                   {row.billId ? (
                     <button
@@ -278,10 +278,10 @@ export default function Expenses() {
                       Save bill
                     </button>
                   ) : (
-                    <span className="text-gray-400">—</span>
+                    <span className="text-muted">—</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-gray-600">{row.note ?? "—"}</td>
+                <td className="px-3 py-2 text-ink">{row.note ?? "—"}</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   <button
                     type="button"
@@ -305,7 +305,7 @@ export default function Expenses() {
                   </button>
                   <button
                     type="button"
-                    className="text-sm text-red-700 underline"
+                    className="text-sm text-error-ink underline"
                     onClick={() => setDeleting(row)}
                   >
                     Delete
@@ -314,7 +314,7 @@ export default function Expenses() {
               </tr>
             ))}
           </tbody>
-          <tfoot className="border-t border-gray-200 bg-gray-50">
+          <tfoot className="border-t border-line bg-surface-2">
             <tr>
               <td className="px-3 py-2 font-medium" colSpan={3}>
                 Month total
@@ -331,7 +331,7 @@ export default function Expenses() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="expense-form-title"
-          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-scrim p-4"
         >
           <form className="w-full max-w-md space-y-3 card p-5" onSubmit={save}>
             <h2 id="expense-form-title" className="text-lg font-semibold">
@@ -426,10 +426,10 @@ export default function Expenses() {
                 id="expense-bill"
                 type="file"
                 accept="image/*,application/pdf"
-                className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm"
+                className="block w-full text-sm text-ink file:mr-3 file:rounded-lg file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm"
                 onChange={(e) => void attachBill(e.currentTarget.files?.[0])}
               />
-              {form.billName && <p className="text-xs text-gray-500">Attached: {form.billName}</p>}
+              {form.billName && <p className="text-xs text-muted">Attached: {form.billName}</p>}
             </div>
 
             <div className="space-y-1">
@@ -445,7 +445,7 @@ export default function Expenses() {
             </div>
 
             {error && (
-              <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
                 {error}
               </p>
             )}
@@ -476,13 +476,13 @@ export default function Expenses() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-expense-title"
-          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-scrim p-4"
         >
-          <div className="w-full max-w-sm space-y-4 rounded bg-white p-5 shadow-lg">
+          <div className="w-full max-w-sm space-y-4 rounded bg-surface p-5 shadow-lg">
             <h2 id="delete-expense-title" className="text-lg font-semibold">
               Delete this expense?
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink">
               {deleting.category} · {formatRupees(deleting.amountPaise)} on {deleting.date}
             </p>
             <div className="flex justify-end gap-2">
@@ -495,7 +495,7 @@ export default function Expenses() {
               </button>
               <button
                 type="button"
-                className="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white"
+                className="rounded bg-error px-3 py-1 text-sm font-medium text-on-error"
                 onClick={confirmDelete}
               >
                 Delete

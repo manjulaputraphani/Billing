@@ -35,3 +35,7 @@
 - 2026-10-31 · Brand colours exposed as CSS variables and read from JS for the donut/bars (`var(--c-chart-1…)`) instead of hard-coded hex · charts re-colour with the theme
 - 2026-10-31 · Playfair Display (headings) + Inter (body) from the Google Fonts CDN, no npm font package · zero build step and no new dependency; Georgia/system fallbacks if the CDN is unreachable
 - 2026-10-31 · Added `web/tsconfig.json` + `npm run typecheck` (web/) · the web app had no type checking at all; it shares `src/lib|db|logic` with the desktop app
+- 2026-10-31 · Theme engine + switch moved to `src/lib/theme.ts` and `src/components/ThemeToggle.tsx` (shared by the Tauri app and the web edition; the web keeps thin re-export files) · one implementation, one storage key (`sdhhe-theme`), one palette for both editions
+- 2026-10-31 · Desktop (Tauri) app re-themed with the same coffee palette + light/dark/system · the desktop app is the daily tool, so it must match the web edition; this also delivers the dark-mode half of V2-P15
+- 2026-10-31 · Desktop modal scrim is warm `rgb(28 22 18 / .55)` instead of `bg-black/40` · the design rule bans pure black anywhere, and a brown-black scrim reads warmer
+- 2026-10-31 · Dark mode neutralises Tailwind shadow utilities (`--tw-shadow: 0 0 #0000`) · "thin borders instead of shadows" in dark mode, so cards keep their 1px border

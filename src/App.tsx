@@ -4,6 +4,7 @@ import "./App.css";
 import Layout from "./components/Layout";
 import { DbProvider } from "./lib/db-context";
 import { getSecret, SECRET_KEYS } from "./lib/secrets";
+import { watchSystemTheme } from "./lib/theme";
 import { setAuditActor } from "./db/activity";
 import AddPurchase from "./pages/AddPurchase";
 import Billing from "./pages/Billing";
@@ -48,8 +49,10 @@ export default function App() {
     void bootstrap();
   }, [bootstrap]);
 
+  useEffect(() => watchSystemTheme(), []);
+
   if (phase === "loading") {
-    return <main className="p-8 text-sm text-gray-500">Loading…</main>;
+    return <main className="p-8 text-sm text-muted">Loading…</main>;
   }
 
   if (phase === "setup") {

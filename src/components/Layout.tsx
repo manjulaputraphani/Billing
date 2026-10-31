@@ -1,4 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
+import CoffeeIcon from "./CoffeeIcon";
+import ThemeToggle from "./ThemeToggle";
 
 type Link = { to: string; label: string; end?: boolean };
 
@@ -38,17 +40,17 @@ const GROUPS: { heading: string; links: Link[] }[] = [
 
 export default function Layout() {
   return (
-    <div className="flex min-h-screen bg-[#f7f6f4] text-stone-900">
-      <aside className="flex w-60 shrink-0 flex-col bg-stone-900 text-stone-100">
-        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-5">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[9px] font-bold tracking-[0.08em] text-white shadow-sm">
-            SDHHE
+    <div className="flex min-h-screen bg-bg text-ink">
+      <aside className="flex w-60 shrink-0 flex-col bg-nav text-nav-text">
+        <div className="flex items-center gap-3 border-b border-nav-line px-4 py-5">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-nav-text/15 text-nav-text">
+            <CoffeeIcon />
           </span>
           <span className="min-w-0">
-            <span className="block text-[11.5px] font-semibold uppercase leading-snug tracking-[0.08em] text-white">
+            <span className="block text-[11.5px] font-semibold uppercase leading-snug tracking-[0.08em] text-nav-text">
               SREE DURGA HARIHARA ENTERPRISES
             </span>
-            <span className="mt-1 block text-[9.5px] uppercase tracking-[0.2em] text-stone-500">
+            <span className="mt-1 block text-[9.5px] uppercase tracking-[0.2em] text-nav-muted">
               Inventory · Billing · Accounts
             </span>
           </span>
@@ -57,7 +59,7 @@ export default function Layout() {
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-4">
           {GROUPS.map((group) => (
             <div key={group.heading} className="mb-3">
-              <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+              <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-nav-muted">
                 {group.heading}
               </p>
               <div className="flex flex-col gap-0.5">
@@ -69,8 +71,8 @@ export default function Layout() {
                     className={({ isActive }) =>
                       `rounded-lg px-3 py-2 text-sm transition-colors ${
                         isActive
-                          ? "bg-white/10 font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-                          : "text-stone-400 hover:bg-white/5 hover:text-white"
+                          ? "bg-nav-active font-medium text-nav-text shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                          : "text-nav-muted hover:bg-nav-hover hover:text-nav-text"
                       }`
                     }
                   >
@@ -82,9 +84,10 @@ export default function Layout() {
           ))}
         </nav>
 
-        <p className="border-t border-white/10 px-5 py-3 text-[11px] text-stone-500">
-          Local desktop · Member sign-in
-        </p>
+        <div className="border-t border-nav-line px-5 py-3">
+          <ThemeToggle onDark className="mb-3" />
+          <p className="text-[11px] text-nav-muted">Local desktop · Member sign-in</p>
+        </div>
       </aside>
 
       <div className="min-w-0 flex-1">

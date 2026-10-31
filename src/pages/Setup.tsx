@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { pingDb } from "../db/client";
 import { saveSecret, SECRET_KEYS } from "../lib/secrets";
 import { hostLabel } from "../lib/url";
+import CoffeeIcon from "../components/CoffeeIcon";
+import ThemeToggle from "../components/ThemeToggle";
 
 export default function Setup({ onDone }: { onDone: () => void }) {
   const [url, setUrl] = useState("");
@@ -49,22 +51,25 @@ export default function Setup({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f6f4] p-6">
+    <main className="flex min-h-screen items-center justify-center bg-bg p-6">
       <div className="card w-full max-w-md p-6">
-        <header className="mb-6 flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[9px] font-bold tracking-[0.08em] text-white">
-            SDHHE
-          </span>
-          <span className="space-y-0.5">
-            <p className="text-[9.5px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-              SREE DURGA HARIHARA ENTERPRISES
-            </p>
-            <h1 className="text-lg font-semibold tracking-tight">Set up Stock Tracker</h1>
-            <p className="text-sm text-gray-500">
-              Connect your Neon database. It is stored in this computer&apos;s secure storage; members
-              sign in with their phone number and password.
-            </p>
-          </span>
+        <header className="mb-6 flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-on-primary">
+              <CoffeeIcon />
+            </span>
+            <span className="space-y-0.5">
+              <p className="text-[9.5px] font-semibold uppercase tracking-[0.2em] text-muted">
+                SREE DURGA HARIHARA ENTERPRISES
+              </p>
+              <h1 className="text-lg font-semibold tracking-tight">Set up Stock Tracker</h1>
+              <p className="text-sm text-muted">
+                Connect your Neon database. It is stored in this computer&apos;s secure storage; members
+                sign in with their phone number and password.
+              </p>
+            </span>
+          </div>
+          <ThemeToggle />
         </header>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -93,12 +98,12 @@ export default function Setup({ onDone }: { onDone: () => void }) {
           </div>
 
           {error && (
-            <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
               {error}
             </p>
           )}
           {status && !error && (
-            <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+            <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">
               {status}
             </p>
           )}

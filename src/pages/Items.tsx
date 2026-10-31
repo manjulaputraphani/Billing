@@ -114,14 +114,14 @@ export default function Items() {
       </header>
 
       {error && (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
           {error}
         </p>
       )}
 
       <div className="overflow-x-auto card">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-gray-600">
+          <thead className="border-b border-line bg-surface-2 text-ink">
             <tr>
               <th className="px-3 py-2">Name</th>
               <th className="px-3 py-2">Unit</th>
@@ -134,23 +134,23 @@ export default function Items() {
           <tbody>
             {loading && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={6}>
+                <td className="px-3 py-4 text-muted" colSpan={6}>
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td className="px-3 py-4 text-gray-500" colSpan={6}>
+                <td className="px-3 py-4 text-muted" colSpan={6}>
                   No items yet. Add your first item.
                 </td>
               </tr>
             )}
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-gray-100 last:border-0">
+              <tr key={row.id} className="border-b border-line last:border-0">
                 <td className="px-3 py-2 font-medium">{row.name}</td>
                 <td className="px-3 py-2">{row.unit}</td>
-                <td className="px-3 py-2 text-gray-600">{row.category ?? "—"}</td>
+                <td className="px-3 py-2 text-ink">{row.category ?? "—"}</td>
                 <td className="px-3 py-2 text-right">
                   {formatQuantity(row.stockLeftBase, row.unit as Unit)}
                 </td>
@@ -167,7 +167,7 @@ export default function Items() {
                   </button>
                   <button
                     type="button"
-                    className="text-sm text-red-700 underline"
+                    className="text-sm text-error-ink underline"
                     onClick={() => setDeleting(row)}
                   >
                     Delete
@@ -184,10 +184,10 @@ export default function Items() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="item-form-title"
-          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-scrim p-4"
         >
           <form
-            className="w-full max-w-sm space-y-4 rounded bg-white p-5 shadow-lg"
+            className="w-full max-w-sm space-y-4 rounded bg-surface p-5 shadow-lg"
             onSubmit={save}
           >
             <h2 id="item-form-title" className="text-lg font-semibold">
@@ -250,7 +250,7 @@ export default function Items() {
             </div>
 
             {error && (
-              <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
                 {error}
               </p>
             )}
@@ -281,13 +281,13 @@ export default function Items() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-item-title"
-          className="fixed inset-0 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 flex items-center justify-center bg-scrim p-4"
         >
-          <div className="w-full max-w-sm space-y-4 rounded bg-white p-5 shadow-lg">
+          <div className="w-full max-w-sm space-y-4 rounded bg-surface p-5 shadow-lg">
             <h2 id="delete-item-title" className="text-lg font-semibold">
               Delete {deleting.name}?
             </h2>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink">
               This cannot be undone. Items that already have purchases cannot be deleted.
             </p>
             <div className="flex justify-end gap-2">
@@ -300,7 +300,7 @@ export default function Items() {
               </button>
               <button
                 type="button"
-                className="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white"
+                className="rounded bg-error px-3 py-1 text-sm font-medium text-on-error"
                 onClick={confirmDelete}
               >
                 Delete

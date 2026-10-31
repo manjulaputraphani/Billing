@@ -33,8 +33,8 @@ function monthLabel(month: string): string {
 function Card({ label, value, tone }: { label: string; value: string; tone?: "warn" }) {
   return (
     <div className="card p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
-      <p className={`mt-1 text-xl font-semibold ${tone === "warn" ? "text-red-700" : ""}`}>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">{label}</p>
+      <p className={`mt-1 text-xl font-semibold ${tone === "warn" ? "text-error-ink" : ""}`}>
         {value}
       </p>
     </div>
@@ -70,10 +70,10 @@ export default function Dashboard() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="page-title">Dashboard</h1>
-          <p className="text-sm text-gray-500">{monthLabel(month)}</p>
+          <p className="text-sm text-muted">{monthLabel(month)}</p>
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600" htmlFor="dashboard-month">
+          <label className="block text-xs font-medium text-ink" htmlFor="dashboard-month">
             Month
           </label>
           <input
@@ -87,16 +87,16 @@ export default function Dashboard() {
       </header>
 
       {error && (
-        <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
           {error}
         </p>
       )}
 
-      {loading && !data && <p className="text-sm text-gray-500">Loading…</p>}
+      {loading && !data && <p className="text-sm text-muted">Loading…</p>}
 
       {data && data.itemCount === 0 && (
-        <section className="rounded border border-dashed border-gray-300 p-8 text-center">
-          <p className="mb-3 text-gray-600">No items yet. Start by adding what you buy.</p>
+        <section className="rounded border border-dashed border-line p-8 text-center">
+          <p className="mb-3 text-ink">No items yet. Start by adding what you buy.</p>
           <Link
             to="/items"
             className="inline-block btn-primary"
@@ -120,7 +120,7 @@ export default function Dashboard() {
           {data.priceAlerts.length > 0 && (
             <section className="space-y-2">
               <h2 className="text-lg font-medium">Price alerts</h2>
-              <ul className="space-y-1 rounded border border-amber-200 bg-amber-50 p-3 text-sm">
+              <ul className="space-y-1 rounded border border-accent/40 bg-accent-soft p-3 text-sm">
                 {data.priceAlerts.map((alert) => (
                   <li key={alert.itemId}>
                     <span className="font-medium">{alert.itemName}</span> — price rose from{" "}
@@ -141,7 +141,7 @@ export default function Dashboard() {
               </Link>
             </div>
             {suggestions.length === 0 ? (
-              <p className="text-sm text-gray-500">Nothing to flag right now.</p>
+              <p className="text-sm text-muted">Nothing to flag right now.</p>
             ) : (
               <ul className="space-y-2">
                 {suggestions.slice(0, 3).map((suggestion) => (
@@ -166,22 +166,22 @@ export default function Dashboard() {
           <section className="space-y-2">
             <h2 className="text-lg font-medium">Low stock</h2>
             {data.lowStock.length === 0 ? (
-              <p className="text-sm text-gray-500">Everything is above its minimum.</p>
+              <p className="text-sm text-muted">Everything is above its minimum.</p>
             ) : (
-              <ul className="divide-y divide-gray-100 card">
+              <ul className="divide-y divide-line card">
                 {data.lowStock.map((item) => (
                   <li key={item.id} className="flex items-center justify-between px-3 py-2 text-sm">
                     <span className="font-medium">{item.name}</span>
                     <span className="flex items-center gap-3">
-                      <span className="text-red-700">
+                      <span className="text-error-ink">
                         {formatQuantity(item.stockLeftBase, item.unit as Unit)} left
                       </span>
-                      <span className="text-gray-500">
+                      <span className="text-muted">
                         min {formatQuantity(item.minStockBase, item.unit as Unit)}
                       </span>
                       <Link
                         to={`/purchases/new?item=${item.id}`}
-                        className="rounded border border-gray-300 px-2 py-1 text-xs"
+                        className="rounded border border-line px-2 py-1 text-xs"
                       >
                         Add purchase
                       </Link>
@@ -195,17 +195,17 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <section className="space-y-2">
               <h2 className="text-lg font-medium">Last purchases</h2>
-              <ul className="divide-y divide-gray-100 card text-sm">
+              <ul className="divide-y divide-line card text-sm">
                 {data.lastPurchases.length === 0 && (
-                  <li className="px-3 py-3 text-gray-500">No purchases yet.</li>
+                  <li className="px-3 py-3 text-muted">No purchases yet.</li>
                 )}
                 {data.lastPurchases.map((row) => (
                   <li key={row.id} className="flex items-center justify-between px-3 py-2">
                     <span>
                       <span className="font-medium">{row.itemName}</span>
-                      <span className="text-gray-500"> · {row.date}</span>
+                      <span className="text-muted"> · {row.date}</span>
                     </span>
-                    <span className="text-gray-700">
+                    <span className="text-ink">
                       {formatQuantity(row.qtyBase, row.unit as Unit)} ·{" "}
                       {formatRupees(row.totalPaise)}
                     </span>
@@ -216,20 +216,20 @@ export default function Dashboard() {
 
             <section className="space-y-2">
               <h2 className="text-lg font-medium">Last stock entries</h2>
-              <ul className="divide-y divide-gray-100 card text-sm">
+              <ul className="divide-y divide-line card text-sm">
                 {data.lastChecks.length === 0 && (
-                  <li className="px-3 py-3 text-gray-500">No stock checks yet.</li>
+                  <li className="px-3 py-3 text-muted">No stock checks yet.</li>
                 )}
                 {data.lastChecks.map((row) => (
                   <li key={row.id} className="flex items-center justify-between px-3 py-2">
                     <span>
                       <span className="font-medium">{row.itemName}</span>
-                      <span className="text-gray-500">
+                      <span className="text-muted">
                         {" "}
                         · {row.type.toLowerCase().replace("_", " ")} · {row.date}
                       </span>
                     </span>
-                    <span className="text-gray-700">
+                    <span className="text-ink">
                       {formatQuantity(Math.abs(row.qtyChange), row.unit as Unit)} ·{" "}
                       {formatRupees(row.costPaise)}
                     </span>

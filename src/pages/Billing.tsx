@@ -229,7 +229,7 @@ export default function Billing() {
       <h1 className="page-title">GST Billing</h1>
 
       {shop && !shop.name && (
-        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200/60">
+        <p className="rounded-xl bg-accent-soft px-3 py-2 text-sm text-accent-ink ring-1 ring-accent/30">
           Add your shop name and GSTIN in Settings → Shop details so they print on the bill.
         </p>
       )}
@@ -327,12 +327,12 @@ export default function Billing() {
           <button type="button" className="btn-ghost" data-testid="gst-portal" onClick={() => void openGstPortal()}>
             Search GSTIN on portal
           </button>
-          {gstinNote && <span className="text-sm text-emerald-700">{gstinNote}</span>}
+          {gstinNote && <span className="text-sm text-success-ink">{gstinNote}</span>}
           {gstinStatus && !gstinStatus.valid && (
-            <span className="text-sm text-amber-700">{gstinStatus.reason}</span>
+            <span className="text-sm text-accent-ink">{gstinStatus.reason}</span>
           )}
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted">
           The GST portal has no public API. Open it, enter the GSTIN + captcha, then copy the legal
           name and address here — saved customers auto-fill next time.
         </p>
@@ -419,7 +419,7 @@ export default function Billing() {
 
         {lines.length > 0 && (
           <table className="w-full text-left text-sm">
-            <thead className="text-gray-500">
+            <thead className="text-muted">
               <tr>
                 <th className="py-1">Item</th>
                 <th className="py-1">Qty</th>
@@ -430,7 +430,7 @@ export default function Billing() {
             </thead>
             <tbody>
               {lines.map((line, index) => (
-                <tr key={`${line.itemId}-${index}`} className="border-t border-gray-100">
+                <tr key={`${line.itemId}-${index}`} className="border-t border-line">
                   <td className="py-1.5">{line.name}</td>
                   <td className="py-1.5">{formatQuantity(line.qtyBase, line.unit)}</td>
                   <td className="py-1.5">{formatRupees(line.unitPricePaise)}</td>
@@ -438,7 +438,7 @@ export default function Billing() {
                   <td className="py-1.5 text-right">
                     <button
                       type="button"
-                      className="text-sm text-red-700 underline"
+                      className="text-sm text-error-ink underline"
                       onClick={() => setLines((prev) => prev.filter((_, i) => i !== index))}
                     >
                       Remove
@@ -514,18 +514,18 @@ export default function Billing() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-stone-50 px-3 py-2 text-sm">
+        <div className="rounded-xl bg-surface-2 px-3 py-2 text-sm">
           Subtotal {formatRupees(totals.subtotalPaise)} · GST {formatRupees(totals.gstPaise)} ·{" "}
           <span className="font-semibold">Total {formatRupees(totals.totalPaise)}</span>
         </div>
 
         {error && (
-          <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded bg-error-soft px-3 py-2 text-sm text-error-ink">
             {error}
           </p>
         )}
         {success && !error && (
-          <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p role="status" className="rounded bg-success-soft px-3 py-2 text-sm text-success-ink">
             {success}
           </p>
         )}
@@ -538,7 +538,7 @@ export default function Billing() {
       {bill && (
         <section data-testid="bill-preview" className="max-w-3xl space-y-3 card p-4">
           <h2 className="text-lg font-semibold tracking-tight">Bill {bill.billNo}</h2>
-          <ul className="space-y-0.5 text-sm text-gray-600">
+          <ul className="space-y-0.5 text-sm text-ink">
             {bill.lines.map((line) => (
               <li key={`${line.itemName}-${line.qtyBase}`}>
                 {line.itemName} · {formatQuantity(line.qtyBase, line.unit as Unit)} ·{" "}
