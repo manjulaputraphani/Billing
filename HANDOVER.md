@@ -5,7 +5,7 @@ Tool: OpenCode
 
 ## Current task
 **Login workstream approved** (docs/PLAN_LOGIN.md) — NOT built yet. PIN login still works for now.
-Next: **W4 web UI** (Cloudflare Pages) with the verified API. W1–W3c DONE.
+Next: **W5 email via Resend** or **W6 deploy** (needs Cloudflare login). W1–W4 DONE.
 
 ## Approved decisions (2026-10-31)
 - Login: type **phone + password** (min 6 chars, argon2id hash in DB).
@@ -16,7 +16,7 @@ Next: **W4 web UI** (Cloudflare Pages) with the verified API. W1–W3c DONE.
 ## Status
 - [x] Billing / Bills / GST invoice / email / company settings migrated
 - [x] `sdhhe_fy2025` backed up + dropped; company details now in `settings`
-- [x] L1–L6 login · [x] W1 worker · [x] W2 auth · [x] W3 read API · [x] W3b writes · [x] W3c transactional writes (bills/purchases/stock) · [ ] W4–W6
+- [x] L1–L6 login · [x] W1–W4 web edition (worker, auth, API, UI) · [ ] W5 email · [ ] W6 deploy
 - [ ] Profit report + dashboard cards · charts · V2-P11 credit · Funds
 
 ## Done recently
