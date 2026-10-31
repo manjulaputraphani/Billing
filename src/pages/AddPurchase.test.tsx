@@ -27,6 +27,7 @@ const RICE = {
   unit: "kg",
   category: null,
   minStockBase: 0,
+  imageUrl: null,
   stockLeftBase: 0,
 };
 

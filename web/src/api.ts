@@ -6,6 +6,7 @@ export type Item = {
   unit: string;
   category: string | null;
   minStockBase: number;
+  imageUrl: string | null;
   stockLeftBase: number;
 };
 
@@ -140,10 +141,10 @@ export const api = {
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   me: () => request<{ user: User }>("/api/auth/me"),
   items: () => request<{ items: Item[] }>("/api/items"),
-  createItem: (body: { name: string; unit: string; category?: string; minStockBase: number }) =>
+  createItem: (body: { name: string; unit: string; category?: string; minStockBase: number; imageUrl?: string }) =>
     request<{ item: Item }>("/api/items", { method: "POST", body: JSON.stringify(body) }),
   deleteItem: (id: number) => request<{ ok: boolean }>(`/api/items/${id}`, { method: "DELETE" }),
-  updateItem: (id: number, body: { name: string; unit: string; category?: string; minStockBase: number }) =>
+  updateItem: (id: number, body: { name: string; unit: string; category?: string; minStockBase: number; imageUrl?: string }) =>
     request<{ item: Item }>(`/api/items/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   createCustomer: (body: { name: string; phone?: string; email?: string; gstin?: string; address?: string }) =>
     request<{ customer: { id: number } }>("/api/customers", { method: "POST", body: JSON.stringify(body) }),

@@ -67,7 +67,7 @@ describe("Items page", () => {
 
   it("renders stock using kg formatting", async () => {
     vi.mocked(listItems).mockResolvedValue([
-      { id: 1, name: "Rice", unit: "kg", category: "Grains", minStockBase: 1000, stockLeftBase: 1500 },
+      { id: 1, name: "Rice", unit: "kg", category: "Grains", minStockBase: 1000, imageUrl: null, stockLeftBase: 1500 },
     ]);
     renderItems();
 

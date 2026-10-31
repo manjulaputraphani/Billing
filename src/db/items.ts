@@ -14,6 +14,13 @@ export const itemInputSchema = z.object({
     .number({ message: "Min stock must be a number" })
     .int("Min stock must be a whole number")
     .min(0, "Min stock cannot be negative"),
+  /** Optional picture: an R2 public URL or any http(s) image URL. */
+  imageUrl: z
+    .string()
+    .trim()
+    .max(500, "Image link is too long")
+    .refine((value) => value === "" || /^https?:\/\//i.test(value), "Image link must start with http:// or https://")
+    .optional(),
 });
 
 export type ItemInput = z.infer<typeof itemInputSchema>;
@@ -24,6 +31,7 @@ export type ItemRow = {
   unit: string;
   category: string | null;
   minStockBase: number;
+  imageUrl: string | null;
   stockLeftBase: number;
 };
 
@@ -55,6 +63,7 @@ export async function listItems(db: Db): Promise<ItemRow[]> {
       unit: items.unit,
       category: items.category,
       minStockBase: items.minStockBase,
+      imageUrl: items.imageUrl,
       stockLeftBase: sql<number>`coalesce(sum(${batches.qtyRemaining}), 0)`.mapWith(Number),
     })
     .from(items)
@@ -72,6 +81,7 @@ export async function getItem(db: Db, id: number): Promise<ItemRow | null> {
       unit: items.unit,
       category: items.category,
       minStockBase: items.minStockBase,
+      imageUrl: items.imageUrl,
       stockLeftBase: sql<number>`coalesce(sum(${batches.qtyRemaining}), 0)`.mapWith(Number),
     })
     .from(items)
@@ -91,6 +101,7 @@ export async function createItem(db: Db | TxDb, input: unknown): Promise<ItemRow
       unit: data.unit,
       category: data.category || null,
       minStockBase: data.minStockBase,
+      imageUrl: data.imageUrl?.trim() || null,
     })
     .returning();
   await logActivity(db, {
@@ -112,6 +123,7 @@ export async function updateItem(db: Db, id: number, input: unknown): Promise<It
       unit: data.unit,
       category: data.category || null,
       minStockBase: data.minStockBase,
+      imageUrl: data.imageUrl?.trim() || null,
     })
     .where(eq(items.id, id))
     .returning();

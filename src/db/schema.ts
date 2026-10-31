@@ -19,6 +19,8 @@ export const items = pgTable("items", {
   unit: text("unit").notNull(),
   category: text("category"),
   minStockBase: integer("min_stock_base").notNull().default(0),
+  /** Optional picture for the item (R2 public URL or any image URL). */
+  imageUrl: text("image_url"),
   /** Weighted-average cost of one display unit (paise per kg / l / pc). */
   avgCostPaise: integer("avg_cost_paise").notNull().default(0),
   /** Value of the stock on hand in paise — the weighted-average cost pool. */
