@@ -214,7 +214,7 @@ Reconciliation with the interim work of 2026-10-30:
 - [ ] **W6** Hardening + Playwright e2e against Pages/Worker
 
 ## NOTIFICATIONS — see docs/PLAN_NOTIFICATIONS.md (proposed 2026-10-31)
-- [ ] **N1** settings: notify_emails + event toggles
+- [x] **N1** notification settings — settings keys notify_emails / notify_signup / notify_member / notify_bill; owner-only GET/PUT /api/settings/notifications (default = shop email, all events on); audit settings.notify. Verified live (defaults, toggles, restore).
 - [ ] **N2** Resend notifyOwners(): signup request, member add/approve/role
 - [ ] **N3** notify owners when a **staff** member creates a bill
 - [ ] **N4** web Settings screen (email status, recipients, toggles, test)

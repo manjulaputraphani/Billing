@@ -387,6 +387,38 @@ export default {
         return json({ ok: true });
       }
 
+      // ---- N1 notification settings (owner only) ----
+      if (url.pathname === "/api/settings/notifications") {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+        const shop = await getShopDetails(db);
+        if (request.method === "GET") {
+          const rows = await sqlQuery(env, "select key, value from settings where key in ('notify_emails','notify_signup','notify_member','notify_bill')");
+          const map = new Map(rows.map((r) => [String(r.key), String(r.value)]));
+          const raw = map.get("notify_emails") ?? shop.email;
+          return json({
+            emails: raw.split(/[,;]/).map((e) => e.trim()).filter(Boolean),
+            signup: map.get("notify_signup") !== "off",
+            member: map.get("notify_member") !== "off",
+            bill: map.get("notify_bill") !== "off",
+            defaultEmail: shop.email,
+          });
+        }
+        if (request.method === "PUT") {
+          const emails = String(body.emails ?? "").trim();
+          const pairs: [string, string][] = [
+            ["notify_emails", emails],
+            ["notify_signup", body.signup === false ? "off" : "on"],
+            ["notify_member", body.member === false ? "off" : "on"],
+            ["notify_bill", body.bill === false ? "off" : "on"],
+          ];
+          for (const [key, value] of pairs) {
+            await sqlQuery(env, "insert into settings (key, value) values ($1,$2) on conflict (key) do update set value = excluded.value", [key, value]);
+          }
+          await asActor(actor, () => logActivity(db, { event: "settings.notify", summary: "Notification settings updated", entity: "settings" }));
+          return json({ ok: true });
+        }
+      }
+
       // ---- Web team management (owner only) ----
       if (url.pathname === "/api/users" || url.pathname.startsWith("/api/users/")) {
         if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
