@@ -46,6 +46,18 @@ export type BillDetail = BillRow & {
 
 export type Member = { id: number; name: string; phone: string; role: "owner" | "staff"; active: boolean; pending: boolean };
 
+export type Customer = {
+  id: number;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  gstin: string | null;
+  email: string | null;
+  billCount: number;
+  billedPaise: number;
+  lastBillDate: string | null;
+};
+
 export type ClosingStockRow = {
   itemId: number;
   name: string;
@@ -208,6 +220,16 @@ export const api = {
   finYearReport: (finYear: string) => request<{ report: FinYearReport }>(`/api/reports/fin-year?fy=${finYear}`),
   dealProfits: (finYear: string) => request<{ deals: DealProfit[] }>(`/api/reports/deals?fy=${finYear}`),
   usage: () => request<{ usage: UsageRow[] }>("/api/usage"),
+  customers: (search?: string) =>
+    request<{ customers: Customer[] }>(`/api/customers${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+  saveCustomer: (body: { name: string; phone?: string; address?: string; gstin?: string; email?: string }) =>
+    request<{ customer: { id: number; name: string; phone: string | null } }>("/api/customers", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateCustomer: (id: number, body: { name: string; phone?: string; address?: string; gstin?: string; email?: string }) =>
+    request<{ customer: Customer }>(`/api/customers/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteCustomer: (id: number) => request<{ ok: boolean }>(`/api/customers/${id}`, { method: "DELETE" }),
   costingMethod: () => request<{ method: "WAC" | "FIFO" }>("/api/settings/costing"),
   setCostingMethod: (method: "WAC" | "FIFO") =>
     request<{ ok: boolean; method: string }>("/api/settings/costing", { method: "POST", body: JSON.stringify({ method }) }),

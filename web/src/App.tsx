@@ -6,6 +6,7 @@ import {
   type ActivityRow,
   type BillDetail,
   type BillRow,
+  type Customer,
   type DealProfit,
   type FinYearReport,
   type Item,
@@ -19,6 +20,7 @@ import ThemeToggle from "./ThemeToggle";
 import { watchSystemTheme } from "./theme";
 import EmptyState from "./components/EmptyState";
 import ItemPicker from "./components/ItemPicker";
+import CustomerPicker from "./components/CustomerPicker";
 import ItemThumb from "./components/ItemThumb";
 import SalesChart from "./components/SalesChart";
 import {
@@ -42,7 +44,7 @@ import {
   IconTeam,
 } from "./components/icons";
 
-type View = "dashboard" | "reports" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
+type View = "dashboard" | "reports" | "customers" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
 
 function IconEye() {
   return (
@@ -185,6 +187,10 @@ export default function App() {
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [loginPhotoOk, setLoginPhotoOk] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerMsg, setCustomerMsg] = useState<string | null>(null);
+  const [pickedCustomer, setPickedCustomer] = useState<Customer | null>(null);
   const [finYears, setFinYears] = useState<string[]>([]);
   const [finYear, setFinYear] = useState("");
   const [report, setReport] = useState<FinYearReport | null>(null);
@@ -274,6 +280,25 @@ export default function App() {
     };
   }, [user, view]);
 
+  /**
+   * The customer master (searchable) — used by the billing picker and the
+   * Customers screen. It is reloaded whenever one of those screens opens, so a
+   * client saved a moment ago is there straight away.
+   */
+  useEffect(() => {
+    if (!user || (view !== "customers" && view !== "billing")) return;
+    let cancelled = false;
+    api
+      .customers(customerSearch)
+      .then((res) => {
+        if (!cancelled) setCustomers(res.customers);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view, customerSearch]);
+
   /** The costing method in force (WAC by default). */  useEffect(() => {
     if (!user || user.role !== "owner" || view !== "settings") return;
     let cancelled = false;
@@ -354,6 +379,8 @@ export default function App() {
       setBillCustomer({ name: "", phone: "", email: "", gstin: "" });
       setBillDiscount("");
       setBillSaleExpenses("");
+      setPickedCustomer(null);
+      setCustomers((await api.customers(customerSearch)).customers);
       setBills((await api.bills()).bills);
       setItems((await api.items()).items);
     } catch (err) {
@@ -763,6 +790,10 @@ export default function App() {
       ],
     },
     {
+      heading: "Contacts",
+      links: [{ key: "customers", label: "Customers", icon: <IconTeam size={16} /> }],
+    },
+    {
       heading: "Money",
       links: [
         { key: "expenses", label: "Expenses", icon: <IconExpenses size={16} /> },
@@ -1105,6 +1136,83 @@ export default function App() {
           </section>
         )}
 
+        {view === "customers" && (
+          <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Customers</h1>
+                <p className="text-sm text-muted">Saved client details — picked by name when you bill.</p>
+              </div>
+              <input
+                className="input max-w-60"
+                placeholder="Search name, phone, GSTIN…"
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.currentTarget.value)}
+              />
+            </div>
+            <div className="card overflow-x-auto">
+              {customers.length === 0 ? (
+                <EmptyState
+                  illustration="invoices"
+                  title="No customers yet"
+                  message="Client details are saved automatically when you bill them."
+                  actionLabel="New bill"
+                  onAction={() => { setView("billing"); setBill(null); }}
+                />
+              ) : (
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th className="px-3 py-2">Customer</th>
+                      <th className="px-3 py-2">Phone</th>
+                      <th className="px-3 py-2">GSTIN</th>
+                      <th className="px-3 py-2 text-right">Bills</th>
+                      <th className="px-3 py-2 text-right">Billed</th>
+                      <th className="px-3 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((customer) => (
+                      <tr key={customer.id} className="border-t border-line">
+                        <td className="px-3 py-2 font-medium">
+                          <span className="flex items-center gap-2">
+                            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-[11px] font-semibold text-secondary-ink">
+                              {customer.name.trim().charAt(0).toUpperCase()}
+                            </span>
+                            {customer.name}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">{customer.phone ?? "—"}</td>
+                        <td className="px-3 py-2">{customer.gstin ?? "—"}</td>
+                        <td className="px-3 py-2 text-right">{customer.billCount}</td>
+                        <td className="px-3 py-2 text-right">{money(customer.billedPaise)}</td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            className="btn-mini btn-mini-danger"
+                            onClick={async () => {
+                              if (!window.confirm(`Remove ${customer.name} from the customer master?`)) return;
+                              try {
+                                await api.deleteCustomer(customer.id);
+                                setCustomers((await api.customers(customerSearch)).customers);
+                                setCustomerMsg(`${customer.name} removed`);
+                              } catch (err) {
+                                setCustomerMsg(err instanceof Error ? err.message : String(err));
+                              }
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            {customerMsg && <p role="status" className="text-sm text-muted">{customerMsg}</p>}
+          </section>
+        )}
+
         {view === "purchases" && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Purchases</h1>
@@ -1322,10 +1430,31 @@ export default function App() {
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">New Bill</h1>
             <div className="card max-w-3xl space-y-3 p-4">
               <div className="grid gap-2 sm:grid-cols-4">
+                <CustomerPicker
+                  customers={customers}
+                  value={pickedCustomer}
+                  onSearch={setCustomerSearch}
+                  onPick={(customer) => {
+                    setPickedCustomer(customer);
+                    setBillCustomer({
+                      name: customer.name,
+                      phone: customer.phone ?? "",
+                      email: customer.email ?? "",
+                      gstin: customer.gstin ?? "",
+                    });
+                  }}
+                />
                 <input className="input" placeholder="Customer name" value={billCustomer.name} onChange={(e) => setBillCustomer({ ...billCustomer, name: e.currentTarget.value })} />
                 <input className="input" placeholder="Phone" value={billCustomer.phone} onChange={(e) => setBillCustomer({ ...billCustomer, phone: e.currentTarget.value })} />
                 <input className="input" placeholder="Email (for bill)" value={billCustomer.email} onChange={(e) => setBillCustomer({ ...billCustomer, email: e.currentTarget.value })} />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-4">
                 <input className="input" placeholder="Customer GSTIN" value={billCustomer.gstin} onChange={(e) => setBillCustomer({ ...billCustomer, gstin: e.currentTarget.value })} />
+                <p className="self-center text-xs text-muted">
+                  {pickedCustomer
+                    ? "Saved client — their details are updated in the master with this bill."
+                    : "New client? Their details are saved into the customer master with this bill."}
+                </p>
               </div>
               <div className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
                 <ItemPicker

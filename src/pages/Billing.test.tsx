@@ -14,6 +14,10 @@ vi.mock("../db/client", () => ({
   pingDb: vi.fn(),
 }));
 vi.mock("../db/items", () => ({ listItems: vi.fn() }));
+vi.mock("../db/customers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../db/customers")>();
+  return { ...actual, listCustomers: vi.fn(async () => []) };
+});
 vi.mock("../db/billing", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../db/billing")>();
   return {

@@ -11,6 +11,11 @@ import {
   stockMovements,
 } from "./schema";
 import { logActivity } from "./activity";
+import {
+  customerSchema as customerMasterSchema,
+  saveCustomer,
+  type CustomerInput as CustomerMasterInput,
+} from "./customers";
 import { PAYMENT_MODES } from "./purchases";
 import { getCostingMethod, getCostPool, saveCostPool } from "./costing";
 import { billYear, formatBillNo, nextSequence } from "../logic/billNumber";
@@ -369,43 +374,20 @@ export async function cancelSaleBill(url: string, saleId: number): Promise<{ res
   });
 }
 
-export const customerSchema = z.object({
-  name: z.string().trim().min(1, "Customer name is required").max(80, "Customer name is too long"),
-  phone: z.string().trim().max(20, "Phone is too long").optional(),
-  address: z.string().trim().max(200, "Address is too long").optional(),
-  gstin: z.string().trim().max(20, "GSTIN is too long").optional(),
-  email: z.string().trim().max(120, "Email is too long").optional(),
-});
+export const customerSchema = customerMasterSchema;
+export type CustomerInput = CustomerMasterInput;
 
-export type CustomerInput = z.infer<typeof customerSchema>;
-
-/** Add a customer (used by the billing screen when a name is typed). */
+/**
+ * Save the customer into the master (matched by phone → GSTIN → name) and
+ * return it. Billing calls this for every bill, so the same client is never
+ * stored twice.
+ */
 export async function createCustomer(
   db: Db,
   input: unknown,
 ): Promise<{ id: number; name: string; phone: string | null }> {
-  const parsed = customerSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid customer");
-  }
-  const data = parsed.data;
-  const [created] = await db
-    .insert(customers)
-    .values({
-      name: data.name,
-      phone: data.phone?.trim() || null,
-      address: data.address?.trim() || null,
-      gstin: data.gstin?.trim().toUpperCase() || null,
-      email: data.email?.trim() || null,
-    })
-    .returning({ id: customers.id, name: customers.name, phone: customers.phone });
-  await logActivity(db, {
-    event: "customer.create",
-    summary: `Customer added: ${created.name}`,
-    entity: "customer",
-    entityId: created.id,
-  });
-  return created;
+  const saved = await saveCustomer(db, input);
+  return { id: saved.id, name: saved.name, phone: saved.phone };
 }
 
 export type SaleBillLineDetail = {

@@ -17,6 +17,7 @@ import { buildBillHtml } from "../../src/lib/printBill";
 import { logActivity } from "../../src/db/activity";
 import { createItem, deleteItem, updateItem } from "../../src/db/items";
 import { cancelSaleBill, createCustomer, createSaleBill } from "../../src/db/billing";
+import { deleteCustomer, listCustomers, updateCustomer } from "../../src/db/customers";
 import { addPurchase, deletePurchase } from "../../src/db/purchases";
 import { saveStockEntry } from "../../src/db/stock";
 import { createExpense, deleteExpense, updateExpense } from "../../src/db/expenses";
@@ -575,8 +576,26 @@ export default {
         return json({ ok: true });
       }
 
+      if (url.pathname === "/api/customers" && request.method === "GET") {
+        const search = url.searchParams.get("search") ?? undefined;
+        return json({ customers: await listCustomers(db, search) });
+      }
+
       if (url.pathname === "/api/customers" && request.method === "POST") {
         return json({ customer: await asActor(actor, () => createCustomer(db, body)) });
+      }
+
+      if (url.pathname.match(/^\/api\/customers\/\d+$/) && request.method === "PUT") {
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid customer id" }, { status: 400 });
+        return json({ customer: await asActor(actor, () => updateCustomer(db, id, body)) });
+      }
+
+      if (url.pathname.match(/^\/api\/customers\/\d+$/) && request.method === "DELETE") {
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid customer id" }, { status: 400 });
+        await asActor(actor, () => deleteCustomer(db, id));
+        return json({ ok: true });
       }
 
       if (url.pathname === "/api/expenses" && request.method === "POST") {

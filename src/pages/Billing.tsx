@@ -6,6 +6,7 @@ import {
   getSaleBill,
   type SaleBillDetail,
 } from "../db/billing";
+import { listCustomers } from "../db/customers";
 import { listItems, type ItemRow } from "../db/items";
 import { PAYMENT_MODES } from "../db/purchases";
 import { getShopDetails, type ShopDetails } from "../db/settings";
@@ -39,6 +40,7 @@ export default function Billing() {
   const [items, setItems] = useState<ItemRow[]>([]);
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [date, setDate] = useState(todayLocal);
+  const [customers, setCustomers] = useState<Awaited<ReturnType<typeof listCustomers>>>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
@@ -64,9 +66,14 @@ export default function Billing() {
   useEffect(() => {
     void (async () => {
       try {
-        const [itemRows, shopRow] = await Promise.all([listItems(db), getShopDetails(db)]);
+        const [itemRows, shopRow, customerRows] = await Promise.all([
+          listItems(db),
+          getShopDetails(db),
+          listCustomers(db),
+        ]);
         setItems(itemRows);
         setShop(shopRow);
+        setCustomers(customerRows);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -266,9 +273,18 @@ export default function Billing() {
               id="bill-customer"
               className="input w-full"
               placeholder="Name"
+              list="bill-customer-options"
               value={customerName}
               onChange={(e) => setCustomerName(e.currentTarget.value)}
             />
+            {/* Saved clients — pick one and the details fill in. */}
+            <datalist id="bill-customer-options">
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.name}>
+                  {customer.phone ?? ""}
+                </option>
+              ))}
+            </datalist>
           </div>
           <div className="space-y-1">
             <label className="label" htmlFor="bill-phone">

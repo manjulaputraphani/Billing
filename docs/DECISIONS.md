@@ -56,3 +56,6 @@
 - 2026-10-31 · Purchase expenses are prorated over the quantity still on hand when a pool is rebuilt · the transport paid for a purchase that was partly sold leaves with the sold part
 - 2026-10-31 · The chart uses pointer events with a short "recent touch" guard · a tap on a phone fires compatibility mouse events straight after, which were closing the tooltip again
 - 2026-10-31 · The item-thumbnail letter circles use the soft chip colours (sage/gold tint + dark ink) · the saturated sage and gold backgrounds failed WCAG AA for the letter
+- 2026-10-31 · `customers` is a real MASTER: one row per client, matched by phone → GSTIN → name · billing used to insert a new customer row for every bill, so the same client was stored again and again; now the details are updated in place (empty fields never wipe what is known)
+- 2026-10-31 · The phone is stored as digits only · "98765 43210" and "+91 9876543210" must find the same client in the master
+- 2026-10-31 · New web screen *Customers* (CONTACTS group) with search, bill count and billed total, plus a customer picker on the billing form · the client details are saved into the master with the bill, and a saved client can be picked instead of retyped
