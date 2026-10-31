@@ -15,7 +15,7 @@ import { listActivity } from "../../src/db/activity";
 import { getShopDetails, saveShopDetails } from "../../src/db/settings";
 import { buildBillHtml } from "../../src/lib/printBill";
 import { logActivity } from "../../src/db/activity";
-import { createItem, deleteItem } from "../../src/db/items";
+import { createItem, deleteItem, updateItem } from "../../src/db/items";
 import { cancelSaleBill, createCustomer, createSaleBill } from "../../src/db/billing";
 import { addPurchase, deletePurchase } from "../../src/db/purchases";
 import { saveStockEntry } from "../../src/db/stock";
@@ -451,6 +451,12 @@ export default {
 
       if (url.pathname === "/api/items" && request.method === "POST") {
         return json({ item: await asActor(actor, () => createItem(db, body)) });
+      }
+
+      if (url.pathname.startsWith("/api/items/") && request.method === "PUT") {
+        const id = Number(url.pathname.split("/").pop());
+        if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid item id" }, { status: 400 });
+        return json({ item: await asActor(actor, () => updateItem(db, id, body)) });
       }
 
       if (url.pathname.startsWith("/api/items/") && request.method === "DELETE") {

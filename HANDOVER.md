@@ -5,7 +5,7 @@ Tool: OpenCode
 
 ## Current task
 **Login workstream approved** (docs/PLAN_LOGIN.md) — NOT built yet. PIN login still works for now.
-Notifications complete (N1–N5, key optionally stored encrypted in DB). To send real mail: add RESEND_API_KEY + MAIL_FROM secrets. Next: port remaining desktop screens to web (Billing, Purchases, Stock, Expenses, Dashboard) or the charts/funds plan.: notify owners on signup/member changes and when staff create bills; web uses Resend (no SMTP). Live: https://sdhhe-api.blvphani.workers.dev (W1–W4e, W5, deployed).
+Notifications complete (N1–N5). Web now has New Bill + item add/edit (W4f); remaining web screens: Purchases, Stock Check, Expenses, Dashboard. To send real mail: add RESEND_API_KEY + MAIL_FROM secrets. Next: port remaining desktop screens to web (Billing, Purchases, Stock, Expenses, Dashboard) or the charts/funds plan.: notify owners on signup/member changes and when staff create bills; web uses Resend (no SMTP). Live: https://sdhhe-api.blvphani.workers.dev (W1–W4e, W5, deployed).
 
 ## Approved decisions (2026-10-31)
 - Login: type **phone + password** (min 6 chars, argon2id hash in DB).

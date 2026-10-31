@@ -73,6 +73,13 @@ export const api = {
   logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   me: () => request<{ user: User }>("/api/auth/me"),
   items: () => request<{ items: Item[] }>("/api/items"),
+  createItem: (body: { name: string; unit: string; category?: string; minStockBase: number }) =>
+    request<{ item: Item }>("/api/items", { method: "POST", body: JSON.stringify(body) }),
+  updateItem: (id: number, body: { name: string; unit: string; category?: string; minStockBase: number }) =>
+    request<{ item: Item }>(`/api/items/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  createCustomer: (body: { name: string; phone?: string; email?: string; gstin?: string; address?: string }) =>
+    request<{ customer: { id: number } }>("/api/customers", { method: "POST", body: JSON.stringify(body) }),
+  createBill: (body: Record<string, unknown>) => request<{ bill: { saleId: number; billNo: string; totalPaise: number } }>("/api/bills", { method: "POST", body: JSON.stringify(body) }),
   bills: () => request<{ bills: BillRow[] }>("/api/bills?limit=100"),
   bill: (id: number) => request<{ bill: BillDetail }>(`/api/bills/${id}`),
   activity: () => request<{ activity: ActivityRow[] }>("/api/activity?limit=25"),

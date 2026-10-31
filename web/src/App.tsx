@@ -13,7 +13,7 @@ import {
 import { buildBillHtml } from "../../src/lib/printBill";
 import type { ShopDetails } from "../../src/db/settings";
 
-type View = "bills" | "items" | "activity" | "team" | "settings";
+type View = "bills" | "billing" | "items" | "activity" | "team" | "settings";
 
 export default function App() {
   const [checking, setChecking] = useState(true);
@@ -37,6 +37,17 @@ export default function App() {
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [notifyStatus, setNotifyStatus] = useState<string | null>(null);
   const [resendKey, setResendKey] = useState("");
+  const [itemForm, setItemForm] = useState<{ id: number | null; name: string; unit: string; category: string; minStock: string } | null>(null);
+  const [itemsMsg, setItemsMsg] = useState<string | null>(null);
+  const [billCustomer, setBillCustomer] = useState({ name: "", phone: "", email: "", gstin: "" });
+  const [billDate, setBillDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [billMode, setBillMode] = useState("Cash");
+  const [billGst, setBillGst] = useState("500");
+  const [billDiscount, setBillDiscount] = useState("");
+  const [draft, setDraft] = useState({ itemId: "" as number | "", qty: "", rate: "", hsn: "" });
+  const [billLines, setBillLines] = useState<{ itemId: number; name: string; unit: string; qtyBase: number; ratePaise: number; hsn: string; totalPaise: number }[]>([]);
+  const [billMsg, setBillMsg] = useState<string | null>(null);
+  const [lastBillId, setLastBillId] = useState<number | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [phone, setPhone] = useState("");
@@ -58,6 +69,80 @@ export default function App() {
       .catch(() => setUser(null))
       .finally(() => setChecking(false));
   }, []);
+
+  function addBillLine() {
+    const item = items.find((i) => i.id === draft.itemId);
+    if (!item) return;
+    const qty = Number(draft.qty);
+    const rate = Math.round(Number(draft.rate) * 100);
+    if (!(qty > 0) || !(rate >= 0)) return;
+    const factor = item.unit === "kg" || item.unit === "l" ? 1000 : 1;
+    const qtyBase = Math.round(qty * factor);
+    setBillLines([...billLines, { itemId: item.id, name: item.name, unit: item.unit, qtyBase, ratePaise: rate, hsn: draft.hsn.trim(), totalPaise: Math.round((qtyBase * rate) / factor) }]);
+    setDraft({ itemId: "", qty: "", rate: "", hsn: "" });
+  }
+
+  const billSubtotal = billLines.reduce((sum, l) => sum + l.totalPaise, 0);
+  const billDiscountPaise = Math.round(Number(billDiscount || "0") * 100);
+  const billTaxable = Math.max(0, billSubtotal - billDiscountPaise);
+  const billGstPaise = Math.round((billTaxable * Number(billGst || "0")) / 10000);
+  const billTotal = billTaxable + billGstPaise;
+
+  async function saveBill() {
+    setBillMsg(null);
+    if (billLines.length === 0) {
+      setBillMsg("Add at least one item");
+      return;
+    }
+    if (billMode === "Credit" && !billCustomer.name.trim()) {
+      setBillMsg("Customer name is required for a credit bill");
+      return;
+    }
+    try {
+      let customerId: number | undefined;
+      if (billCustomer.name.trim()) {
+        customerId = (await api.createCustomer(billCustomer)).customer.id;
+      }
+      const res = await api.createBill({
+        customerId,
+        date: billDate,
+        paymentMode: billMode,
+        discountPaise: billDiscountPaise,
+        gstPaise: billGstPaise,
+        gstRateBp: Number(billGst),
+        lines: billLines.map((l) => ({ itemId: l.itemId, qtyBase: l.qtyBase, unitPricePaise: l.ratePaise, hsnCode: l.hsn || undefined })),
+      });
+      setBillMsg(`Bill ${res.bill.billNo} created — ${money(res.bill.totalPaise)}`);
+      setLastBillId(res.bill.saleId);
+      setBillLines([]);
+      setBillCustomer({ name: "", phone: "", email: "", gstin: "" });
+      setBillDiscount("");
+      setBills((await api.bills()).bills);
+      setItems((await api.items()).items);
+    } catch (err) {
+      setBillMsg(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function saveItem() {
+    if (!itemForm) return;
+    setItemsMsg(null);
+    try {
+      const body = {
+        name: itemForm.name,
+        unit: itemForm.unit,
+        category: itemForm.category,
+        minStockBase: 0,
+      };
+      if (itemForm.id === null) await api.createItem(body);
+      else await api.updateItem(itemForm.id, body);
+      setItemForm(null);
+      setItems((await api.items()).items);
+      setItemsMsg("Saved");
+    } catch (err) {
+      setItemsMsg(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   async function loadNotify() {
     const cfg = await api.notifySettings();
@@ -271,6 +356,7 @@ export default function App() {
 
   const tabs: { key: View; label: string }[] = [
     { key: "bills", label: "Invoices" },
+    { key: "billing", label: "New Bill" },
     { key: "items", label: "Items" },
     { key: "activity", label: "Activity" },
     ...(user.role === "owner"
@@ -388,9 +474,79 @@ export default function App() {
           </section>
         )}
 
+        {view === "billing" && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">New Bill</h1>
+            <div className="card max-w-3xl space-y-3 p-4">
+              <div className="grid gap-2 sm:grid-cols-4">
+                <input className="input" placeholder="Customer name" value={billCustomer.name} onChange={(e) => setBillCustomer({ ...billCustomer, name: e.currentTarget.value })} />
+                <input className="input" placeholder="Phone" value={billCustomer.phone} onChange={(e) => setBillCustomer({ ...billCustomer, phone: e.currentTarget.value })} />
+                <input className="input" placeholder="Email (for bill)" value={billCustomer.email} onChange={(e) => setBillCustomer({ ...billCustomer, email: e.currentTarget.value })} />
+                <input className="input" placeholder="Customer GSTIN" value={billCustomer.gstin} onChange={(e) => setBillCustomer({ ...billCustomer, gstin: e.currentTarget.value })} />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
+                <select className="input" value={draft.itemId} onChange={(e) => setDraft({ ...draft, itemId: e.currentTarget.value === "" ? "" : Number(e.currentTarget.value) })}>
+                  <option value="">Choose item…</option>
+                  {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+                <input className="input" type="number" placeholder={`Qty (${items.find((i) => i.id === draft.itemId)?.unit ?? "unit"})`} value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: e.currentTarget.value })} />
+                <input className="input" type="number" placeholder="Rate ₹" value={draft.rate} onChange={(e) => setDraft({ ...draft, rate: e.currentTarget.value })} />
+                <input className="input" placeholder="HSN" value={draft.hsn} onChange={(e) => setDraft({ ...draft, hsn: e.currentTarget.value })} />
+                <button className="btn btn-primary" onClick={addBillLine}>Add</button>
+              </div>
+              {billLines.length > 0 && (
+                <table className="w-full min-w-[520px] text-left text-sm">
+                  <thead><tr><th className="px-2 py-1">Item</th><th className="px-2 py-1">Qty</th><th className="px-2 py-1 text-right">Amount</th><th /></tr></thead>
+                  <tbody>{billLines.map((l, idx) => (
+                    <tr key={idx} className="border-t border-stone-100">
+                      <td className="px-2 py-1">{l.name}</td>
+                      <td className="px-2 py-1">{qty(l.qtyBase, l.unit)}</td>
+                      <td className="px-2 py-1 text-right">{money(l.totalPaise)}</td>
+                      <td className="px-2 py-1 text-right"><button className="text-xs underline" onClick={() => setBillLines(billLines.filter((_, i) => i !== idx))}>Remove</button></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              )}
+              <div className="grid gap-2 sm:grid-cols-5">
+                <input className="input" type="number" placeholder="Discount ₹" value={billDiscount} onChange={(e) => setBillDiscount(e.currentTarget.value)} />
+                <select className="input" value={billGst} onChange={(e) => setBillGst(e.currentTarget.value)}>
+                  <option value="0">GST 0%</option><option value="500">GST 5%</option><option value="1200">GST 12%</option><option value="1800">GST 18%</option><option value="2800">GST 28%</option>
+                </select>
+                <select className="input" value={billMode} onChange={(e) => setBillMode(e.currentTarget.value)}>
+                  <option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option>
+                </select>
+                <input className="input" type="date" value={billDate} onChange={(e) => setBillDate(e.currentTarget.value)} />
+                <button className="btn btn-primary" onClick={() => void saveBill()}>Save bill</button>
+              </div>
+              <p className="text-sm text-stone-600">Subtotal {money(billSubtotal)} · GST {money(billGstPaise)} · <b>Total {money(billTotal)}</b></p>
+              {billMsg && <p role="status" className="rounded bg-stone-50 px-3 py-2 text-sm">{billMsg}</p>}
+              {lastBillId && <button className="btn" style={{ border: "1px solid #d6d3d1", background: "#fff" }} onClick={() => void openBill(lastBillId).then(() => setView("bills"))}>View last bill</button>}
+            </div>
+          </section>
+        )}
+
         {view === "items" && (
           <section className="space-y-4">
-            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Items</h1>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Items</h1>
+              <button className="btn btn-primary" onClick={() => setItemForm({ id: null, name: "", unit: "kg", category: "", minStock: "" })}>Add item</button>
+            </div>
+            {itemForm && (
+              <div className="card max-w-3xl space-y-2 p-4">
+                <div className="grid gap-2 sm:grid-cols-4">
+                  <input className="input" placeholder="Item name" value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.currentTarget.value })} />
+                  <select className="input" value={itemForm.unit} onChange={(e) => setItemForm({ ...itemForm, unit: e.currentTarget.value })}>
+                    <option value="kg">kg</option><option value="l">l</option><option value="pcs">pcs</option>
+                  </select>
+                  <input className="input" placeholder="Category" value={itemForm.category} onChange={(e) => setItemForm({ ...itemForm, category: e.currentTarget.value })} />
+                  <div className="flex gap-2">
+                    <button className="btn btn-primary" onClick={() => void saveItem()}>Save</button>
+                    <button className="text-sm underline" onClick={() => setItemForm(null)}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {itemsMsg && <p role="status" className="text-sm text-stone-600">{itemsMsg}</p>}
             <div className="card overflow-x-auto">
               <table className="w-full min-w-[560px] text-left text-sm">
                 <thead>
@@ -399,6 +555,7 @@ export default function App() {
                     <th className="px-3 py-2">Unit</th>
                     <th className="px-3 py-2">Category</th>
                     <th className="px-3 py-2 text-right">Stock left</th>
+                    <th className="px-3 py-2" />
                   </tr>
                 </thead>
                 <tbody>
@@ -408,6 +565,9 @@ export default function App() {
                       <td className="px-3 py-2">{item.unit}</td>
                       <td className="px-3 py-2">{item.category ?? "—"}</td>
                       <td className="px-3 py-2 text-right">{qty(item.stockLeftBase, item.unit)}</td>
+                      <td className="px-3 py-2 text-right">
+                        <button className="text-sm underline" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "" })}>Edit</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
