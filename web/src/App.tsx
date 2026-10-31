@@ -557,9 +557,11 @@ export default function App() {
           <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-[8px] font-bold tracking-wider text-white">
             SDHHE
           </span>
-          <span className="text-[10.5px] font-semibold uppercase leading-snug tracking-wider text-white">
-            SREE DURGA HARIHARA ENTERPRISES
-          </span>
+          <div className="brand-strip min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+            <span>
+              SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;
+            </span>
+          </div>
         </div>
         <nav className="flex flex-col gap-1">
           {tabs.map((tab) => (
@@ -580,9 +582,11 @@ export default function App() {
 
       <div className="md:hidden">
         <header className="flex items-center justify-between gap-2 bg-stone-900 px-4 pb-1 pt-3 text-stone-100">
-          <span className="text-[10px] font-semibold uppercase leading-snug tracking-wider">
-            SREE DURGA HARIHARA ENTERPRISES
-          </span>
+          <div className="brand-strip min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-[0.14em]">
+            <span>
+              SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;SREE DURGA HARIHARA ENTERPRISES&nbsp;&nbsp;·&nbsp;&nbsp;
+            </span>
+          </div>
           <button className="shrink-0 text-xs underline" onClick={() => void api.logout().then(() => setUser(null))}>
             Sign out
           </button>
