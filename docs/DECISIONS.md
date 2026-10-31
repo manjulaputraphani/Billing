@@ -51,3 +51,4 @@
 - 2026-10-31 · Sidebar links grouped into SALES / INVENTORY / MONEY / ADMIN with one inline-SVG icon set (Lucide-style, hand-written) · no icon library (the bundle stays small); the ADMIN group is owner-only
 - 2026-10-31 · Coffee-bean sidebar texture is an inline SVG data-URI on a `::before` layer at 4–5 % opacity, behind the text · no image file, and the text contrast is unchanged
 - 2026-10-31 · The 14-day chart draws its own y-axis (₹0 … max, Indian short form ₹1,200 / ₹1.2L) with 4 gridlines, and bars with a value of 0 are not rendered · a zero stub reads as "there was activity"; the tooltip shows on hover and on tap for the future Android app
+- 2026-10-31 · The desktop rail is `sticky top-0 h-screen` and the mobile navigation moved into a side drawer · the rail no longer scrolls away with the page; below 768 px the header shows icons only (menu / theme / sign out) and the grouped nav opens as a left drawer that closes when a link is picked

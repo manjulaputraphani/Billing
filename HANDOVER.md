@@ -31,6 +31,8 @@ Both editions share the coffee theme, weighted-average costing, FY reports and l
   name, faint coffee-bean texture, `EmptyState` component, split sign-in page (photo left, form right).
 - **Item thumbnails**: `items.image_url` (nullable) + optional image link in the item form; 40×40
   thumbnails in the Items list and the New Bill picker (letter circle when there is no image).
+- **Navigation**: the desktop rail is sticky (stays while the page scrolls); below 768 px the header
+  is icon-only and the grouped nav opens as a left drawer that closes when a link is picked.
 - DB migrated additively; cost pools backfilled. Required test case verified: avg ₹102.33/kg,
   gross ₹153.33, net ₹113.33, 280 kg left.
 

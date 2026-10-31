@@ -24,6 +24,7 @@ import SalesChart from "./components/SalesChart";
 import {
   IconActivity,
   IconBill,
+  IconClose,
   IconCoffee as IconCoffeeNav,
   IconDashboard,
   IconExpenses,
@@ -31,10 +32,12 @@ import {
   IconInvestments,
   IconInvoice,
   IconItems,
+  IconMenu,
   IconPlus,
   IconPurchases,
   IconReports,
   IconSettings,
+  IconSignOut,
   IconStock,
   IconTeam,
 } from "./components/icons";
@@ -181,6 +184,7 @@ export default function App() {
   const [signupStatus, setSignupStatus] = useState<string | null>(null);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [loginPhotoOk, setLoginPhotoOk] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [finYears, setFinYears] = useState<string[]>([]);
   const [finYear, setFinYear] = useState("");
   const [report, setReport] = useState<FinYearReport | null>(null);
@@ -772,11 +776,11 @@ export default function App() {
         ]
       : []),
   ];
-  const tabs = navGroups.flatMap((group) => group.links);
 
   return (
     <div className="min-h-screen md:flex">
-      <aside className="nav-texture hidden w-60 shrink-0 flex-col bg-nav px-3 py-5 text-nav-text md:flex">
+      {/* Desktop: the rail is sticky, so it stays put while the page scrolls */}
+      <aside className="nav-texture sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto bg-nav px-3 py-5 text-nav-text md:flex">
         <div className="relative z-10 mb-6 flex items-start gap-3 px-2">
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-nav-text/15 text-nav-text">
             <IconCoffeeNav />
@@ -823,34 +827,103 @@ export default function App() {
         </div>
       </aside>
 
+      {/* Mobile: icon-only header + a side drawer that opens when the menu is tapped */}
       <div className="md:hidden">
-        <header className="flex items-center justify-between gap-2 bg-nav px-4 pb-1 pt-3 text-nav-text">
-          <div className="flex min-w-0 flex-1 items-start gap-2">
-            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-nav-text/15 text-nav-text">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-nav px-3 py-2 text-nav-text">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-nav-text/15 text-nav-text">
               <IconCoffeeNav />
             </span>
-            <p className="min-w-0 flex-1 text-[9px] font-semibold uppercase leading-[1.3] tracking-[0.12em]">
+            <p className="min-w-0 text-[9px] font-semibold uppercase leading-[1.3] tracking-[0.12em]">
               SREE DURGA HARIHARA
               <br />
               ENTERPRISES
             </p>
           </div>
-          <ThemeToggle onDark className="shrink-0" />
-          <button className="shrink-0 text-xs underline" onClick={() => void api.logout().then(() => setUser(null))}>
-            Sign out
-          </button>
-        </header>
-        <nav className="flex gap-1 overflow-x-auto bg-nav px-2 pb-2">
-          {tabs.map((tab) => (
+          <div className="flex shrink-0 items-center gap-1">
+            <ThemeToggle onDark />
             <button
-              key={tab.key}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm ${view === tab.key ? "bg-nav-active font-medium text-nav-text" : "text-nav-muted"}`}
-              onClick={() => { setView(tab.key); setBill(null); }}
+              type="button"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              className="grid size-8 place-items-center rounded-lg text-nav-text hover:bg-nav-hover"
+              onClick={() => setMenuOpen((open) => !open)}
             >
-              {tab.label}
+              {menuOpen ? <IconClose size={18} /> : <IconMenu size={18} />}
             </button>
-          ))}
-        </nav>
+            <button
+              type="button"
+              aria-label="Sign out"
+              className="grid size-8 place-items-center rounded-lg text-nav-text hover:bg-nav-hover"
+              onClick={() => void api.logout().then(() => setUser(null))}
+            >
+              <IconSignOut size={17} />
+            </button>
+          </div>
+        </header>
+
+        {menuOpen ? (
+          <>
+            <button
+              type="button"
+              aria-label="Close menu"
+              className="fixed inset-0 z-40 cursor-default bg-[#1C1612]/50"
+              onClick={() => setMenuOpen(false)}
+            />
+            <aside className="nav-texture fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto bg-nav px-3 py-4 text-nav-text">
+              <div className="relative z-10 mb-5 flex items-start gap-3 px-2">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-nav-text/15 text-nav-text">
+                  <IconCoffeeNav />
+                </span>
+                <p className="min-w-0 flex-1 text-[10px] font-semibold uppercase leading-[1.35] tracking-[0.12em]">
+                  SREE DURGA HARIHARA
+                  <br />
+                  ENTERPRISES
+                </p>
+              </div>
+              <nav className="relative z-10 flex flex-col gap-4">
+                {navGroups.map((group, groupIndex) => (
+                  <div key={group.heading ?? `drawer-${groupIndex}`}>
+                    {group.heading ? (
+                      <p className="mb-1 px-3 text-[9.5px] font-semibold uppercase tracking-[0.16em] text-nav-muted/80">
+                        {group.heading}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-col gap-0.5">
+                      {group.links.map((link) => (
+                        <button
+                          key={link.key}
+                          className={`flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm ${
+                            view === link.key
+                              ? "bg-nav-active font-medium text-nav-text"
+                              : "text-nav-muted hover:bg-nav-hover hover:text-nav-text"
+                          }`}
+                          onClick={() => {
+                            setView(link.key);
+                            setBill(null);
+                            setMenuOpen(false);
+                          }}
+                        >
+                          <span className="shrink-0 opacity-90">{link.icon}</span>
+                          {link.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </nav>
+              <div className="relative z-10 mt-auto space-y-2 px-2 pt-6 text-[11px]">
+                <p className="text-nav-muted">{user.name} · {user.role}</p>
+                <button
+                  className="flex items-center gap-1.5 text-nav-muted underline"
+                  onClick={() => void api.logout().then(() => setUser(null))}
+                >
+                  <IconSignOut size={14} /> Sign out
+                </button>
+              </div>
+            </aside>
+          </>
+        ) : null}
       </div>
 
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">

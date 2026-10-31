@@ -142,3 +142,26 @@ export const IconImage = (p: IconProps) => (
     <path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21" />
   </Svg>
 );
+
+export const IconMenu = (p: IconProps) => (
+  <Svg {...p}>
+    <line x1="4" x2="20" y1="6" y2="6" />
+    <line x1="4" x2="20" y1="12" y2="12" />
+    <line x1="4" x2="20" y1="18" y2="18" />
+  </Svg>
+);
+
+export const IconClose = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </Svg>
+);
+
+export const IconSignOut = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m16 17 5-5-5-5" />
+    <path d="M21 12H9" />
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+  </Svg>
+);
