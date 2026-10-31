@@ -25,6 +25,18 @@ import { setAuditActor, type AuditActor } from "../../src/db/activity";
 import { endSession, SESSION_MAX_SECONDS, startSession, userUsageMetrics } from "../../src/db/sessions";
 import { getCostingMethod, setCostingMethod } from "../../src/db/costing";
 import { finYearOptions, finYearReport, dealProfits, batchLedger } from "../../src/db/reports";
+import { getRoleMatrix, loadPermissionsForRole, saveRolePermissions } from "../../src/db/permissions";
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  MODULES,
+  isModule,
+  isRole,
+  allowed,
+  type ModuleKey,
+  type PermissionAction,
+  type Role,
+  type RolePermissions,
+} from "../../src/logic/permissions";
 
 export interface Env {
   DATABASE_URL?: string;
@@ -46,7 +58,58 @@ function currentFinYear(): string {
   return `${year}-${String(year + 1).slice(-2)}`;
 }
 
-type Session = { uid: number; name: string; role: "owner" | "staff"; exp: number };
+type Session = { uid: number; name: string; role: Role; exp: number; until?: string | null };
+
+function normalizeRole(value: unknown): Role {
+  return value === "owner" ? "owner" : value === "ca" ? "ca" : "staff";
+}
+
+/** Which module + permission does this API request need? `null` = authenticated only. */
+function routePermission(
+  pathname: string,
+  method: string,
+): { module: ModuleKey; action: PermissionAction } | null {
+  const read = method === "GET";
+  if (pathname === "/api/items") return { module: "items", action: read ? "view" : "create" };
+  if (/^\/api\/items\/\d+$/.test(pathname)) return { module: "items", action: method === "DELETE" ? "delete" : "edit" };
+  if (/^\/api\/items\/\d+\/batches(\/ledger)?$/.test(pathname)) return { module: "items", action: "view" };
+
+  if (pathname === "/api/bills") {
+    return read ? { module: "bills", action: "view" } : { module: "billing", action: "create" };
+  }
+  if (/^\/api\/bills\/\d+$/.test(pathname)) return { module: "bills", action: "view" };
+  if (/^\/api\/bills\/\d+\/cancel$/.test(pathname)) return { module: "bills", action: "edit" };
+  if (/^\/api\/bills\/\d+\/payment$/.test(pathname)) return { module: "bills", action: "edit" };
+  if (/^\/api\/bills\/\d+\/email$/.test(pathname)) return { module: "bills", action: "export" };
+
+  if (pathname === "/api/expenses") return { module: "expenses", action: read ? "view" : "create" };
+  if (/^\/api\/expenses\/\d+$/.test(pathname)) return { module: "expenses", action: method === "DELETE" ? "delete" : "edit" };
+
+  if (pathname === "/api/purchases") return { module: "purchases", action: read ? "view" : "create" };
+  if (/^\/api\/purchases\/\d+$/.test(pathname)) return { module: "purchases", action: "delete" };
+
+  if (pathname === "/api/stock") return { module: "stock", action: read ? "view" : "create" };
+
+  if (pathname === "/api/customers") return { module: "customers", action: read ? "view" : "create" };
+  if (/^\/api\/customers\/\d+$/.test(pathname)) return { module: "customers", action: method === "DELETE" ? "delete" : "edit" };
+
+  if (pathname === "/api/investments") return { module: "investments", action: read ? "view" : "create" };
+  if (/^\/api\/investments\/\d+$/.test(pathname)) return { module: "investments", action: "delete" };
+
+  if (pathname.startsWith("/api/reports/")) return { module: "reports", action: "view" };
+  if (pathname === "/api/activity") return { module: "activity", action: "view" };
+  if (pathname === "/api/usage") return { module: "team", action: "view" };
+  if (pathname === "/api/users") return { module: "team", action: read ? "view" : "create" };
+  if (pathname.startsWith("/api/users/")) return { module: "team", action: "edit" };
+  if (pathname === "/api/roles") return { module: "team", action: read ? "view" : "edit" };
+
+  if (pathname === "/api/settings/costing") return { module: "settings", action: read ? "view" : "edit" };
+  if (pathname.startsWith("/api/settings/notifications")) return { module: "settings", action: read ? "view" : "edit" };
+  if (pathname === "/api/shop") return read ? null : { module: "settings", action: "edit" };
+  if (pathname === "/api/stats" || pathname.startsWith("/api/stats/")) return { module: "dashboard", action: "view" };
+
+  return null;
+}
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
@@ -208,9 +271,9 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
 
   const sql = neon(env.DATABASE_URL as string);
   const rows = (await sql`
-    select id, name, phone, password_hash, role, active, pending
+    select id, name, phone, password_hash, role, active, pending, access_until
     from app_users where phone = ${phone.phone} limit 1
-  `) as { id: number; name: string; password_hash: string; role: string; active: boolean; pending: boolean }[];
+  `) as { id: number; name: string; password_hash: string; role: string; active: boolean; pending: boolean; access_until: string | null }[];
 
   const user = rows[0];
   if (!user) {
@@ -222,6 +285,11 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
   }
   if (!user.active) {
     return json({ error: "This account is disabled — ask the owner" }, { status: 403 });
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  if (user.access_until && user.access_until < today) {
+    await sql`update app_users set active = false where id = ${user.id}`;
+    return json({ error: "Access expired — ask the owner" }, { status: 403 });
   }
 
   let valid = false;
@@ -239,14 +307,16 @@ async function login(request: Request, env: Env, url: URL): Promise<Response> {
   const session: Session = {
     uid: Number(user.id),
     name: String(user.name),
-    role: user.role === "owner" ? "owner" : "staff",
+    role: user.role === "owner" ? "owner" : user.role === "ca" ? "ca" : "staff",
     exp: Date.now() + SESSION_HOURS * 3600_000,
+    until: user.access_until ?? null,
   };
   const token = await createToken(session, env.SESSION_SECRET as string);
   // Track the session so the activity log knows who was in and for how long.
   await startSession(getDb(env.DATABASE_URL as string), session.uid, "web", session.name);
+  const permissions = await loadPermissionsForRole(getDb(env.DATABASE_URL as string), session.role);
   return json(
-    { user: { id: session.uid, name: session.name, role: session.role } },
+    { user: { id: session.uid, name: session.name, role: session.role, permissions } },
     { headers: { "Set-Cookie": sessionCookie(token, url) } },
   );
 }
@@ -389,7 +459,12 @@ export default {
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       const session = await readSession(request, env.SESSION_SECRET);
       if (!session) return json({ error: "Not signed in" }, { status: 401 });
-      return json({ user: { id: session.uid, name: session.name, role: session.role } });
+      const today = new Date().toISOString().slice(0, 10);
+      if (session.until && session.until < today) {
+        return json({ error: "Access expired — ask the owner" }, { status: 401 });
+      }
+      const permissions = await loadPermissionsForRole(getDb(env.DATABASE_URL as string), session.role);
+      return json({ user: { id: session.uid, name: session.name, role: session.role, permissions } });
     }
 
     if (url.pathname === "/api/auth/signup" && request.method === "POST") {
@@ -421,7 +496,20 @@ export default {
     const session = await readSession(request, env.SESSION_SECRET);
     if (!session) return json({ error: "Not signed in" }, { status: 401 });
 
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (session.until && session.until < todayIso) {
+      return json({ error: "Access expired — ask the owner" }, { status: 401 });
+    }
+
     const db = getDb(env.DATABASE_URL as string);
+    const permissions = await loadPermissionsForRole(db, session.role);
+    const needed = routePermission(url.pathname, request.method);
+    if (needed && !allowed(permissions, needed.module, needed.action)) {
+      return json(
+        { error: `Not allowed: ${needed.module} ${needed.action}` },
+        { status: 403 },
+      );
+    }
     try {
       if (url.pathname === "/api/_txn-test" && request.method === "GET") {
         const rows = await withTransaction(env.DATABASE_URL as string, (tx) =>
@@ -499,8 +587,12 @@ export default {
       }
 
       if (url.pathname === "/api/usage" && request.method === "GET") {
-        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         return json({ usage: await userUsageMetrics(db) });
+      }
+
+      if (url.pathname === "/api/roles" && request.method === "GET") {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+        return json({ roles: await getRoleMatrix(db) });
       }
 
       if (url.pathname === "/api/settings/costing" && request.method === "GET") {
@@ -508,7 +600,6 @@ export default {
       }
 
       if (url.pathname === "/api/settings/costing" && request.method === "POST") {
-        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         const body = (await request.json().catch(() => ({}))) as { method?: string };
         const method = body.method === "FIFO" ? "FIFO" : "WAC";
         await setCostingMethod(db, method);
@@ -521,7 +612,6 @@ export default {
       }
 
       if (url.pathname === "/api/investments") {
-        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         if (request.method === "GET") {
           const rows = await sqlQuery(env, `select id, investor_name, amount_paise, invested_on::text as invested_on, note from investments order by invested_on desc, id desc`);
           const [tot] = await sqlQuery(env, `select coalesce(sum(amount_paise),0)::bigint as total from investments`);
@@ -572,6 +662,20 @@ export default {
         ? await request.json().catch(() => ({}))
         : {};
 
+      if (url.pathname === "/api/roles" && (request.method === "POST" || request.method === "PUT")) {
+        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
+        const role = normalizeRole((body as { role?: unknown }).role);
+        if (role === "owner") {
+          return json({ error: "Owner permissions cannot be changed" }, { status: 400 });
+        }
+        const input = (body as { permissions?: RolePermissions }).permissions;
+        if (!input || typeof input !== "object") {
+          return json({ error: "Permissions are required" }, { status: 400 });
+        }
+        const saved = await asActor(actor, () => saveRolePermissions(db, role, input));
+        return json({ role, permissions: saved });
+      }
+
       if (url.pathname === "/api/items" && request.method === "POST") {
         return json({ item: await asActor(actor, () => createItem(db, body)) });
       }
@@ -583,7 +687,6 @@ export default {
       }
 
       if (url.pathname.startsWith("/api/items/") && request.method === "DELETE") {
-        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         const id = Number(url.pathname.split("/").pop());
         if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid item id" }, { status: 400 });
         await asActor(actor, () => deleteItem(db, id));
@@ -630,7 +733,6 @@ export default {
       }
 
       if (url.pathname === "/api/investments" && request.method === "POST") {
-        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         const investorName = String(body.investorName ?? "").trim();
         const amountPaise = Number(body.amountPaise ?? 0);
         const date = String(body.date ?? "");
@@ -643,7 +745,6 @@ export default {
       }
 
       if (url.pathname.startsWith("/api/investments/") && request.method === "DELETE") {
-        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         const id = Number(url.pathname.split("/").pop());
         if (!Number.isInteger(id) || id <= 0) return json({ error: "Invalid id" }, { status: 400 });
         await sqlQuery(env, `delete from investments where id = $1`, [id]);
@@ -656,9 +757,8 @@ export default {
         return json({ ok: true });
       }
 
-      // ---- N1 notification settings (owner only) ----
+      // ---- N1 notification settings ----
       if (url.pathname.startsWith("/api/settings/notifications")) {
-        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         const shop = await getShopDetails(db);
         if (url.pathname === "/api/settings/notifications" && request.method === "GET") {
           const rows = await sqlQuery(env, "select key, value from settings where key in ('notify_emails','notify_signup','notify_member','notify_bill')");
@@ -704,12 +804,19 @@ export default {
         }
       }
 
-      // ---- Web team management (owner only) ----
+      // ---- Web team management (team permissions) ----
       if (url.pathname === "/api/users" || url.pathname.startsWith("/api/users/")) {
-        if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
 
           if (url.pathname === "/api/users" && request.method === "GET") {
-            const rows = await sqlQuery(env, `select id, name, phone, role, active, pending from app_users order by id`);
+            // Access-until is enforced lazily: expired accounts become inactive.
+            await sqlQuery(
+              env,
+              "update app_users set active = false where access_until is not null and access_until < current_date and active = true",
+            );
+            const rows = await sqlQuery(
+              env,
+              `select id, name, phone, role, active, pending, access_until::text as "accessUntil" from app_users order by id`,
+            );
             return json({ users: rows });
           }
 
@@ -718,7 +825,9 @@ export default {
             const name = String(body.name ?? "").trim();
             const phone = normalizePhone(String(body.phone ?? ""));
             const password = String(body.password ?? "");
-            const role = body.role === "owner" ? "owner" : "staff";
+            const role = normalizeRole(body.role);
+            const rawUntil = String(body.accessUntil ?? "").trim();
+            const accessUntil = /^\d{4}-\d{2}-\d{2}$/.test(rawUntil) ? rawUntil : null;
             if (!name) return json({ error: "Name is required" }, { status: 400 });
             if (!phone.valid) return json({ error: phone.reason }, { status: 400 });
             const pw = validatePassword(password);
@@ -727,10 +836,10 @@ export default {
             if (existing.length) return json({ error: "That phone number already has an account" }, { status: 400 });
             const created = await sqlQuery(
               env,
-              `insert into app_users (name, phone, password_hash, role) values ($1,$2,$3,$4) returning id, name, phone, role, active`,
-              [name, phone.phone, hashPasswordPhc(password), role],
+              `insert into app_users (name, phone, password_hash, role, access_until) values ($1,$2,$3,$4,$5) returning id, name, phone, role, active, access_until::text as "accessUntil"`,
+              [name, phone.phone, hashPasswordPhc(password), role, accessUntil],
             );
-            await asActor(actor, () => logActivity(db, { event: "user.create", summary: `Member added: ${name} (${role})`, entity: "user", entityId: Number(created[0].id) }));
+            await asActor(actor, () => logActivity(db, { event: "user.create", summary: `Member added: ${name} (${role})${accessUntil ? ` until ${accessUntil}` : ""}`, entity: "user", entityId: Number(created[0].id) }));
             await notifyOwners(env, "member", `Member added — ${name}`, `<p><b>${name}</b> (${phone.phone}) was added as ${role} by ${session.name}.</p>`);
             return json({ user: created[0] });
           }
@@ -739,14 +848,26 @@ export default {
           if (match && request.method === "POST") {
             const id = Number(match[1]);
             if (match[2] === "approve") {
-              const role = body.role === "owner" ? "owner" : "staff";
+              const role = normalizeRole(body.role);
               await sqlQuery(env, "update app_users set pending = false, active = true, role = $1 where id = $2", [role, id]);
               await asActor(actor, () => logActivity(db, { event: "user.approve", summary: `Member #${id} approved as ${role}`, entity: "user", entityId: id }));
               await notifyOwners(env, "member", `Member approved — #${id}`, `<p>Member #${id} was approved as <b>${role}</b> by ${session.name}.</p>`);
               return json({ ok: true, role });
             }
             if (match[2] === "role") {
-              const role = body.role === "owner" ? "owner" : "staff";
+              const role = normalizeRole(body.role);
+              const [target] = await sqlQuery(env, "select role, active from app_users where id = $1", [id]);
+              if (!target) return json({ error: "Member not found" }, { status: 404 });
+              if (target.role === "owner" && role !== "owner" && target.active) {
+                const [others] = await sqlQuery(
+                  env,
+                  "select count(*)::int as c from app_users where role = 'owner' and active = true and id <> $1",
+                  [id],
+                );
+                if (Number(others?.c ?? 0) === 0) {
+                  return json({ error: "At least one active Owner is required" }, { status: 400 });
+                }
+              }
               await sqlQuery(env, "update app_users set role = $1 where id = $2", [role, id]);
               await asActor(actor, () => logActivity(db, { event: "user.role", summary: `Member #${id} role set to ${role}`, entity: "user", entityId: id }));
               await notifyOwners(env, "member", `Member role changed — #${id}`, `<p>Member #${id} is now <b>${role}</b> (by ${session.name}).</p>`);
@@ -763,8 +884,23 @@ export default {
               await sqlQuery(env, `update app_users set password_hash = $1 where id = $2`, [hashPasswordPhc(String(body.password)), id]);
               await asActor(actor, () => logActivity(db, { event: "user.password", summary: `Password reset for member #${id}`, entity: "user", entityId: id }));
             } else {
-              await sqlQuery(env, `update app_users set active = $1 where id = $2`, [Boolean(body.active), id]);
-              await asActor(actor, () => logActivity(db, { event: body.active ? "user.enable" : "user.disable", summary: `Member #${id} ${body.active ? "enabled" : "disabled"}`, entity: "user", entityId: id }));
+              const nextActive = Boolean(body.active);
+              if (!nextActive) {
+                const [target] = await sqlQuery(env, "select role, active from app_users where id = $1", [id]);
+                if (!target) return json({ error: "Member not found" }, { status: 404 });
+                if (target.role === "owner" && target.active) {
+                  const [others] = await sqlQuery(
+                    env,
+                    "select count(*)::int as c from app_users where role = 'owner' and active = true and id <> $1",
+                    [id],
+                  );
+                  if (Number(others?.c ?? 0) === 0) {
+                    return json({ error: "At least one active Owner is required" }, { status: 400 });
+                  }
+                }
+              }
+              await sqlQuery(env, `update app_users set active = $1 where id = $2`, [nextActive, id]);
+              await asActor(actor, () => logActivity(db, { event: nextActive ? "user.enable" : "user.disable", summary: `Member #${id} ${nextActive ? "enabled" : "disabled"}`, entity: "user", entityId: id }));
             }
             return json({ ok: true });
           }

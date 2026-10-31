@@ -189,9 +189,29 @@ export const appUsers = pgTable(
     role: text("role").notNull().default("staff"),
     active: boolean("active").notNull().default(true),
     pending: boolean("pending").notNull().default(false),
+    /** Optional last day of access — the account is disabled after this date. */
+    accessUntil: date("access_until"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [check("app_users_role_valid", sql`${t.role} in ('owner','staff')`)],
+  (t) => [check("app_users_role_valid", sql`${t.role} in ('owner','ca','staff')`)],
+);
+
+/** Per-role module permissions, editable by the owner (Team → Roles & permissions). */
+export const rolePermissions = pgTable(
+  "role_permissions",
+  {
+    role: text("role").notNull(),
+    module: text("module").notNull(),
+    canView: boolean("can_view").notNull().default(false),
+    canCreate: boolean("can_create").notNull().default(false),
+    canEdit: boolean("can_edit").notNull().default(false),
+    canDelete: boolean("can_delete").notNull().default(false),
+    canExport: boolean("can_export").notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ columns: [t.role, t.module] }),
+    check("role_permissions_role_valid", sql`${t.role} in ('owner','ca','staff')`),
+  ],
 );
 
 // One row per login. Opened at sign-in, closed at sign-out (duration = usage time).

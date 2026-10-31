@@ -18,6 +18,17 @@ import {
 } from "./api";
 import { buildBillHtml } from "../../src/lib/printBill";
 import type { ShopDetails } from "../../src/db/settings";
+import {
+  ACTION_LABELS,
+  MODULES,
+  MODULE_LABELS,
+  PERMISSION_ACTIONS,
+  allowed,
+  type ModuleKey,
+  type PermissionAction,
+  type Role,
+  type RolePermissions,
+} from "../../src/logic/permissions";
 import { formatDate, formatDateTime } from "./format";
 import ThemeToggle from "./ThemeToggle";
 import { watchSystemTheme } from "./theme";
@@ -32,6 +43,7 @@ import {
   IconActivity,
   IconBarChart,
   IconBill,
+  IconCalculator,
   IconCalendar,
   IconClose,
   IconCoffee as IconCoffeeNav,
@@ -166,6 +178,16 @@ const STOCK_TYPE_LABEL: Record<string, string> = {
   WASTAGE: "Wastage",
 };
 
+function RolePill({ role }: { role: Role }) {
+  if (role === "owner") {
+    return <span className="badge badge-warn inline-flex items-center gap-1"><IconCrown size={12} /> Owner</span>;
+  }
+  if (role === "ca") {
+    return <span className="badge badge-info inline-flex items-center gap-1"><IconCalculator size={12} /> CA</span>;
+  }
+  return <span className="badge badge-info inline-flex items-center gap-1"><IconUser size={12} /> Staff</span>;
+}
+
 /** Compact relative time for the activity feed: "2 min ago", "3 h ago", … */
 function relativeTime(value: string | Date): string {
   const then = new Date(value).getTime();
@@ -194,11 +216,16 @@ export default function App() {
   const [memberName, setMemberName] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
-  const [memberRole, setMemberRole] = useState<"owner" | "staff">("staff");
+  const [memberRole, setMemberRole] = useState<Role>("staff");
+  const [memberAccessUntil, setMemberAccessUntil] = useState("");
+  const [teamTab, setTeamTab] = useState<"members" | "roles">("members");
+  const [roleMatrix, setRoleMatrix] = useState<Record<Role, RolePermissions> | null>(null);
+  const [rolesMsg, setRolesMsg] = useState<string | null>(null);
+  const [rolesSaving, setRolesSaving] = useState(false);
   const [teamStatus, setTeamStatus] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<Member | null>(null);
   const [resetPassword, setResetPassword] = useState("");
-  const [approveRole, setApproveRole] = useState<Record<number, "staff" | "owner">>({});
+  const [approveRole, setApproveRole] = useState<Record<number, Role>>({});
   const [notifyEmails, setNotifyEmails] = useState("");
   const [notifySignup, setNotifySignup] = useState(true);
   const [notifyMember, setNotifyMember] = useState(true);
@@ -394,7 +421,7 @@ export default function App() {
 
   /** Owner-only usage metrics (sessions, active time, last login). */
   useEffect(() => {
-    if (!user || user.role !== "owner" || view !== "team") return;
+    if (!user || !allowed(user.permissions, "team", "view") || view !== "team") return;
     let cancelled = false;
     api
       .usage()
@@ -426,9 +453,47 @@ export default function App() {
     };
   }, [user, view]);
 
+  // Load the role matrix when the owner opens Team → Roles & permissions.
+  useEffect(() => {
+    if (!user || user.role !== "owner" || view !== "team" || teamTab !== "roles") return;
+    let cancelled = false;
+    api
+      .roles()
+      .then((res) => {
+        if (!cancelled) {
+          setRoleMatrix(res.roles);
+          setRolesMsg(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setRolesMsg(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, view, teamTab]);
+
   // Low-stock items (same rule as the stats query: stock left <= minimum).
   const lowStockItems = items.filter((item) => item.stockLeftBase <= item.minStockBase);
   const lowStockCount = stats?.low_stock ?? 0;
+
+  // This month's expenses from the list itself (works for roles without dashboard stats).
+  const monthPrefix = new Date().toISOString().slice(0, 7);
+  const monthExpensesPaise = expensesList
+    .filter((item) => item.date.slice(0, 7) === monthPrefix)
+    .reduce((sum, item) => sum + item.amountPaise, 0);
+
+  /** Permission check for the signed-in member (Owner is all-true from the API). */
+  const can = (moduleKey: ModuleKey, action: PermissionAction): boolean =>
+    allowed(user?.permissions, moduleKey, action);
+
+  // If the signed-in role cannot view the current tab, jump to the first allowed one.
+  useEffect(() => {
+    if (!user) return;
+    if (allowed(user.permissions, view as ModuleKey, "view")) return;
+    const first = MODULES.find((moduleKey) => allowed(user.permissions, moduleKey, "view"));
+    if (first) setView(first as View);
+  }, [user, view]);
 
   function addBillLine() {
     const item = items.find((i) => i.id === draft.itemId);
@@ -541,7 +606,7 @@ export default function App() {
       setPurchase({ itemId: "", qty: "", rate: "", supplier: "", expenses: "" });
       setItems((await api.items()).items);
       setPurchasesList((await api.purchases()).purchases);
-      setStats((await api.stats()).stats);
+      void api.stats().then((r) => setStats(r.stats)).catch(() => {});
     } catch (err) {
       setPurchaseMsg(err instanceof Error ? err.message : String(err));
     } finally {
@@ -590,7 +655,7 @@ export default function App() {
       setStock({ itemId: "", type: "USAGE", qty: "", note: "" });
       setStockBatches([]);
       setItems((await api.items()).items);
-      setStats((await api.stats()).stats);
+      void api.stats().then((r) => setStats(r.stats)).catch(() => {});
       setStockEntries((await api.stockEntries()).entries);
     } catch (err) {
       setStockMsg(err instanceof Error ? err.message : String(err));
@@ -664,7 +729,7 @@ export default function App() {
       setExpenseMsg("Expense saved");
       setExpense({ category: "", amount: "", paidTo: "", note: "", type: "general", date: todayIso() });
       setExpensesList((await api.expenses()).expenses);
-      setStats((await api.stats()).stats);
+      void api.stats().then((r) => setStats(r.stats)).catch(() => {});
       setCategories((await api.expenseCategories()).categories);
     } catch (err) {
       setExpenseMsg(err instanceof Error ? err.message : String(err));
@@ -686,13 +751,32 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
-    if (user.role === "owner") {
+    const canView = (moduleKey: ModuleKey) => allowed(user.permissions, moduleKey, "view");
+    if (canView("team")) {
       void loadMembers().catch(() => setMembers([]));
+    }
+    if (canView("settings")) {
       void loadNotify().catch(() => setNotifyStatus("Could not load notification settings"));
     }
-    void Promise.all([api.statsDaily().then((r) => setDaily(r.daily)), api.expenseCategories().then((r) => setCategories(r.categories)), ...(user.role === "owner" ? [api.investments().then((r) => { setInvestments(r.investments); setInvestTotal(r.totalPaise); })] : []), api.stats().then((r) => setStats(r.stats)), api.purchases().then((r) => setPurchasesList(r.purchases)), api.expenses().then((r) => setExpensesList(r.expenses)), api.bills().then((r) => setBills(r.bills)), api.items().then((r) => setItems(r.items)), api.activity().then((r) => setActivity(r.activity)), api.shop().then((r) => setShop(r.shop as unknown as ShopDetails))]).catch((err) =>
-      setError(err instanceof Error ? err.message : String(err)),
-    );
+    const jobs: Promise<unknown>[] = [
+      api.shop().then((r) => setShop(r.shop as unknown as ShopDetails)),
+    ];
+    if (canView("dashboard")) {
+      jobs.push(api.statsDaily().then((r) => setDaily(r.daily)));
+      jobs.push(api.stats().then((r) => setStats(r.stats)));
+    }
+    if (canView("expenses")) {
+      jobs.push(api.expenseCategories().then((r) => setCategories(r.categories)));
+      jobs.push(api.expenses().then((r) => setExpensesList(r.expenses)));
+    }
+    if (canView("investments")) {
+      jobs.push(api.investments().then((r) => { setInvestments(r.investments); setInvestTotal(r.totalPaise); }));
+    }
+    if (canView("purchases")) jobs.push(api.purchases().then((r) => setPurchasesList(r.purchases)));
+    if (canView("bills")) jobs.push(api.bills().then((r) => setBills(r.bills)));
+    if (canView("items")) jobs.push(api.items().then((r) => setItems(r.items)));
+    if (canView("activity")) jobs.push(api.activity().then((r) => setActivity(r.activity)));
+    void Promise.allSettled(jobs);
   }, [user]);
 
   async function requestAccount(e: FormEvent) {
@@ -763,15 +847,48 @@ export default function App() {
   async function addMember() {
     setTeamStatus(null);
     try {
-      await api.addUser(memberName, memberPhone, memberPassword, memberRole);
+      await api.addUser(memberName, memberPhone, memberPassword, memberRole, memberAccessUntil || undefined);
       setTeamStatus("Member added");
       setMemberName("");
       setMemberPhone("");
       setMemberPassword("");
       setMemberRole("staff");
+      setMemberAccessUntil("");
       await loadMembers();
     } catch (err) {
       setTeamStatus(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function togglePermission(role: "ca" | "staff", moduleKey: ModuleKey, action: PermissionAction) {
+    setRoleMatrix((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        [role]: {
+          ...current[role],
+          [moduleKey]: {
+            ...current[role][moduleKey],
+            [action]: !current[role][moduleKey][action],
+          },
+        },
+      };
+    });
+  }
+
+  async function saveRoles() {
+    if (!roleMatrix) return;
+    setRolesSaving(true);
+    setRolesMsg(null);
+    try {
+      const ca = await api.saveRolePermissions("ca", roleMatrix.ca);
+      const staff = await api.saveRolePermissions("staff", roleMatrix.staff);
+      setRoleMatrix({ owner: roleMatrix.owner, ca: ca.permissions, staff: staff.permissions });
+      setRolesMsg("Permissions saved");
+    } catch (err) {
+      setRolesMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRolesSaving(false);
     }
   }
 
@@ -927,7 +1044,7 @@ export default function App() {
     );
   }
 
-  const navGroups: { heading: string | null; links: { key: View; label: string; icon: ReactNode }[] }[] = [
+  const allNavGroups: { heading: string | null; links: { key: View; label: string; icon: ReactNode }[] }[] = [
     {
       heading: null,
       links: [{ key: "dashboard", label: "Dashboard", icon: <IconDashboard size={16} /> }],
@@ -955,26 +1072,27 @@ export default function App() {
       heading: "Money",
       links: [
         { key: "expenses", label: "Expenses", icon: <IconExpenses size={16} /> },
-        ...(user.role === "owner"
-          ? [{ key: "investments" as View, label: "Investments", icon: <IconInvestments size={16} /> }]
-          : []),
+        { key: "investments", label: "Investments", icon: <IconInvestments size={16} /> },
         { key: "reports", label: "Reports", icon: <IconReports size={16} /> },
       ],
     },
-    // ADMIN is owner-only — staff never see it.
-    ...(user.role === "owner"
-      ? [
-          {
-            heading: "Admin",
-            links: [
-              { key: "activity" as View, label: "Activity", icon: <IconActivity size={16} /> },
-              { key: "team" as View, label: "Team", icon: <IconTeam size={16} /> },
-              { key: "settings" as View, label: "Settings", icon: <IconSettings size={16} /> },
-            ],
-          },
-        ]
-      : []),
+    {
+      heading: "Admin",
+      links: [
+        { key: "activity", label: "Activity", icon: <IconActivity size={16} /> },
+        { key: "team", label: "Team", icon: <IconTeam size={16} /> },
+        { key: "settings", label: "Settings", icon: <IconSettings size={16} /> },
+      ],
+    },
   ];
+
+  // Only show tabs the signed-in role can view.
+  const navGroups = allNavGroups
+    .map((group) => ({
+      ...group,
+      links: group.links.filter((link) => can(link.key as ModuleKey, "view")),
+    }))
+    .filter((group) => group.links.length > 0);
 
   return (
     <div className="min-h-screen md:flex">
@@ -1181,6 +1299,7 @@ export default function App() {
             )}
 
             {/* Quick add expense — one row, defaults to general. */}
+            {can("expenses", "create") && (
             <div className="card p-4">
               <div className="mb-2 flex items-center justify-between">
                 <h2 className="text-sm font-medium">Quick expense</h2>
@@ -1208,6 +1327,7 @@ export default function App() {
               </div>
               {expenseMsg && <p role="status" className="mt-2 text-sm text-muted">{expenseMsg}</p>}
             </div>
+            )}
 
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="card flex flex-col p-4">
@@ -1230,8 +1350,8 @@ export default function App() {
                     illustration="expenses"
                     title="No expenses this month"
                     message="Add rent, transport or any other cost to see the split."
-                    actionLabel="Add expense"
-                    onAction={() => setView("expenses")}
+                    actionLabel={can("expenses", "create") ? "Add expense" : undefined}
+                    onAction={can("expenses", "create") ? () => setView("expenses") : undefined}
                   />
                 ) : (
                   <Donut items={categories.map((c) => ({ label: c.category, value: Number(c.total) }))} />
@@ -1348,12 +1468,14 @@ export default function App() {
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.currentTarget.value)}
                 />
-                <button
-                  className="btn btn-primary whitespace-nowrap"
-                  onClick={() => setCustomerForm({ id: null, name: "", phone: "", email: "", gstin: "", address: "" })}
-                >
-                  <span className="flex items-center gap-1.5"><IconPlus size={15} /> Add customer</span>
-                </button>
+                {can("customers", "create") && (
+                  <button
+                    className="btn btn-primary whitespace-nowrap"
+                    onClick={() => setCustomerForm({ id: null, name: "", phone: "", email: "", gstin: "", address: "" })}
+                  >
+                    <span className="flex items-center gap-1.5"><IconPlus size={15} /> Add customer</span>
+                  </button>
+                )}
               </div>
             </div>
             {customerForm && (
@@ -1415,36 +1537,40 @@ export default function App() {
                   mobileLabel: "Actions",
                   cell: (customer) => (
                     <span className="flex flex-wrap justify-end gap-2">
-                      <button
-                        className="btn-mini"
-                        onClick={() =>
-                          setCustomerForm({
-                            id: customer.id,
-                            name: customer.name,
-                            phone: customer.phone ?? "",
-                            email: customer.email ?? "",
-                            gstin: customer.gstin ?? "",
-                            address: customer.address ?? "",
-                          })
-                        }
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="btn-mini btn-mini-danger"
-                        onClick={async () => {
-                          if (!window.confirm(`Remove ${customer.name} from the customer master?`)) return;
-                          try {
-                            await api.deleteCustomer(customer.id);
-                            setCustomers((await api.customers(customerSearch)).customers);
-                            setCustomerMsg(`${customer.name} removed`);
-                          } catch (err) {
-                            setCustomerMsg(err instanceof Error ? err.message : String(err));
+                      {can("customers", "edit") && (
+                        <button
+                          className="btn-mini"
+                          onClick={() =>
+                            setCustomerForm({
+                              id: customer.id,
+                              name: customer.name,
+                              phone: customer.phone ?? "",
+                              email: customer.email ?? "",
+                              gstin: customer.gstin ?? "",
+                              address: customer.address ?? "",
+                            })
                           }
-                        }}
-                      >
-                        Delete
-                      </button>
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {can("customers", "delete") && (
+                        <button
+                          className="btn-mini btn-mini-danger"
+                          onClick={async () => {
+                            if (!window.confirm(`Remove ${customer.name} from the customer master?`)) return;
+                            try {
+                              await api.deleteCustomer(customer.id);
+                              setCustomers((await api.customers(customerSearch)).customers);
+                              setCustomerMsg(`${customer.name} removed`);
+                            } catch (err) {
+                              setCustomerMsg(err instanceof Error ? err.message : String(err));
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      )}
                     </span>
                   ),
                 },
@@ -1454,8 +1580,8 @@ export default function App() {
                   illustration="invoices"
                   title="No customers yet"
                   message="Client details are saved automatically when you bill them."
-                  actionLabel="New bill"
-                  onAction={() => { setView("billing"); setBill(null); }}
+                  actionLabel={can("billing", "create") ? "New bill" : undefined}
+                  onAction={can("billing", "create") ? () => { setView("billing"); setBill(null); } : undefined}
                 />
               }
             />
@@ -1518,9 +1644,11 @@ export default function App() {
                     <span className="whitespace-nowrap text-sm text-muted">
                       Total: <span className="font-semibold text-ink">{money(purchaseTotalPaise)}</span>
                     </span>
-                    <button className="btn btn-primary w-full whitespace-nowrap min-[1200px]:w-auto" onClick={() => void addPurchaseNow()} disabled={purchaseSaving}>
-                      {purchaseSaving ? "Saving…" : "Save purchase"}
-                    </button>
+                    {can("purchases", "create") && (
+                      <button className="btn btn-primary w-full whitespace-nowrap min-[1200px]:w-auto" onClick={() => void addPurchaseNow()} disabled={purchaseSaving}>
+                        {purchaseSaving ? "Saving…" : "Save purchase"}
+                      </button>
+                    )}
                   </div>
                 </FormRow>
                 {purchaseMsg && <p role="status" className="mt-2 text-sm text-muted">{purchaseMsg}</p>}
@@ -1619,7 +1747,9 @@ export default function App() {
                       onChange={(e) => setStock({ ...stock, note: e.currentTarget.value })}
                     />
                   </div>
-                  <button className="btn btn-primary w-full whitespace-nowrap sm:col-span-full min-[1200px]:col-span-1 min-[1200px]:w-auto" onClick={() => void saveStockNow()}>Save entry</button>
+                  {can("stock", "create") && (
+                    <button className="btn btn-primary w-full whitespace-nowrap sm:col-span-full min-[1200px]:col-span-1 min-[1200px]:w-auto" onClick={() => void saveStockNow()}>Save entry</button>
+                  )}
                 </FormRow>
                 {stockMsg && <p role="status" className="mt-2 text-sm text-muted">{stockMsg}</p>}
               </div>
@@ -1715,7 +1845,9 @@ export default function App() {
                     <input id="expense-note" className="input input-icon" placeholder="Optional" value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.currentTarget.value })} />
                   </div>
                 </div>
-                <button className="btn btn-primary w-full whitespace-nowrap sm:col-span-full min-[1200px]:col-span-1 min-[1200px]:w-auto" onClick={() => void addExpenseNow()}>Add expense</button>
+                {can("expenses", "create") && (
+                  <button className="btn btn-primary w-full whitespace-nowrap sm:col-span-full min-[1200px]:col-span-1 min-[1200px]:w-auto" onClick={() => void addExpenseNow()}>Add expense</button>
+                )}
               </FormRow>
               <datalist id="expense-categories">
                 {["Rent", "Tea", "Transport", "Salary", "Electricity", "Other"].map((category) => (
@@ -1729,7 +1861,7 @@ export default function App() {
               title="Recent expenses"
               headerRight={
                 <span className="text-sm text-muted">
-                  This month: <span className="font-semibold text-ink">{money(stats?.month_expenses ?? 0)}</span>
+                  This month: <span className="font-semibold text-ink">{money(monthExpensesPaise)}</span>
                 </span>
               }
               rows={expensesList}
@@ -1754,7 +1886,7 @@ export default function App() {
           </section>
         )}
 
-        {view === "investments" && user.role === "owner" && (
+        {view === "investments" && can("investments", "view") && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Investments</h1>
             <div className="card p-4">
@@ -1768,7 +1900,9 @@ export default function App() {
                 <input className="input" type="date" value={investment.date} onChange={(e) => setInvestment({ ...investment, date: e.currentTarget.value })} />
                 <input className="input" placeholder="Note" value={investment.note} onChange={(e) => setInvestment({ ...investment, note: e.currentTarget.value })} />
               </div>
-              <button className="btn btn-primary" onClick={() => void addInvestmentNow()}>Add investment</button>
+              {can("investments", "create") && (
+                <button className="btn btn-primary" onClick={() => void addInvestmentNow()}>Add investment</button>
+              )}
               {investmentMsg && <p role="status" className="text-sm text-muted">{investmentMsg}</p>}
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
@@ -1787,9 +1921,11 @@ export default function App() {
                     align: "right",
                     mobileLabel: "Actions",
                     cell: (row) => (
-                      <button className="btn-mini btn-mini-danger" onClick={() => void removeInvestment(row.id)}>
-                        <IconTrash /> Delete
-                      </button>
+                      can("investments", "delete") ? (
+                        <button className="btn-mini btn-mini-danger" onClick={() => void removeInvestment(row.id)}>
+                          <IconTrash /> Delete
+                        </button>
+                      ) : null
                     ),
                   },
                 ]}
@@ -1842,7 +1978,7 @@ export default function App() {
                   cell: (row) => {
                     if (row.cancelled) return <span className="btn-mini">Cancelled</span>;
                     const view = <button className="btn-mini" onClick={() => void openBill(row.id)}><IconEye /> View</button>;
-                    if (row.paidPaise >= row.totalPaise) return view;
+                    if (row.paidPaise >= row.totalPaise || !can("bills", "edit")) return view;
                     return (
                       <span className="flex flex-wrap justify-end gap-2">
                         <button
@@ -1861,7 +1997,7 @@ export default function App() {
                             try {
                               const res = await api.recordPayment(row.id, amount);
                               setBills((await api.bills()).bills);
-                              setStats((await api.stats()).stats);
+                              void api.stats().then((r) => setStats(r.stats)).catch(() => {});
                               setError(
                                 res.payment.creditPaise > 0
                                   ? `₹${(res.payment.creditPaise / 100).toFixed(2)} credit still due`
@@ -1885,8 +2021,8 @@ export default function App() {
                   illustration="invoices"
                   title="No invoices yet"
                   message="Bills you raise will be listed here with their payment status."
-                  actionLabel="New bill"
-                  onAction={() => { setView("billing"); setBill(null); }}
+                  actionLabel={can("billing", "create") ? "New bill" : undefined}
+                  onAction={can("billing", "create") ? () => { setView("billing"); setBill(null); } : undefined}
                 />
               }
             />
@@ -1896,7 +2032,9 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold tracking-tight">Bill preview</h2>
                   <div className="flex items-center gap-3">
-                    <button className="btn btn-primary" onClick={() => void emailBill(bill.id)}>Email bill</button>
+                    {can("bills", "export") && (
+                      <button className="btn btn-primary" onClick={() => void emailBill(bill.id)}>Email bill</button>
+                    )}
                     <button className="btn-mini" onClick={() => setBill(null)}>Close</button>
                   </div>
                 </div>
@@ -1989,7 +2127,9 @@ export default function App() {
                       <label className="label h-5 whitespace-nowrap leading-5">HSN</label>
                       <input className="input h-10" placeholder="—" value={draft.hsn} onChange={(e) => setDraft({ ...draft, hsn: e.currentTarget.value })} />
                     </div>
-                    <button className="btn btn-primary h-10 whitespace-nowrap" onClick={addBillLine}>+ Add</button>
+                    {can("billing", "create") && (
+                      <button className="btn btn-primary h-10 whitespace-nowrap" onClick={addBillLine}>+ Add</button>
+                    )}
                   </div>
 
                   {billLines.length > 0 ? (
@@ -2076,10 +2216,14 @@ export default function App() {
                     <span className="text-2xl font-semibold tracking-tight">{money(billTotal)}</span>
                   </div>
 
-                  <button className="btn btn-primary w-full justify-center" onClick={() => void saveBill()} disabled={billLines.length === 0}>
-                    <span className="flex items-center justify-center gap-1.5"><IconBill size={15} /> Save bill</span>
-                  </button>
-                  {billLines.length === 0 && <p className="text-center text-xs text-muted">Add at least one item to save.</p>}
+                  {can("billing", "create") && (
+                    <>
+                      <button className="btn btn-primary w-full justify-center" onClick={() => void saveBill()} disabled={billLines.length === 0}>
+                        <span className="flex items-center justify-center gap-1.5"><IconBill size={15} /> Save bill</span>
+                      </button>
+                      {billLines.length === 0 && <p className="text-center text-xs text-muted">Add at least one item to save.</p>}
+                    </>
+                  )}
                   {billMsg && <p role="status" className="rounded bg-surface-2 px-3 py-2 text-center text-sm">{billMsg}</p>}
                   {lastBillId && <button className="btn btn-secondary w-full justify-center" onClick={() => void openBill(lastBillId).then(() => setView("bills"))}>View last bill</button>}
                 </div>
@@ -2092,9 +2236,11 @@ export default function App() {
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Items</h1>
-              <button className="btn btn-primary" onClick={() => setItemForm({ id: null, name: "", unit: "kg", category: "", minStock: "", imageUrl: "" })}>
-                <span className="flex items-center gap-1.5"><IconPlus size={15} /> Add item</span>
-              </button>
+              {can("items", "create") && (
+                <button className="btn btn-primary" onClick={() => setItemForm({ id: null, name: "", unit: "kg", category: "", minStock: "", imageUrl: "" })}>
+                  <span className="flex items-center gap-1.5"><IconPlus size={15} /> Add item</span>
+                </button>
+              )}
             </div>
             {itemForm && (
               <div className="card max-w-3xl space-y-2 p-4">
@@ -2153,9 +2299,11 @@ export default function App() {
                   mobileLabel: "Actions",
                   cell: (item) => (
                     <span className="flex flex-wrap justify-end gap-2">
-                      <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "", imageUrl: item.imageUrl ?? "" })}><IconEdit /> Edit</button>
+                      {can("items", "edit") && (
+                        <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "", imageUrl: item.imageUrl ?? "" })}><IconEdit /> Edit</button>
+                      )}
                       <button className="btn-mini" onClick={() => void openLots(item)}>Lots</button>
-                      {user.role === "owner" && (
+                      {can("items", "delete") && (
                         <button
                           className="btn-mini btn-mini-danger"
                           onClick={async () => {
@@ -2181,8 +2329,8 @@ export default function App() {
                   illustration="items"
                   title="No items yet"
                   message="Add the products you buy and sell — stock, cost and profit follow automatically."
-                  actionLabel="Add item"
-                  onAction={() => setItemForm({ id: null, name: "", unit: "kg", category: "", minStock: "", imageUrl: "" })}
+                  actionLabel={can("items", "create") ? "Add item" : undefined}
+                  onAction={can("items", "create") ? () => setItemForm({ id: null, name: "", unit: "kg", category: "", minStock: "", imageUrl: "" }) : undefined}
                 />
               }
             />
@@ -2342,9 +2490,17 @@ export default function App() {
           </section>
         )}
 
-        {view === "team" && user.role === "owner" && (
+        {view === "team" && can("team", "view") && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Team</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <button className={`btn-mini ${teamTab === "members" ? "btn-mini-ok" : ""}`} onClick={() => setTeamTab("members")}>Members</button>
+              {user.role === "owner" && (
+                <button className={`btn-mini ${teamTab === "roles" ? "btn-mini-ok" : ""}`} onClick={() => setTeamTab("roles")}>Roles &amp; permissions</button>
+              )}
+            </div>
+            {teamTab === "members" && (
+              <>
             {usage.length > 0 && (
               <ResponsiveTable
                 title={
@@ -2371,11 +2527,7 @@ export default function App() {
                         </span>
                         <span className="flex flex-wrap items-center gap-2 font-medium">
                           {row.name}
-                          {row.role === "owner" ? (
-                            <span className="badge badge-warn inline-flex items-center gap-1"><IconCrown size={12} /> Owner</span>
-                          ) : (
-                            <span className="badge badge-info inline-flex items-center gap-1"><IconUser size={12} /> Staff</span>
-                          )}
+                          <RolePill role={row.role as Role} />
                         </span>
                       </span>
                     ),
@@ -2424,10 +2576,9 @@ export default function App() {
                         <span className="flex flex-wrap items-center gap-2">
                           <b>{member.name}</b>
                           {isSelf && <span className="text-xs text-muted">(you)</span>}
-                          {member.role === "owner" ? (
-                            <span className="badge badge-warn inline-flex items-center gap-1"><IconCrown size={12} /> Owner</span>
-                          ) : (
-                            <span className="badge badge-info inline-flex items-center gap-1"><IconUser size={12} /> Staff</span>
+                          <RolePill role={member.role} />
+                          {member.accessUntil && (
+                            <span className="text-xs text-muted">until {formatDate(member.accessUntil)}</span>
                           )}
                           {member.pending && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-ink">awaiting approval</span>}
                           {!member.pending && !member.active && <span className="rounded-full bg-error-soft px-2 py-0.5 text-xs text-error-ink">disabled</span>}
@@ -2440,25 +2591,28 @@ export default function App() {
                         <select
                           className="input"
                           value={approveRole[member.id] ?? "staff"}
-                          onChange={(e) => setApproveRole({ ...approveRole, [member.id]: e.currentTarget.value as "staff" | "owner" })}
+                          onChange={(e) => setApproveRole({ ...approveRole, [member.id]: e.currentTarget.value as Role })}
                         >
                           <option value="staff">Staff</option>
+                          <option value="ca">CA (Accountant)</option>
                           <option value="owner">Owner</option>
                         </select>
                         <button className="btn-mini btn-mini-ok" onClick={() => void api.approveUser(member.id, approveRole[member.id] ?? "staff").then(loadMembers).then(() => setTeamStatus(`${member.name} approved`))}>Approve</button>
                         <button className="btn-mini btn-mini-danger" onClick={() => void api.rejectUser(member.id).then(loadMembers).then(() => setTeamStatus("Request rejected"))}>Reject</button>
                       </span>
-                    ) : !isSelf ? (
+                    ) : !isSelf && can("team", "edit") ? (
                       <span className="flex flex-wrap items-center gap-2">
                         <select
                           className="input"
                           value={member.role}
+                          disabled={member.role === "owner"}
                           onChange={(e) => {
-                            const role = e.currentTarget.value as "staff" | "owner";
+                            const role = e.currentTarget.value as Role;
                             void api.setUserRole(member.id, role).then(loadMembers).then(() => setTeamStatus(`${member.name} is now ${role}`));
                           }}
                         >
                           <option value="staff">Staff</option>
+                          <option value="ca">CA (Accountant)</option>
                           <option value="owner">Owner</option>
                         </select>
                         <button
@@ -2470,18 +2624,20 @@ export default function App() {
                           <IconKey size={13} /> Reset
                         </button>
                         {member.active ? (
-                          <button
-                            className="btn-mini btn-mini-danger whitespace-nowrap"
-                            title="Disable member"
-                            aria-label={`Disable ${member.name}`}
-                            onClick={() => {
-                              if (window.confirm(`Disable ${member.name}? They will not be able to sign in.`)) {
-                                void toggleMember(member);
-                              }
-                            }}
-                          >
-                            <IconUserX size={13} /> Disable
-                          </button>
+                          member.role !== "owner" && (
+                            <button
+                              className="btn-mini btn-mini-danger whitespace-nowrap"
+                              title="Disable member"
+                              aria-label={`Disable ${member.name}`}
+                              onClick={() => {
+                                if (window.confirm(`Disable ${member.name}? They will not be able to sign in.`)) {
+                                  void toggleMember(member);
+                                }
+                              }}
+                            >
+                              <IconUserX size={13} /> Disable
+                            </button>
+                          )
                         ) : (
                           <button
                             className="btn-mini btn-mini-ok whitespace-nowrap"
@@ -2537,19 +2693,88 @@ export default function App() {
                 </div>
                 <div className="space-y-1">
                   <label className="label" htmlFor="member-role">Role</label>
-                  <select id="member-role" className="input" value={memberRole} onChange={(e) => setMemberRole(e.currentTarget.value as "owner" | "staff")}>
+                  <select id="member-role" className="input" value={memberRole} onChange={(e) => setMemberRole(e.currentTarget.value as Role)}>
                     <option value="staff">Staff</option>
+                    <option value="ca">CA (Accountant)</option>
                     <option value="owner">Owner</option>
                   </select>
                 </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-access-until">Access until (optional)</label>
+                  <input id="member-access-until" className="input" type="date" value={memberAccessUntil} onChange={(e) => setMemberAccessUntil(e.currentTarget.value)} />
+                  <p className="text-xs text-muted">The account is disabled automatically after this date.</p>
+                </div>
               </div>
-              <button className="btn btn-primary mt-3" onClick={() => void addMember()}>Add member</button>
+              {can("team", "create") && (
+                <button className="btn btn-primary mt-3" onClick={() => void addMember()}>Add member</button>
+              )}
               {teamStatus && <p role="status" className="mt-2 text-sm text-muted">{teamStatus}</p>}
             </div>
+              </>
+            )}
+
+            {teamTab === "roles" && user.role === "owner" && (
+              <div className="card p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-start gap-2">
+                    <IconSettings size={16} className="mt-0.5 shrink-0 text-muted" />
+                    <div>
+                      <h2 className="text-sm font-medium">Roles &amp; permissions</h2>
+                      <p className="text-xs text-muted">Owner always has full access. Changes are logged in Activity.</p>
+                    </div>
+                  </div>
+                  <button className="btn btn-primary" onClick={() => void saveRoles()} disabled={rolesSaving || !roleMatrix}>
+                    {rolesSaving ? "Saving…" : "Save changes"}
+                  </button>
+                </div>
+                {rolesMsg && <p role="status" className="mb-2 text-sm text-muted">{rolesMsg}</p>}
+                {!roleMatrix ? (
+                  <p className="text-sm text-muted">Loading…</p>
+                ) : (
+                  (["ca", "staff"] as const).map((role) => (
+                    <div key={role} className="mb-5 last:mb-0">
+                      <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                        <RolePill role={role} />
+                        <span className="font-normal text-muted">{role === "ca" ? "Accountant" : "Staff"}</span>
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[560px] text-left text-sm">
+                          <thead>
+                            <tr>
+                              <th className="px-3 py-2">Module</th>
+                              {PERMISSION_ACTIONS.map((action) => (
+                                <th key={action} className="px-3 py-2 text-center">{ACTION_LABELS[action]}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {MODULES.map((moduleKey) => (
+                              <tr key={moduleKey} className="border-t border-line">
+                                <td className="px-3 py-2 font-medium">{MODULE_LABELS[moduleKey]}</td>
+                                {PERMISSION_ACTIONS.map((action) => (
+                                  <td key={action} className="px-3 py-2 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={roleMatrix[role][moduleKey][action]}
+                                      onChange={() => togglePermission(role, moduleKey, action)}
+                                      aria-label={`${MODULE_LABELS[moduleKey]} ${ACTION_LABELS[action]} for ${role}`}
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </section>
         )}
 
-        {view === "settings" && user.role === "owner" && (
+        {view === "settings" && can("settings", "view") && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Settings</h1>
             <div className="card space-y-3 p-4">
@@ -2563,6 +2788,7 @@ export default function App() {
                 <select
                   className="input max-w-56"
                   value={costingMethod}
+                  disabled={!can("settings", "edit")}
                   onChange={(e) => {
                     const method = e.currentTarget.value as "WAC" | "FIFO";
                     setCostingMethodState(method);
@@ -2597,10 +2823,12 @@ export default function App() {
                 <input id="resend-key" type="password" className="input" placeholder={emailConfigured ? "Key saved ✓ — enter a new key to replace" : "re_…"} value={resendKey} onChange={(e) => setResendKey(e.currentTarget.value)} />
                 <p className="text-xs text-muted">Encrypted with the Worker secret; never shown again. Prefer the Cloudflare secret for extra safety.</p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button className="btn btn-primary" onClick={() => void saveNotify()}>Save settings</button>
-                <button className="btn btn-secondary" onClick={() => void testNotify()}>Send test email</button>
-              </div>
+              {can("settings", "edit") && (
+                <div className="flex flex-wrap gap-2">
+                  <button className="btn btn-primary" onClick={() => void saveNotify()}>Save settings</button>
+                  <button className="btn btn-secondary" onClick={() => void testNotify()}>Send test email</button>
+                </div>
+              )}
               {notifyStatus && <p role="status" className="text-sm text-muted">{notifyStatus}</p>}
             </div>
           </section>

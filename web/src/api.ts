@@ -1,4 +1,6 @@
-export type User = { id: number; name: string; role: "owner" | "staff" };
+import type { Role, RolePermissions } from "../../src/logic/permissions";
+
+export type User = { id: number; name: string; role: Role; permissions: RolePermissions };
 
 export type Item = {
   id: number;
@@ -44,7 +46,7 @@ export type BillDetail = BillRow & {
   lines: BillLine[];
 };
 
-export type Member = { id: number; name: string; phone: string; role: "owner" | "staff"; active: boolean; pending: boolean };
+export type Member = { id: number; name: string; phone: string; role: Role; active: boolean; pending: boolean; accessUntil: string | null };
 
 export type Customer = {
   id: number;
@@ -266,17 +268,20 @@ export const api = {
     request<{ ok: boolean }>("/api/settings/notifications", { method: "PUT", body: JSON.stringify(body) }),
   testNotify: () => request<{ ok: boolean; to?: string[] }>("/api/settings/notifications/test", { method: "POST" }),
   users: () => request<{ users: Member[] }>("/api/users"),
-  setUserRole: (id: number, role: "staff" | "owner") =>
+  setUserRole: (id: number, role: Role) =>
     request<{ ok: boolean; role: string }>(`/api/users/${id}/role`, { method: "POST", body: JSON.stringify({ role }) }),
-  approveUser: (id: number, role: "staff" | "owner") =>
+  approveUser: (id: number, role: Role) =>
     request<{ ok: boolean; role: string }>(`/api/users/${id}/approve`, { method: "POST", body: JSON.stringify({ role }) }),
   rejectUser: (id: number) => request<{ ok: boolean }>(`/api/users/${id}/reject`, { method: "POST" }),
-  addUser: (name: string, phone: string, password: string, role: "owner" | "staff" = "staff") =>
-    request<{ user: Member }>("/api/users", { method: "POST", body: JSON.stringify({ name, phone, password, role }) }),
+  addUser: (name: string, phone: string, password: string, role: Role = "staff", accessUntil?: string) =>
+    request<{ user: Member }>("/api/users", { method: "POST", body: JSON.stringify({ name, phone, password, role, accessUntil }) }),
   resetUserPassword: (id: number, password: string) =>
     request<{ ok: boolean }>(`/api/users/${id}/password`, { method: "POST", body: JSON.stringify({ password }) }),
   setUserActive: (id: number, active: boolean) =>
     request<{ ok: boolean }>(`/api/users/${id}/active`, { method: "POST", body: JSON.stringify({ active }) }),
+  roles: () => request<{ roles: Record<Role, RolePermissions> }>("/api/roles"),
+  saveRolePermissions: (role: Role, permissions: RolePermissions) =>
+    request<{ role: Role; permissions: RolePermissions }>("/api/roles", { method: "POST", body: JSON.stringify({ role, permissions }) }),
   emailBill: (id: number) => request<{ ok: boolean; to?: string }>(`/api/bills/${id}/email`, { method: "POST" }),
   finYears: () => request<{ finYears: string[] }>("/api/reports/fin-years"),
   finYearReport: (finYear: string) => request<{ report: FinYearReport }>(`/api/reports/fin-year?fy=${finYear}`),

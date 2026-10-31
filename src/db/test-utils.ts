@@ -19,6 +19,7 @@ const OUR_TABLES = [
   "sale_bills",
   "activity_log",
   "app_users",
+  "role_permissions",
   "user_sessions",
   "investments",
 ] as const;
