@@ -32,6 +32,9 @@ ledger — backend + endpoint (T-2) and web UI (T-3).
   (c) T-4 lot-wise FY report; (d) T-5 sale preview batch breakdown.
 
 ## Live / deployment
+- **Deployed 2026-10-31 19:58** — Lots panel + `/api/items/:id/batches/ledger` live on
+  https://sdhhe-api.blvphani.workers.dev (version 2280b4cf). Owner confirmed FIFO costing
+  already on, so the Profit column shows real per-batch profit.
 - Worker `sdhhe-api`: static assets from `web/dist` + API. Deploy: `cd web && npm run build` →
   `cd ../web-worker && ./node_modules/.bin/wrangler deploy` (wrangler 4.86 / Node 20).
 - Secrets: `DATABASE_URL`, `SESSION_SECRET`. Optional email: `RESEND_API_KEY` / `MAIL_FROM`
