@@ -6,6 +6,8 @@ import { DbProvider } from "../lib/db-context";
 import { listItems } from "../db/items";
 import { deletePurchase, listPurchases, updatePurchase } from "../db/purchases";
 
+vi.mock("../db/permissions", () => ({ can: () => true }));
+
 vi.mock("../db/client", () => ({ getDb: vi.fn(() => ({})), pingDb: vi.fn() }));
 vi.mock("../db/items", () => ({ listItems: vi.fn() }));
 vi.mock("../db/purchases", async (importOriginal) => {

@@ -11,6 +11,8 @@ import {
   updateExpense,
 } from "../db/expenses";
 
+vi.mock("../db/permissions", () => ({ can: () => true }));
+
 vi.mock("../db/client", () => ({ getDb: vi.fn(() => ({})), pingDb: vi.fn() }));
 
 vi.mock("../db/expenses", async (importOriginal) => {

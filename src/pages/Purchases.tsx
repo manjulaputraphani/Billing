@@ -8,6 +8,7 @@ import {
   type PurchaseListRow,
 } from "../db/purchases";
 import { useDb, useDbUrl } from "../lib/db-context";
+import { can } from "../db/permissions";
 import { rupeesToPaise } from "../logic/purchase";
 import { formatQuantity, formatRupees, fromBase, type Unit } from "../logic/units";
 
@@ -239,12 +240,16 @@ export default function Purchases() {
                   {formatQuantity(row.qtyRemaining, row.unit as Unit)}
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
-                  <button type="button" className="mr-2 text-sm underline" onClick={() => openEdit(row)}>
-                    Edit
-                  </button>
-                  <button type="button" className="text-sm text-error-ink underline" onClick={() => setDeleting(row)}>
-                    Delete
-                  </button>
+                  {can("purchases", "edit") && (
+                    <button type="button" className="mr-2 text-sm underline" onClick={() => openEdit(row)}>
+                      Edit
+                    </button>
+                  )}
+                  {can("purchases", "delete") && (
+                    <button type="button" className="text-sm text-error-ink underline" onClick={() => setDeleting(row)}>
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

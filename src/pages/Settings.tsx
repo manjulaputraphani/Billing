@@ -10,8 +10,20 @@ import {
   listAppUsers,
   resetUserPassword,
   setUserActive,
+  setUserRole,
   type AppUser,
 } from "../db/users";
+import { can, getRoleMatrix, saveRolePermissions } from "../db/permissions";
+import {
+  ACTION_LABELS,
+  MODULES,
+  MODULE_LABELS,
+  PERMISSION_ACTIONS,
+  type ModuleKey,
+  type PermissionAction,
+  type Role,
+  type RolePermissions,
+} from "../logic/permissions";
 import {
   DEFAULT_EMAIL,
   DEFAULT_SHOP,
@@ -67,8 +79,13 @@ export default function Settings({
   const [memberName, setMemberName] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
+  const [memberRole, setMemberRole] = useState<Role>("staff");
+  const [memberAccessUntil, setMemberAccessUntil] = useState("");
   const [resetTarget, setResetTarget] = useState<AppUser | null>(null);
   const [resetPassword, setResetPassword] = useState("");
+  const [roleMatrix, setRoleMatrix] = useState<Record<Role, RolePermissions> | null>(null);
+  const [rolesMsg, setRolesMsg] = useState<string | null>(null);
+  const canTeamView = can("team", "view");
   const isOwner = getAuditActor().role === "owner";
 
   useEffect(() => {
@@ -88,8 +105,11 @@ export default function Settings({
   }
 
   useEffect(() => {
-    if (getAuditActor().role === "owner") {
+    if (can("team", "view")) {
       listAppUsers(db).then(setMembers).catch(() => setMembers([]));
+    }
+    if (getAuditActor().role === "owner") {
+      getRoleMatrix(db).then(setRoleMatrix).catch(() => setRoleMatrix(null));
     }
   }, [db]);
 
@@ -97,11 +117,19 @@ export default function Settings({
     setError(null);
     setMembersStatus(null);
     try {
-      await createUser(db, { name: memberName, phone: memberPhone, password: memberPassword, role: "staff" });
+      await createUser(db, {
+        name: memberName,
+        phone: memberPhone,
+        password: memberPassword,
+        role: memberRole,
+        accessUntil: memberAccessUntil || null,
+      });
       setMembersStatus("Member added");
       setMemberName("");
       setMemberPhone("");
       setMemberPassword("");
+      setMemberRole("staff");
+      setMemberAccessUntil("");
       await loadMembers();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -131,6 +159,47 @@ export default function Settings({
       await loadMembers();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function changeMemberRole(member: AppUser, role: Role) {
+    setError(null);
+    setMembersStatus(null);
+    try {
+      await setUserRole(db, member.id, role);
+      setMembersStatus(`${member.name} is now ${role}`);
+      await loadMembers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function togglePermission(role: "ca" | "staff", moduleKey: ModuleKey, action: PermissionAction) {
+    setRoleMatrix((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        [role]: {
+          ...current[role],
+          [moduleKey]: {
+            ...current[role][moduleKey],
+            [action]: !current[role][moduleKey][action],
+          },
+        },
+      };
+    });
+  }
+
+  async function saveRoles() {
+    if (!roleMatrix) return;
+    setRolesMsg(null);
+    try {
+      const ca = await saveRolePermissions(db, "ca", roleMatrix.ca);
+      const staff = await saveRolePermissions(db, "staff", roleMatrix.staff);
+      setRoleMatrix({ owner: roleMatrix.owner, ca, staff });
+      setRolesMsg("Permissions saved");
+    } catch (err) {
+      setRolesMsg(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -449,71 +518,118 @@ export default function Settings({
         </button>
       </section>
 
-      {isOwner && (
+      {canTeamView && (
         <section className="space-y-3 card p-4" data-testid="members-card">
           <div>
-            <h2 className="text-sm font-medium">Users (members)</h2>
+            <h2 className="text-sm font-medium">Members</h2>
             <p className="text-sm text-muted">
-              Owner only. Members sign in with their phone number and password.
+              Members sign in with their phone number and password.
             </p>
           </div>
           {members.length === 0 ? (
             <p className="text-sm text-muted">No members yet.</p>
           ) : (
             <ul className="divide-y divide-line text-sm">
-              {members.map((member) => (
-                <li key={member.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
-                  <span>
-                    <b>{member.name}</b> · {member.phone}{" "}
-                    <span className={`badge ${member.role === "owner" ? "badge-ok" : ""}`}>
-                      {member.role}
-                    </span>{" "}
-                    {!member.active && <span className="badge badge-bad">disabled</span>}
-                  </span>
-                  <span className="space-x-3">
-                    <button
-                      type="button"
-                      className="text-sm underline"
-                      onClick={() => {
-                        setResetTarget(member);
-                        setResetPassword("");
-                      }}
-                    >
-                      Reset password
-                    </button>
-                    <button
-                      type="button"
-                      className={`text-sm underline ${member.active ? "text-error-ink" : "text-success-ink"}`}
-                      onClick={() => void toggleMember(member)}
-                    >
-                      {member.active ? "Deactivate" : "Enable"}
-                    </button>
-                  </span>
-                </li>
-              ))}
+              {members.map((member) => {
+                const isSelf = getAuditActor().userId === member.id;
+                return (
+                  <li key={member.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                    <span>
+                      <b>{member.name}</b> · {member.phone}{" "}
+                      <span className={`badge ${member.role === "owner" ? "badge-ok" : ""}`}>
+                        {member.role === "ca" ? "CA" : member.role}
+                      </span>{" "}
+                      {member.accessUntil && <span className="text-xs text-muted">until {member.accessUntil}</span>}{" "}
+                      {!member.active && <span className="badge badge-bad">disabled</span>}
+                    </span>
+                    {!isSelf && can("team", "edit") && (
+                      <span className="flex flex-wrap items-center gap-2">
+                        <select
+                          className="input text-sm"
+                          value={member.role}
+                          disabled={member.role === "owner"}
+                          onChange={(e) => void changeMemberRole(member, e.currentTarget.value as Role)}
+                          aria-label={`Role for ${member.name}`}
+                        >
+                          <option value="staff">Staff</option>
+                          <option value="ca">CA</option>
+                          <option value="owner">Owner</option>
+                        </select>
+                        <button
+                          type="button"
+                          className="text-sm underline"
+                          onClick={() => {
+                            setResetTarget(member);
+                            setResetPassword("");
+                          }}
+                        >
+                          Reset password
+                        </button>
+                        {member.active ? (
+                          member.role !== "owner" && (
+                            <button
+                              type="button"
+                              className="text-sm text-error-ink underline"
+                              onClick={() => void toggleMember(member)}
+                            >
+                              Deactivate
+                            </button>
+                          )
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-sm text-success-ink underline"
+                            onClick={() => void toggleMember(member)}
+                          >
+                            Enable
+                          </button>
+                        )}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="space-y-1">
-              <label className="label" htmlFor="member-name">Member name</label>
-              <input id="member-name" className="input w-full" value={memberName}
-                onChange={(e) => setMemberName(e.currentTarget.value)} />
-            </div>
-            <div className="space-y-1">
-              <label className="label" htmlFor="member-phone">Member phone</label>
-              <input id="member-phone" className="input w-full" inputMode="numeric" value={memberPhone}
-                onChange={(e) => setMemberPhone(e.currentTarget.value)} />
-            </div>
-            <div className="space-y-1">
-              <label className="label" htmlFor="member-password">Member password</label>
-              <input id="member-password" type="password" className="input w-full" value={memberPassword}
-                onChange={(e) => setMemberPassword(e.currentTarget.value)} />
-            </div>
-          </div>
-          <button type="button" className="btn-primary" onClick={() => void addMember()}>
-            Add member
-          </button>
+          {can("team", "create") && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-name">Member name</label>
+                  <input id="member-name" className="input w-full" value={memberName}
+                    onChange={(e) => setMemberName(e.currentTarget.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-phone">Member phone</label>
+                  <input id="member-phone" className="input w-full" inputMode="numeric" value={memberPhone}
+                    onChange={(e) => setMemberPhone(e.currentTarget.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-password">Member password</label>
+                  <input id="member-password" type="password" className="input w-full" value={memberPassword}
+                    onChange={(e) => setMemberPassword(e.currentTarget.value)} />
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="member-role">Member role</label>
+                  <select id="member-role" className="input w-full" value={memberRole}
+                    onChange={(e) => setMemberRole(e.currentTarget.value as Role)}>
+                    <option value="staff">Staff</option>
+                    <option value="ca">CA (Accountant)</option>
+                    <option value="owner">Owner</option>
+                  </select>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="label" htmlFor="member-access-until">Access until (optional)</label>
+                  <input id="member-access-until" type="date" className="input w-full" value={memberAccessUntil}
+                    onChange={(e) => setMemberAccessUntil(e.currentTarget.value)} />
+                </div>
+              </div>
+              <button type="button" className="btn-primary" onClick={() => void addMember()}>
+                Add member
+              </button>
+            </>
+          )}
 
           {resetTarget && (
             <div className="space-y-2 rounded-xl bg-surface-2 p-3">
@@ -536,6 +652,59 @@ export default function Settings({
             </div>
           )}
           {membersStatus && <p role="status" className="text-sm text-success-ink">{membersStatus}</p>}
+        </section>
+      )}
+
+      {isOwner && can("team", "edit") && (
+        <section className="space-y-3 card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-medium">Roles &amp; permissions</h2>
+              <p className="text-sm text-muted">Owner always has full access. Changes are logged in Activity.</p>
+            </div>
+            <button type="button" className="btn-primary" onClick={() => void saveRoles()} disabled={!roleMatrix}>
+              Save changes
+            </button>
+          </div>
+          {rolesMsg && <p role="status" className="text-sm text-muted">{rolesMsg}</p>}
+          {!roleMatrix ? (
+            <p className="text-sm text-muted">Loading…</p>
+          ) : (
+            (["ca", "staff"] as const).map((role) => (
+              <div key={role} className="space-y-2">
+                <h3 className="text-sm font-semibold">{role === "ca" ? "CA (Accountant)" : "Staff"}</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[560px] text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2">Module</th>
+                        {PERMISSION_ACTIONS.map((action) => (
+                          <th key={action} className="px-3 py-2 text-center">{ACTION_LABELS[action]}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {MODULES.map((moduleKey) => (
+                        <tr key={moduleKey} className="border-t border-line">
+                          <td className="px-3 py-2 font-medium">{MODULE_LABELS[moduleKey]}</td>
+                          {PERMISSION_ACTIONS.map((action) => (
+                            <td key={action} className="px-3 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={roleMatrix[role][moduleKey][action]}
+                                onChange={() => togglePermission(role, moduleKey, action)}
+                                aria-label={`${MODULE_LABELS[moduleKey]} ${ACTION_LABELS[action]} for ${role}`}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
         </section>
       )}
 

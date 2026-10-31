@@ -7,6 +7,7 @@ import {
   type SaleBillDetail,
 } from "../db/billing";
 import { listCustomers } from "../db/customers";
+import { can } from "../db/permissions";
 import { listItems, type ItemRow } from "../db/items";
 import { PAYMENT_MODES } from "../db/purchases";
 import { getShopDetails, type ShopDetails } from "../db/settings";
@@ -562,9 +563,11 @@ export default function Billing() {
           </p>
         )}
 
-        <button type="submit" className="btn-primary" data-testid="billing-save" disabled={saving}>
-          Save bill (F2)
-        </button>
+        {can("billing", "create") && (
+          <button type="submit" className="btn-primary" data-testid="billing-save" disabled={saving}>
+            Save bill (F2)
+          </button>
+        )}
       </form>
 
       {bill && (

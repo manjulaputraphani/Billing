@@ -27,8 +27,17 @@ vi.mock("./db/users", () => ({
 vi.mock("./db/activity", () => ({
   logActivity: vi.fn(async () => {}),
   setAuditActor: vi.fn(),
+  getAuditActor: vi.fn(() => ({ userId: 1, name: "Phani", role: "owner" })),
   listActivity: vi.fn(async () => []),
 }));
+vi.mock("./db/permissions", async () => {
+  const { DEFAULT_ROLE_PERMISSIONS } = await import("./logic/permissions");
+  return {
+    loadPermissionsForRole: vi.fn(async () => DEFAULT_ROLE_PERMISSIONS.owner),
+    setCurrentPermissions: vi.fn(),
+    can: vi.fn(() => true),
+  };
+});
 
 const SAVED_URL = "postgresql://user:secret@ep-host-1.neon.tech/db";
 const USER = {
@@ -38,6 +47,7 @@ const USER = {
   role: "owner" as const,
   active: true,
   pending: false,
+  accessUntil: null,
   passwordHash: "hash",
 };
 

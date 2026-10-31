@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { getDb } from "../db/client";
-import { countUsers, createUser, findUserByPhone, type AppUser } from "../db/users";
+import { countUsers, createUser, findUserByPhone, setUserActive, type AppUser } from "../db/users";
 import { logActivity, setAuditActor } from "../db/activity";
+import { loadPermissionsForRole, setCurrentPermissions } from "../db/permissions";
+import { DEFAULT_ROLE_PERMISSIONS } from "../logic/permissions";
 import { deleteSecret, SECRET_KEYS, verifyPassword } from "../lib/secrets";
 import { normalizePhone } from "../logic/auth";
 import { startSession } from "../db/sessions";
@@ -54,6 +56,12 @@ export default function Lock({ url, onLogin }: Props) {
 
   async function finishLogin(user: AppUser) {
     setAuditActor({ userId: user.id, name: user.name, role: user.role });
+    try {
+      const permissions = await loadPermissionsForRole(db, user.role);
+      setCurrentPermissions(permissions);
+    } catch {
+      setCurrentPermissions(DEFAULT_ROLE_PERMISSIONS[user.role]);
+    }
     try {
       await logActivity(db, { event: "user.login", summary: `${user.name} signed in` });
     } catch {
@@ -118,6 +126,12 @@ export default function Lock({ url, onLogin }: Props) {
       }
       if (!user.active) {
         setError("This account is disabled — ask the owner");
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      if (user.accessUntil && user.accessUntil < today) {
+        await setUserActive(db, user.id, false).catch(() => undefined);
+        setError("Access expired — ask the owner");
         return;
       }
       if (!(await verifyPassword(password, user.passwordHash))) {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { listItems, type ItemRow } from "../db/items";
 import { listOpenBatches, planStockEntry, saveStockEntry, type OpenBatch, type StockEntryType } from "../db/stock";
 import { useDb, useDbUrl } from "../lib/db-context";
+import { can } from "../db/permissions";
 import { baseFactor, formatQuantity, formatRupees, toBase, type Unit } from "../logic/units";
 
 const MODES: { type: StockEntryType; label: string }[] = [
@@ -267,13 +268,15 @@ export default function StockCheck() {
           </p>
         )}
 
-        <button
-          type="submit"
-          className="w-full btn-primary"
-          disabled={saving || !preview?.plan}
-        >
-          Confirm
-        </button>
+        {can("stock", "create") && (
+          <button
+            type="submit"
+            className="w-full btn-primary"
+            disabled={saving || !preview?.plan}
+          >
+            Confirm
+          </button>
+        )}
       </form>
     </div>
   );

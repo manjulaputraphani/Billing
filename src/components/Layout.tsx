@@ -1,44 +1,53 @@
 import { NavLink, Outlet } from "react-router-dom";
 import CoffeeIcon from "./CoffeeIcon";
 import ThemeToggle from "./ThemeToggle";
+import { getAuditActor } from "../db/activity";
+import { can } from "../db/permissions";
+import type { ModuleKey, PermissionAction } from "../logic/permissions";
 
-type Link = { to: string; label: string; end?: boolean };
+type Link = { to: string; label: string; end?: boolean; module: ModuleKey; action?: PermissionAction };
 
 const GROUPS: { heading: string; links: Link[] }[] = [
   {
     heading: "Overview",
     links: [
-      { to: "/", label: "Dashboard", end: true },
-      { to: "/suggestions", label: "Suggestions" },
-      { to: "/chat", label: "Ask AI" },
+      { to: "/", label: "Dashboard", end: true, module: "dashboard" },
+      { to: "/suggestions", label: "Suggestions", module: "dashboard" },
+      { to: "/chat", label: "Ask AI", module: "dashboard" },
     ],
   },
   {
     heading: "Stock",
     links: [
-      { to: "/items", label: "Items" },
-      { to: "/purchases", label: "Purchases" },
-      { to: "/purchases/new", label: "Add Purchase" },
-      { to: "/stock-check", label: "Stock Check" },
-      { to: "/billing", label: "GST Billing" },
-      { to: "/bills", label: "Bills" },
-      { to: "/sales", label: "Sales" },
+      { to: "/items", label: "Items", module: "items" },
+      { to: "/purchases", label: "Purchases", module: "purchases" },
+      { to: "/purchases/new", label: "Add Purchase", module: "purchases", action: "create" },
+      { to: "/stock-check", label: "Stock Check", module: "stock" },
+      { to: "/billing", label: "GST Billing", module: "billing" },
+      { to: "/bills", label: "Bills", module: "bills" },
+      { to: "/sales", label: "Sales", module: "bills" },
     ],
   },
   {
     heading: "Money",
     links: [
-      { to: "/expenses", label: "Expenses" },
-      { to: "/reports", label: "Reports" },
+      { to: "/expenses", label: "Expenses", module: "expenses" },
+      { to: "/reports", label: "Reports", module: "reports" },
     ],
   },
   {
     heading: "System",
-    links: [{ to: "/settings", label: "Settings" }],
+    links: [{ to: "/settings", label: "Settings", module: "settings" }],
   },
 ];
 
 export default function Layout() {
+  const actor = getAuditActor();
+  const groups = GROUPS.map((group) => ({
+    ...group,
+    links: group.links.filter((link) => can(link.module, link.action ?? "view")),
+  })).filter((group) => group.links.length > 0);
+
   return (
     <div className="flex min-h-screen bg-bg text-ink">
       <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col overflow-y-auto bg-nav text-nav-text">
@@ -57,7 +66,7 @@ export default function Layout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-4">
-          {GROUPS.map((group) => (
+          {groups.map((group) => (
             <div key={group.heading} className="mb-3">
               <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-nav-muted">
                 {group.heading}
@@ -86,7 +95,7 @@ export default function Layout() {
 
         <div className="border-t border-nav-line px-5 py-3">
           <ThemeToggle onDark className="mb-3" />
-          <p className="text-[11px] text-nav-muted">Local desktop · Member sign-in</p>
+          <p className="text-[11px] text-nav-muted">{actor.name} · {(actor.role ?? "staff").toUpperCase()}</p>
         </div>
       </aside>
 

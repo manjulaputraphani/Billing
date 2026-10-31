@@ -7,7 +7,15 @@ import { setAuditActor } from "../db/activity";
 import { verifyPassword } from "../lib/secrets";
 
 vi.mock("../db/client", () => ({ getDb: vi.fn(() => ({})) }));
-vi.mock("../db/users", () => ({ countUsers: vi.fn(), findUserByPhone: vi.fn(), createUser: vi.fn() }));
+vi.mock("../db/users", () => ({ countUsers: vi.fn(), findUserByPhone: vi.fn(), createUser: vi.fn(), setUserActive: vi.fn() }));
+vi.mock("../db/permissions", async () => {
+  const { DEFAULT_ROLE_PERMISSIONS } = await import("../logic/permissions");
+  return {
+    loadPermissionsForRole: vi.fn(async () => DEFAULT_ROLE_PERMISSIONS.owner),
+    setCurrentPermissions: vi.fn(),
+    can: vi.fn(() => true),
+  };
+});
 vi.mock("../db/activity", () => ({
   logActivity: vi.fn(async () => {}),
   setAuditActor: vi.fn(),
@@ -25,6 +33,7 @@ const USER = {
   role: "owner" as const,
   active: true,
   pending: false,
+  accessUntil: null,
   passwordHash: "hash",
 };
 

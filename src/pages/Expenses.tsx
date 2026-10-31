@@ -13,6 +13,7 @@ import {
 } from "../db/expenses";
 import { PAYMENT_MODES } from "../db/purchases";
 import { useDb } from "../lib/db-context";
+import { can } from "../db/permissions";
 import { rupeesToPaise } from "../logic/purchase";
 import { formatRupees } from "../logic/units";
 
@@ -184,16 +185,18 @@ export default function Expenses() {
     <div className="space-y-4">
       <header className="flex items-center justify-between">
         <h1 className="page-title">Expenses</h1>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={() => {
-            setError(null);
-            setForm(emptyForm());
-          }}
-        >
-          Add expense
-        </button>
+        {can("expenses", "create") && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              setError(null);
+              setForm(emptyForm());
+            }}
+          >
+            Add expense
+          </button>
+        )}
       </header>
 
       <div className="flex flex-wrap items-end gap-3 card p-3">
@@ -272,7 +275,7 @@ export default function Expenses() {
                 <td className="px-3 py-2 text-right">{formatRupees(row.amountPaise)}</td>
                 <td className="px-3 py-2 text-ink">{row.paymentMode ?? "—"}</td>
                 <td className="px-3 py-2">
-                  {row.billId ? (
+                  {row.billId && can("expenses", "export") ? (
                     <button
                       type="button"
                       className="text-sm underline"
@@ -287,34 +290,38 @@ export default function Expenses() {
                 </td>
                 <td className="px-3 py-2 text-ink">{row.note ?? "—"}</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
-                  <button
-                    type="button"
-                    className="mr-2 text-sm underline"
-                    onClick={() => {
-                      setError(null);
-                      setForm({
-                        id: row.id,
-                        expenseType: row.expenseType ?? "general",
-                        category: row.category,
-                        amount: String(row.amountPaise / 100),
-                        date: row.date,
-                        paymentMode: row.paymentMode ?? "Cash",
-                        paidTo: row.paidTo ?? "",
-                        note: row.note ?? "",
-                        bill: null,
-                        billName: row.billFilename ?? "",
-                      });
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm text-error-ink underline"
-                    onClick={() => setDeleting(row)}
-                  >
-                    Delete
-                  </button>
+                  {can("expenses", "edit") && (
+                    <button
+                      type="button"
+                      className="mr-2 text-sm underline"
+                      onClick={() => {
+                        setError(null);
+                        setForm({
+                          id: row.id,
+                          expenseType: row.expenseType ?? "general",
+                          category: row.category,
+                          amount: String(row.amountPaise / 100),
+                          date: row.date,
+                          paymentMode: row.paymentMode ?? "Cash",
+                          paidTo: row.paidTo ?? "",
+                          note: row.note ?? "",
+                          bill: null,
+                          billName: row.billFilename ?? "",
+                        });
+                      }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {can("expenses", "delete") && (
+                    <button
+                      type="button"
+                      className="text-sm text-error-ink underline"
+                      onClick={() => setDeleting(row)}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

@@ -13,8 +13,10 @@ import {
   DEFAULT_ROLE_PERMISSIONS,
   MODULES,
   ROLES,
+  allowed,
   ownerPermissions,
   type ModuleKey,
+  type PermissionAction,
   type PermissionSet,
   type Role,
   type RolePermissions,
@@ -147,4 +149,22 @@ export function defaultRows(): Array<Row> {
     }
   }
   return rows;
+}
+
+// ---- Desktop session cache ------------------------------------------------
+
+let currentPermissions: RolePermissions | null = null;
+
+/** Store the signed-in member's permissions (called after a successful login). */
+export function setCurrentPermissions(permissions: RolePermissions | null): void {
+  currentPermissions = permissions;
+}
+
+export function getCurrentPermissions(): RolePermissions | null {
+  return currentPermissions;
+}
+
+/** Permission check for the desktop UI (Owner is all-true). */
+export function can(moduleKey: ModuleKey, action: PermissionAction): boolean {
+  return allowed(currentPermissions, moduleKey, action);
 }

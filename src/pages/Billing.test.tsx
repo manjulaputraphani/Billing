@@ -7,6 +7,8 @@ import { listItems } from "../db/items";
 import { createCustomer, createSaleBill, findCustomerByGstin, getSaleBill } from "../db/billing";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
+vi.mock("../db/permissions", () => ({ can: () => true }));
+
 vi.mock("../db/client", () => ({
   getDb: vi.fn(() => ({})),
   getTxDb: vi.fn(),

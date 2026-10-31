@@ -5,6 +5,8 @@ import Items from "./Items";
 import { DbProvider } from "../lib/db-context";
 import { createItem, deleteItem, listItems, updateItem } from "../db/items";
 
+vi.mock("../db/permissions", () => ({ can: () => true }));
+
 vi.mock("../db/client", () => ({ getDb: vi.fn(() => ({})), pingDb: vi.fn() }));
 
 vi.mock("../db/items", async (importOriginal) => {

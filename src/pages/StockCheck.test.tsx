@@ -6,6 +6,8 @@ import { DbProvider } from "../lib/db-context";
 import { listItems } from "../db/items";
 import { listOpenBatches, saveStockEntry } from "../db/stock";
 
+vi.mock("../db/permissions", () => ({ can: () => true }));
+
 vi.mock("../db/client", () => ({
   getDb: vi.fn(() => ({})),
   getTxDb: vi.fn(),

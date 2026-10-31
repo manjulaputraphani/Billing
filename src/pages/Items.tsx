@@ -8,6 +8,7 @@ import {
   type ItemRow,
 } from "../db/items";
 import { useDb } from "../lib/db-context";
+import { can } from "../db/permissions";
 import { formatQuantity, toBase, type Unit } from "../logic/units";
 
 type FormState = {
@@ -104,13 +105,15 @@ export default function Items() {
     <div className="space-y-4">
       <header className="flex items-center justify-between">
         <h1 className="page-title">Items</h1>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={openAdd}
-        >
-          Add item
-        </button>
+        {can("items", "create") && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={openAdd}
+          >
+            Add item
+          </button>
+        )}
       </header>
 
       {error && (
@@ -158,20 +161,24 @@ export default function Items() {
                   {formatQuantity(row.minStockBase, row.unit as Unit)}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button
-                    type="button"
-                    className="mr-2 text-sm underline"
-                    onClick={() => openEdit(row)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm text-error-ink underline"
-                    onClick={() => setDeleting(row)}
-                  >
-                    Delete
-                  </button>
+                  {can("items", "edit") && (
+                    <button
+                      type="button"
+                      className="mr-2 text-sm underline"
+                      onClick={() => openEdit(row)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {can("items", "delete") && (
+                    <button
+                      type="button"
+                      className="text-sm text-error-ink underline"
+                      onClick={() => setDeleting(row)}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
