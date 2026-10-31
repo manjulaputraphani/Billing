@@ -1916,9 +1916,9 @@ export default function App() {
               <p className="text-sm text-muted">Raise a GST invoice — customer, items and totals update live.</p>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid items-stretch gap-4 lg:grid-cols-3">
               {/* Left: customer + items */}
-              <div className="space-y-4 lg:col-span-2">
+              <div className="flex flex-col gap-4 lg:col-span-2">
                 {/* Customer */}
                 <div className="card p-4">
                   <div className="mb-3 flex items-center justify-between">
@@ -1970,7 +1970,7 @@ export default function App() {
                 </div>
 
                 {/* Items */}
-                <div className="card p-4">
+                <div className="card flex flex-col p-4 lg:flex-1">
                   <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Items</h2>
                   <div className="grid items-end gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
                     <div className="space-y-1">
@@ -2016,9 +2016,11 @@ export default function App() {
                       ]}
                     />
                   ) : (
-                    <p className="mt-4 rounded-lg bg-surface-2 px-3 py-3 text-center text-sm text-muted">
-                      No items yet — pick an item, enter qty &amp; rate, then Add.
-                    </p>
+                    <div className="mt-4 flex flex-1 items-center justify-center">
+                      <p className="rounded-lg bg-surface-2 px-3 py-3 text-center text-sm text-muted">
+                        No items yet — pick an item, enter qty &amp; rate, then Add.
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

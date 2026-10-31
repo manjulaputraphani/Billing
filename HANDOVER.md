@@ -21,7 +21,8 @@ mobile-responsive web UI (every list is card-stacked on phones).
 - **Purchases**: subtitle, labelled icons row, live total, saving guard, Recent purchases.
 - **Stock Check**: labels, saved actor + created_at, Recent entries, dates.
 - **New Bill**: uniform controls, search-icon pickers, GST split (CGST/SGST vs IGST), sticky
-  summary. **Team**: duration/online fixes, avatars, role pills, masked phones, safer actions.
+  summary. Left column now stretches to the Summary height (`items-stretch`, Items `flex-1`,
+  empty message centred); natural height on mobile. **Team**: duration/online fixes, avatars, role pills, masked phones, safer actions.
 - **Dates**: `web/src/format.ts` ("31 Oct 2026", "31 Oct 2026, 8:35 PM") across the app.
 - `npx tsc --noEmit` clean (root + web + worker); `cd web && npm run build` ok; 244 tests green.
 
