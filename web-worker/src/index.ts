@@ -443,6 +443,29 @@ export default {
         return json({ shop: await getShopDetails(db) });
       }
 
+      if (url.pathname === "/api/stats" && request.method === "GET") {
+        const [row] = await sqlQuery(env, `select
+          (select coalesce(sum(total_paise),0) from sale_bills where cancelled = false and sale_date = current_date) as today_sales,
+          (select coalesce(sum(total_paise),0) from sale_bills where cancelled = false and sale_date >= date_trunc('month', current_date)) as month_sales,
+          (select coalesce(sum(si.profit_paise),0) from sale_items si join sale_bills sb on sb.id = si.sale_id where sb.cancelled = false and sb.sale_date >= date_trunc('month', current_date)) as month_profit,
+          (select coalesce(sum(amount_paise),0) from expenses where expense_date >= date_trunc('month', current_date)) as month_expenses,
+          (select count(*)::int from items i where coalesce((select sum(b.qty_remaining) from batches b where b.item_id = i.id),0) <= i.min_stock_base) as low_stock`);
+        return json({ stats: row });
+      }
+
+      if (url.pathname === "/api/purchases" && request.method === "GET") {
+        const rows = await sqlQuery(env, `select p.id, p.qty_base, p.unit_price_paise, p.total_paise, p.purchase_date, i.name, i.unit
+          from purchases p join items i on i.id = p.item_id order by p.id desc limit 30`);
+        return json({ purchases: rows });
+      }
+
+      const batchMatch = url.pathname.match(/^\/api\/items\/(\d+)\/batches$/);
+      if (batchMatch && request.method === "GET") {
+        const id = Number(batchMatch[1]);
+        const rows = await sqlQuery(env, `select id, qty_remaining, unit_price_paise, purchase_date from batches where item_id = $1 and qty_remaining > 0 order by purchase_date, id`, [id]);
+        return json({ batches: rows });
+      }
+
       // ---- W3b writes (session actor threaded per request) ----
       const actor: AuditActor = { userId: session.uid, name: session.name, role: session.role };
       const body = ["POST", "PUT"].includes(request.method)

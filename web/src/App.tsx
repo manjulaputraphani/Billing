@@ -13,7 +13,7 @@ import {
 import { buildBillHtml } from "../../src/lib/printBill";
 import type { ShopDetails } from "../../src/db/settings";
 
-type View = "bills" | "billing" | "items" | "activity" | "team" | "settings";
+type View = "dashboard" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
 
 export default function App() {
   const [checking, setChecking] = useState(true);
@@ -48,6 +48,16 @@ export default function App() {
   const [billLines, setBillLines] = useState<{ itemId: number; name: string; unit: string; qtyBase: number; ratePaise: number; hsn: string; totalPaise: number }[]>([]);
   const [billMsg, setBillMsg] = useState<string | null>(null);
   const [lastBillId, setLastBillId] = useState<number | null>(null);
+  const [stats, setStats] = useState<{ today_sales: number; month_sales: number; month_profit: number; month_expenses: number; low_stock: number } | null>(null);
+  const [purchasesList, setPurchasesList] = useState<Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }>>([]);
+  const [expensesList, setExpensesList] = useState<Array<{ id: number; category: string; amountPaise: number; date: string; paymentMode: string | null; paidTo: string | null; note: string | null }>>([]);
+  const [purchase, setPurchase] = useState({ itemId: "" as number | "", qty: "", rate: "", supplier: "" });
+  const [purchaseMsg, setPurchaseMsg] = useState<string | null>(null);
+  const [stock, setStock] = useState({ itemId: "" as number | "", type: "USAGE", qty: "", note: "" });
+  const [stockBatches, setStockBatches] = useState<Array<{ id: number; qty_remaining: number; unit_price_paise: number; purchase_date: string }>>([]);
+  const [stockMsg, setStockMsg] = useState<string | null>(null);
+  const [expense, setExpense] = useState({ category: "", amount: "", paidTo: "", note: "" });
+  const [expenseMsg, setExpenseMsg] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [phone, setPhone] = useState("");
@@ -144,6 +154,83 @@ export default function App() {
     }
   }
 
+  const factorOf = (unit: string) => (unit === "kg" || unit === "l" ? 1000 : 1);
+  const todayIso = () => new Date().toISOString().slice(0, 10);
+
+  async function addPurchaseNow() {
+    const item = items.find((i) => i.id === purchase.itemId);
+    if (!item) return;
+    setPurchaseMsg(null);
+    try {
+      await api.addPurchase({
+        itemId: item.id,
+        qty: Number(purchase.qty),
+        unitPricePaise: Math.round(Number(purchase.rate) * 100),
+        date: todayIso(),
+        supplierName: purchase.supplier,
+        paymentMode: "Cash",
+      });
+      setPurchaseMsg("Purchase saved");
+      setPurchase({ itemId: "", qty: "", rate: "", supplier: "" });
+      setItems((await api.items()).items);
+      setPurchasesList((await api.purchases()).purchases);
+      setStats((await api.stats()).stats);
+    } catch (err) {
+      setPurchaseMsg(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function pickStockItem(id: number | "") {
+    setStock({ ...stock, itemId: id });
+    setStockMsg(null);
+    if (id === "") return setStockBatches([]);
+    setStockBatches((await api.batches(id)).batches);
+  }
+
+  async function saveStockNow() {
+    const item = items.find((i) => i.id === stock.itemId);
+    if (!item) return;
+    setStockMsg(null);
+    try {
+      const base = Math.round(Number(stock.qty) * factorOf(item.unit));
+      await api.saveStock({
+        itemId: item.id,
+        type: stock.type,
+        qty: stock.type === "STOCK_CHECK" ? null : base,
+        enteredLeft: stock.type === "STOCK_CHECK" ? base : null,
+        date: todayIso(),
+        note: stock.note,
+      });
+      setStockMsg("Stock entry saved");
+      setStock({ itemId: "", type: "USAGE", qty: "", note: "" });
+      setStockBatches([]);
+      setItems((await api.items()).items);
+      setStats((await api.stats()).stats);
+    } catch (err) {
+      setStockMsg(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function addExpenseNow() {
+    setExpenseMsg(null);
+    try {
+      await api.addExpense({
+        category: expense.category,
+        amountPaise: Math.round(Number(expense.amount) * 100),
+        date: todayIso(),
+        paymentMode: "Cash",
+        paidTo: expense.paidTo,
+        note: expense.note,
+      });
+      setExpenseMsg("Expense saved");
+      setExpense({ category: "", amount: "", paidTo: "", note: "" });
+      setExpensesList((await api.expenses()).expenses);
+      setStats((await api.stats()).stats);
+    } catch (err) {
+      setExpenseMsg(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function loadNotify() {
     const cfg = await api.notifySettings();
     setNotifyEmails(cfg.emails.join(", "));
@@ -163,7 +250,7 @@ export default function App() {
       void loadMembers().catch(() => setMembers([]));
       void loadNotify().catch(() => setNotifyStatus("Could not load notification settings"));
     }
-    void Promise.all([api.bills().then((r) => setBills(r.bills)), api.items().then((r) => setItems(r.items)), api.activity().then((r) => setActivity(r.activity)), api.shop().then((r) => setShop(r.shop as unknown as ShopDetails))]).catch((err) =>
+    void Promise.all([api.stats().then((r) => setStats(r.stats)), api.purchases().then((r) => setPurchasesList(r.purchases)), api.expenses().then((r) => setExpensesList(r.expenses)), api.bills().then((r) => setBills(r.bills)), api.items().then((r) => setItems(r.items)), api.activity().then((r) => setActivity(r.activity)), api.shop().then((r) => setShop(r.shop as unknown as ShopDetails))]).catch((err) =>
       setError(err instanceof Error ? err.message : String(err)),
     );
   }, [user]);
@@ -355,9 +442,13 @@ export default function App() {
   }
 
   const tabs: { key: View; label: string }[] = [
+    { key: "dashboard", label: "Dashboard" },
     { key: "bills", label: "Invoices" },
     { key: "billing", label: "New Bill" },
     { key: "items", label: "Items" },
+    { key: "purchases", label: "Purchases" },
+    { key: "stock", label: "Stock Check" },
+    { key: "expenses", label: "Expenses" },
     { key: "activity", label: "Activity" },
     ...(user.role === "owner"
       ? [
@@ -419,6 +510,128 @@ export default function App() {
 
       <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
         {error && <p role="alert" className="mb-4 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+        {view === "dashboard" && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Dashboard</h1>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["Today's sales", money(stats?.today_sales ?? 0)],
+                ["This month", money(stats?.month_sales ?? 0)],
+                ["Month profit", money(stats?.month_profit ?? 0)],
+                ["Month expenses", money(stats?.month_expenses ?? 0)],
+                ["Low stock items", String(stats?.low_stock ?? 0)],
+              ].map(([label, value]) => (
+                <div key={label} className="card p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">{label}</p>
+                  <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="card p-4">
+              <h2 className="mb-2 text-sm font-medium">Recent activity</h2>
+              <ul className="divide-y divide-stone-100 text-sm">
+                {activity.slice(0, 8).map((row) => (
+                  <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
+                    <span>{row.summary}</span>
+                    <span className="text-xs text-stone-500">{row.actor}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
+        {view === "purchases" && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Purchases</h1>
+            <div className="card max-w-3xl space-y-3 p-4">
+              <div className="grid gap-2 sm:grid-cols-4">
+                <select className="input" value={purchase.itemId} onChange={(e) => setPurchase({ ...purchase, itemId: e.currentTarget.value === "" ? "" : Number(e.currentTarget.value) })}>
+                  <option value="">Choose item…</option>
+                  {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+                <input className="input" type="number" placeholder="Qty" value={purchase.qty} onChange={(e) => setPurchase({ ...purchase, qty: e.currentTarget.value })} />
+                <input className="input" type="number" placeholder="Rate ₹" value={purchase.rate} onChange={(e) => setPurchase({ ...purchase, rate: e.currentTarget.value })} />
+                <input className="input" placeholder="Supplier" value={purchase.supplier} onChange={(e) => setPurchase({ ...purchase, supplier: e.currentTarget.value })} />
+              </div>
+              <button className="btn btn-primary" onClick={() => void addPurchaseNow()}>Save purchase</button>
+              {purchaseMsg && <p role="status" className="text-sm text-stone-600">{purchaseMsg}</p>}
+            </div>
+            <div className="card overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-sm">
+                <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Item</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2 text-right">Total</th></tr></thead>
+                <tbody>{purchasesList.map((p) => (
+                  <tr key={p.id} className="border-t border-stone-100">
+                    <td className="px-3 py-2">{p.purchase_date}</td>
+                    <td className="px-3 py-2 font-medium">{p.name}</td>
+                    <td className="px-3 py-2">{qty(p.qty_base, p.unit)}</td>
+                    <td className="px-3 py-2 text-right">{money(p.total_paise)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {view === "stock" && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Stock Check</h1>
+            <div className="card max-w-3xl space-y-3 p-4">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <select className="input" value={stock.itemId} onChange={(e) => void pickStockItem(e.currentTarget.value === "" ? "" : Number(e.currentTarget.value))}>
+                  <option value="">Choose item…</option>
+                  {items.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+                <select className="input" value={stock.type} onChange={(e) => setStock({ ...stock, type: e.currentTarget.value })}>
+                  <option value="USAGE">Used</option>
+                  <option value="WASTAGE">Wastage</option>
+                  <option value="STOCK_CHECK">Stock left</option>
+                </select>
+              </div>
+              {stock.itemId !== "" && (
+                <p className="text-sm text-stone-600">
+                  Current stock: {qty(stockBatches.reduce((sum, b) => sum + b.qty_remaining, 0), items.find((i) => i.id === stock.itemId)?.unit ?? "kg")}
+                </p>
+              )}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input className="input" type="number" placeholder={stock.type === "STOCK_CHECK" ? "Stock left" : "Quantity"} value={stock.qty} onChange={(e) => setStock({ ...stock, qty: e.currentTarget.value })} />
+                <input className="input" placeholder="Note (optional)" value={stock.note} onChange={(e) => setStock({ ...stock, note: e.currentTarget.value })} />
+              </div>
+              <button className="btn btn-primary" onClick={() => void saveStockNow()}>Save entry</button>
+              {stockMsg && <p role="status" className="text-sm text-stone-600">{stockMsg}</p>}
+            </div>
+          </section>
+        )}
+
+        {view === "expenses" && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Expenses</h1>
+            <div className="card max-w-3xl space-y-3 p-4">
+              <div className="grid gap-2 sm:grid-cols-4">
+                <input className="input" placeholder="Category" value={expense.category} onChange={(e) => setExpense({ ...expense, category: e.currentTarget.value })} />
+                <input className="input" type="number" placeholder="Amount ₹" value={expense.amount} onChange={(e) => setExpense({ ...expense, amount: e.currentTarget.value })} />
+                <input className="input" placeholder="Paid to" value={expense.paidTo} onChange={(e) => setExpense({ ...expense, paidTo: e.currentTarget.value })} />
+                <input className="input" placeholder="Note" value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.currentTarget.value })} />
+              </div>
+              <button className="btn btn-primary" onClick={() => void addExpenseNow()}>Add expense</button>
+              {expenseMsg && <p role="status" className="text-sm text-stone-600">{expenseMsg}</p>}
+            </div>
+            <div className="card overflow-x-auto">
+              <table className="w-full min-w-[520px] text-left text-sm">
+                <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Paid to</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
+                <tbody>{expensesList.map((x) => (
+                  <tr key={x.id} className="border-t border-stone-100">
+                    <td className="px-3 py-2">{x.date}</td>
+                    <td className="px-3 py-2 font-medium">{x.category}</td>
+                    <td className="px-3 py-2">{x.paidTo ?? "—"}</td>
+                    <td className="px-3 py-2 text-right">{money(x.amountPaise)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {view === "bills" && (
           <section className="space-y-4">

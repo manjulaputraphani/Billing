@@ -79,6 +79,14 @@ export const api = {
     request<{ item: Item }>(`/api/items/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   createCustomer: (body: { name: string; phone?: string; email?: string; gstin?: string; address?: string }) =>
     request<{ customer: { id: number } }>("/api/customers", { method: "POST", body: JSON.stringify(body) }),
+  stats: () => request<{ stats: { today_sales: number; month_sales: number; month_profit: number; month_expenses: number; low_stock: number } }>("/api/stats"),
+  purchases: () => request<{ purchases: Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string }> }>("/api/purchases"),
+  addPurchase: (body: { itemId: number; qty: number; unitPricePaise: number; date: string; supplierName?: string; paymentMode?: string }) =>
+    request<{ purchase: { purchaseId: number } }>("/api/purchases", { method: "POST", body: JSON.stringify(body) }),
+  batches: (itemId: number) => request<{ batches: Array<{ id: number; qty_remaining: number; unit_price_paise: number; purchase_date: string }> }>(`/api/items/${itemId}/batches`),
+  saveStock: (body: Record<string, unknown>) => request<{ stock: unknown }>("/api/stock", { method: "POST", body: JSON.stringify(body) }),
+  expenses: () => request<{ expenses: Array<{ id: number; category: string; amountPaise: number; date: string; paymentMode: string | null; paidTo: string | null; note: string | null }> }>("/api/expenses"),
+  addExpense: (body: Record<string, unknown>) => request<{ expense: unknown }>("/api/expenses", { method: "POST", body: JSON.stringify(body) }),
   createBill: (body: Record<string, unknown>) => request<{ bill: { saleId: number; billNo: string; totalPaise: number } }>("/api/bills", { method: "POST", body: JSON.stringify(body) }),
   bills: () => request<{ bills: BillRow[] }>("/api/bills?limit=100"),
   bill: (id: number) => request<{ bill: BillDetail }>(`/api/bills/${id}`),
