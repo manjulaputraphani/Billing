@@ -22,14 +22,17 @@ import { formatDate, formatDateTime } from "./format";
 import ThemeToggle from "./ThemeToggle";
 import { watchSystemTheme } from "./theme";
 import EmptyState from "./components/EmptyState";
+import FormRow from "./components/FormRow";
 import ItemPicker from "./components/ItemPicker";
 import CustomerPicker from "./components/CustomerPicker";
 import ItemThumb from "./components/ItemThumb";
+import ResponsiveTable from "./components/ResponsiveTable";
 import SalesChart from "./components/SalesChart";
 import {
   IconActivity,
   IconBarChart,
   IconBill,
+  IconCalendar,
   IconClose,
   IconCoffee as IconCoffeeNav,
   IconCrown,
@@ -51,8 +54,10 @@ import {
   IconScale,
   IconSettings,
   IconSignOut,
+  IconStickyNote,
   IconStock,
   IconStore,
+  IconTag,
   IconTeam,
   IconTruck,
   IconUser,
@@ -231,7 +236,7 @@ export default function App() {
   const [investment, setInvestment] = useState({ name: "", amount: "", date: new Date().toISOString().slice(0, 10), note: "" });
   const [investmentMsg, setInvestmentMsg] = useState<string | null>(null);
   const [activityFilter, setActivityFilter] = useState("");
-  const [expense, setExpense] = useState({ category: "", amount: "", paidTo: "", note: "", type: "general" });
+  const [expense, setExpense] = useState({ category: "", amount: "", paidTo: "", note: "", type: "general", date: new Date().toISOString().slice(0, 10) });
   const [expenseMsg, setExpenseMsg] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
@@ -651,13 +656,13 @@ export default function App() {
         category: expense.category,
         expenseType: expense.type,
         amountPaise: Math.round(Number(expense.amount) * 100),
-        date: todayIso(),
+        date: expense.date || todayIso(),
         paymentMode: "Cash",
         paidTo: expense.paidTo,
         note: expense.note,
       });
       setExpenseMsg("Expense saved");
-      setExpense({ category: "", amount: "", paidTo: "", note: "", type: "general" });
+      setExpense({ category: "", amount: "", paidTo: "", note: "", type: "general", date: todayIso() });
       setExpensesList((await api.expenses()).expenses);
       setStats((await api.stats()).stats);
       setCategories((await api.expenseCategories()).categories);
@@ -1513,7 +1518,7 @@ export default function App() {
               </div>
 
               <div className="card p-4">
-                <div className="grid items-end gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto]">
+                <FormRow desktop="min-[1200px]:grid-cols-[2fr_1fr_1fr_1fr_1.2fr_auto]">
                   <div className="space-y-1">
                     <label className="label">Item</label>
                     <div className="relative">
@@ -1552,68 +1557,41 @@ export default function App() {
                       <input className="input input-icon" placeholder="Supplier" value={purchase.supplier} onChange={(e) => setPurchase({ ...purchase, supplier: e.currentTarget.value })} />
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex w-full flex-col gap-2 sm:col-span-full sm:flex-row sm:items-center min-[1200px]:col-span-1 min-[1200px]:flex-col min-[1200px]:items-stretch">
                     <span className="whitespace-nowrap text-sm text-muted">
                       Total: <span className="font-semibold text-ink">{money(purchaseTotalPaise)}</span>
                     </span>
-                    <button className="btn btn-primary whitespace-nowrap" onClick={() => void addPurchaseNow()} disabled={purchaseSaving}>
+                    <button className="btn btn-primary w-full whitespace-nowrap min-[1200px]:w-auto" onClick={() => void addPurchaseNow()} disabled={purchaseSaving}>
                       {purchaseSaving ? "Saving…" : "Save purchase"}
                     </button>
                   </div>
-                </div>
+                </FormRow>
                 {purchaseMsg && <p role="status" className="mt-2 text-sm text-muted">{purchaseMsg}</p>}
               </div>
 
-              <div className="card overflow-x-auto">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <h2 className="text-sm font-medium">Recent purchases</h2>
-                </div>
-                {purchasesList.length === 0 ? (
-                  <div className="px-4 pb-4">
-                    <EmptyState
-                      illustration="purchases"
-                      title="No purchases yet"
-                      message="Record what you buy — the weighted-average cost is updated automatically."
-                    />
-                  </div>
-                ) : (
-                  <table className="w-full min-w-[820px] text-left text-sm">
-                    <colgroup>
-                      <col className="w-[12%]" />
-                      <col className="w-[24%]" />
-                      <col className="w-[12%]" />
-                      <col className="w-[14%]" />
-                      <col className="w-[12%]" />
-                      <col className="w-[15%]" />
-                      <col className="w-[11%]" />
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        <th className="px-4 py-2">Date</th>
-                        <th className="px-4 py-2">Item</th>
-                        <th className="px-4 py-2 text-right">Qty</th>
-                        <th className="px-4 py-2 text-right">Rate/kg</th>
-                        <th className="px-4 py-2 text-right">Transport</th>
-                        <th className="px-4 py-2">Supplier</th>
-                        <th className="px-4 py-2 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {purchasesList.map((p) => (
-                        <tr key={p.id} className="border-t border-line">
-                          <td className="whitespace-nowrap px-4 py-2">{formatDate(p.purchase_date)}</td>
-                          <td className="px-4 py-2 font-medium">{p.name}</td>
-                          <td className="px-4 py-2 text-right">{qty(p.qty_base, p.unit)}</td>
-                          <td className="px-4 py-2 text-right">{money(p.unit_price_paise)}</td>
-                          <td className="px-4 py-2 text-right">{money(p.expenses_paise)}</td>
-                          <td className="px-4 py-2">{p.supplier_name ?? "—"}</td>
-                          <td className="px-4 py-2 text-right">{money(p.total_paise)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+              <ResponsiveTable
+                title="Recent purchases"
+                rows={purchasesList}
+                rowKey={(p) => p.id}
+                minWidthClass="min-w-[820px]"
+                widths={["w-[12%]", "w-[24%]", "w-[12%]", "w-[14%]", "w-[12%]", "w-[15%]", "w-[11%]"]}
+                columns={[
+                  { key: "date", header: "Date", cell: (p) => formatDate(p.purchase_date), className: "whitespace-nowrap" },
+                  { key: "item", header: "Item", cell: (p) => <span className="font-medium">{p.name}</span> },
+                  { key: "qty", header: "Qty", align: "right", cell: (p) => qty(p.qty_base, p.unit) },
+                  { key: "rate", header: "Rate/kg", align: "right", cell: (p) => money(p.unit_price_paise) },
+                  { key: "transport", header: "Transport", align: "right", cell: (p) => money(p.expenses_paise) },
+                  { key: "supplier", header: "Supplier", cell: (p) => p.supplier_name ?? "—" },
+                  { key: "total", header: "Total", align: "right", cell: (p) => money(p.total_paise) },
+                ]}
+                empty={
+                  <EmptyState
+                    illustration="purchases"
+                    title="No purchases yet"
+                    message="Record what you buy — the weighted-average cost is updated automatically."
+                  />
+                }
+              />
             </section>
           );
         })()}
@@ -1629,8 +1607,8 @@ export default function App() {
                 <p className="text-sm text-muted">Record usage, wastage or the stock counted on the shelf.</p>
               </div>
 
-              <div className="card space-y-3 p-4">
-                <div className="grid gap-3 sm:grid-cols-2">
+              <div className="card p-4">
+                <FormRow desktop="min-[1200px]:grid-cols-[1fr_1fr_1fr_1.5fr_auto]">
                   <div className="space-y-1">
                     <label className="label" htmlFor="stock-item">Item</label>
                     <select
@@ -1656,9 +1634,6 @@ export default function App() {
                       <option value="STOCK_CHECK">Stock left</option>
                     </select>
                   </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <label className="label" htmlFor="stock-qty">Quantity</label>
@@ -1687,63 +1662,39 @@ export default function App() {
                       onChange={(e) => setStock({ ...stock, note: e.currentTarget.value })}
                     />
                   </div>
-                </div>
-
-                <button className="btn btn-primary" onClick={() => void saveStockNow()}>Save entry</button>
-                {stockMsg && <p role="status" className="text-sm text-muted">{stockMsg}</p>}
+                  <button className="btn btn-primary w-full whitespace-nowrap sm:col-span-full min-[1200px]:col-span-1 min-[1200px]:w-auto" onClick={() => void saveStockNow()}>Save entry</button>
+                </FormRow>
+                {stockMsg && <p role="status" className="mt-2 text-sm text-muted">{stockMsg}</p>}
               </div>
 
               {/* Recent entries */}
-              <div className="card overflow-x-auto">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <h2 className="text-sm font-medium">Recent entries</h2>
-                  <span className="text-xs text-muted">Last 30 entries</span>
-                </div>
-                {stockEntries.length === 0 ? (
-                  <p className="px-4 pb-4 text-sm text-muted">No stock entries yet.</p>
-                ) : (
-                  <table className="w-full min-w-[760px] text-left text-sm">
-                    <colgroup>
-                      <col className="w-[16%]" />
-                      <col className="w-[24%]" />
-                      <col className="w-[13%]" />
-                      <col className="w-[15%]" />
-                      <col className="w-[18%]" />
-                      <col className="w-[14%]" />
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        <th className="px-4 py-2">Date</th>
-                        <th className="px-4 py-2">Item</th>
-                        <th className="px-4 py-2">Type</th>
-                        <th className="px-4 py-2 text-right">Quantity</th>
-                        <th className="px-4 py-2">Note</th>
-                        <th className="px-4 py-2">User</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stockEntries.map((row) => (
-                        <tr key={row.id} className="border-t border-line">
-                          <td className="whitespace-nowrap px-4 py-2">
-                            {row.createdAt ? formatDateTime(row.createdAt) : formatDate(row.date)}
-                          </td>
-                          <td className="px-4 py-2 font-medium">{row.item}</td>
-                          <td className="px-4 py-2">
-                            <span className={`badge ${
-                              row.type === "STOCK_CHECK" ? "badge-info" : row.type === "WASTAGE" ? "badge-bad" : "badge-warn"
-                            }`}>
-                              {STOCK_TYPE_LABEL[row.type] ?? row.type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2 text-right">{qty(row.qtyBase, row.unit)}</td>
-                          <td className="break-words px-4 py-2">{row.note ?? "—"}</td>
-                          <td className="whitespace-nowrap px-4 py-2">{row.user ?? "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+              <ResponsiveTable
+                title="Recent entries"
+                headerRight={<span className="text-xs text-muted">Last 30 entries</span>}
+                rows={stockEntries}
+                rowKey={(row) => row.id}
+                minWidthClass="min-w-[760px]"
+                widths={["w-[16%]", "w-[24%]", "w-[13%]", "w-[15%]", "w-[18%]", "w-[14%]"]}
+                columns={[
+                  { key: "date", header: "Date", cell: (row) => (row.createdAt ? formatDateTime(row.createdAt) : formatDate(row.date)), className: "whitespace-nowrap" },
+                  { key: "item", header: "Item", cell: (row) => <span className="font-medium">{row.item}</span> },
+                  {
+                    key: "type",
+                    header: "Type",
+                    cell: (row) => (
+                      <span className={`badge ${
+                        row.type === "STOCK_CHECK" ? "badge-info" : row.type === "WASTAGE" ? "badge-bad" : "badge-warn"
+                      }`}>
+                        {STOCK_TYPE_LABEL[row.type] ?? row.type}
+                      </span>
+                    ),
+                  },
+                  { key: "qty", header: "Quantity", align: "right", cell: (row) => qty(row.qtyBase, row.unit) },
+                  { key: "note", header: "Note", cell: (row) => row.note ?? "—", className: "break-words" },
+                  { key: "user", header: "User", cell: (row) => row.user ?? "—", className: "whitespace-nowrap" },
+                ]}
+                empty={<p className="text-sm text-muted">No stock entries yet.</p>}
+              />
             </section>
           );
         })()}
@@ -1751,34 +1702,98 @@ export default function App() {
         {view === "expenses" && (
           <section className="space-y-4">
             <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Expenses</h1>
-            <div className="card max-w-3xl space-y-3 p-4">
-              <div className="grid gap-2 sm:grid-cols-5">
-                <select className="input" value={expense.type} onChange={(e) => setExpense({ ...expense, type: e.currentTarget.value })}>
-                  <option value="general">General</option>
-                  <option value="purchase">Purchase</option>
-                  <option value="sale">Sale</option>
-                </select>
-                <input className="input" placeholder="Category" value={expense.category} onChange={(e) => setExpense({ ...expense, category: e.currentTarget.value })} />
-                <input className="input" type="number" placeholder="Amount ₹" value={expense.amount} onChange={(e) => setExpense({ ...expense, amount: e.currentTarget.value })} />
-                <input className="input" placeholder="Paid to" value={expense.paidTo} onChange={(e) => setExpense({ ...expense, paidTo: e.currentTarget.value })} />
-                <input className="input" placeholder="Note" value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.currentTarget.value })} />
-              </div>
-              <button className="btn btn-primary" onClick={() => void addExpenseNow()}>Add expense</button>
-              {expenseMsg && <p role="status" className="text-sm text-muted">{expenseMsg}</p>}
+
+            <div className="card p-4">
+              <FormRow desktop="min-[1200px]:grid-cols-[1fr_1fr_1.2fr_1fr_1.2fr_1.6fr_auto]">
+                <div className="space-y-1">
+                  <label className="label" htmlFor="expense-date">Date</label>
+                  <div className="relative">
+                    <IconCalendar size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <input id="expense-date" className="input input-icon" type="date" value={expense.date} onChange={(e) => setExpense({ ...expense, date: e.currentTarget.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="expense-type">Type</label>
+                  <div className="relative">
+                    <IconTag size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <select id="expense-type" className="input input-icon" value={expense.type} onChange={(e) => setExpense({ ...expense, type: e.currentTarget.value })}>
+                      <option value="general">General</option>
+                      <option value="purchase">Purchase</option>
+                      <option value="sale">Sale</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="expense-category">Category</label>
+                  <div className="relative">
+                    <IconTag size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <input
+                      id="expense-category"
+                      className="input input-icon"
+                      list="expense-categories"
+                      placeholder="Choose or type"
+                      value={expense.category}
+                      onChange={(e) => setExpense({ ...expense, category: e.currentTarget.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="expense-amount">Amount ₹</label>
+                  <div className="relative">
+                    <IconIndianRupee size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <input id="expense-amount" className="input input-icon" type="number" placeholder="0" value={expense.amount} onChange={(e) => setExpense({ ...expense, amount: e.currentTarget.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="expense-paid-to">Paid to</label>
+                  <div className="relative">
+                    <IconUser size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <input id="expense-paid-to" className="input input-icon" placeholder="Who was paid" value={expense.paidTo} onChange={(e) => setExpense({ ...expense, paidTo: e.currentTarget.value })} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="label" htmlFor="expense-note">Note</label>
+                  <div className="relative">
+                    <IconStickyNote size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                    <input id="expense-note" className="input input-icon" placeholder="Optional" value={expense.note} onChange={(e) => setExpense({ ...expense, note: e.currentTarget.value })} />
+                  </div>
+                </div>
+                <button className="btn btn-primary w-full whitespace-nowrap sm:col-span-full min-[1200px]:col-span-1 min-[1200px]:w-auto" onClick={() => void addExpenseNow()}>Add expense</button>
+              </FormRow>
+              <datalist id="expense-categories">
+                {["Rent", "Tea", "Transport", "Salary", "Electricity", "Other"].map((category) => (
+                  <option key={category} value={category} />
+                ))}
+              </datalist>
+              {expenseMsg && <p role="status" className="mt-2 text-sm text-muted">{expenseMsg}</p>}
             </div>
-            <div className="card overflow-x-auto">
-              <table className="w-full min-w-[520px] text-left text-sm">
-                <thead><tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Category</th><th className="px-3 py-2">Paid to</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
-                <tbody>{expensesList.map((x) => (
-                  <tr key={x.id} className="border-t border-line">
-                    <td className="px-3 py-2">{formatDate(x.date)}</td>
-                    <td className="px-3 py-2 font-medium">{x.category}</td>
-                    <td className="px-3 py-2">{x.paidTo ?? "—"}</td>
-                    <td className="px-3 py-2 text-right">{money(x.amountPaise)}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
+
+            <ResponsiveTable
+              title="Recent expenses"
+              headerRight={
+                <span className="text-sm text-muted">
+                  This month: <span className="font-semibold text-ink">{money(stats?.month_expenses ?? 0)}</span>
+                </span>
+              }
+              rows={expensesList}
+              rowKey={(x) => x.id}
+              minWidthClass="min-w-[640px]"
+              widths={["w-[15%]", "w-[20%]", "w-[18%]", "w-[32%]", "w-[15%]"]}
+              columns={[
+                { key: "date", header: "Date", cell: (x) => formatDate(x.date), className: "whitespace-nowrap" },
+                { key: "category", header: "Category", cell: (x) => <span className="font-medium">{x.category}</span> },
+                { key: "paidTo", header: "Paid to", cell: (x) => x.paidTo ?? "—" },
+                { key: "note", header: "Note", cell: (x) => x.note ?? "—", className: "break-words" },
+                { key: "amount", header: "Amount", align: "right", cell: (x) => money(x.amountPaise) },
+              ]}
+              empty={
+                <EmptyState
+                  illustration="expenses"
+                  title="No expenses yet."
+                  message="Add your first one above."
+                />
+              }
+            />
           </section>
         )}
 

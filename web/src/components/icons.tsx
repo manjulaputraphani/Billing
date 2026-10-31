@@ -300,3 +300,26 @@ export const IconLock = (p: IconProps) => (
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </Svg>
 );
+
+export const IconCalendar = (p: IconProps) => (
+  <Svg {...p}>
+    <rect width="18" height="18" x="3" y="4" rx="2" />
+    <path d="M16 2v4" />
+    <path d="M8 2v4" />
+    <path d="M3 10h18" />
+  </Svg>
+);
+
+export const IconTag = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+    <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
+  </Svg>
+);
+
+export const IconStickyNote = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9.5L21 14.5V5a2 2 0 0 0-2-2Z" />
+    <path d="M15 21v-5a1 1 0 0 1 1-1h5" />
+  </Svg>
+);
