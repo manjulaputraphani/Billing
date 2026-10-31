@@ -599,7 +599,21 @@ export default {
       }
 
       if (url.pathname === "/api/bills" && request.method === "POST") {
-        return json({ bill: await asActor(actor, () => createSaleBill(env.DATABASE_URL as string, body)) });
+        const created = await asActor(actor, () => createSaleBill(env.DATABASE_URL as string, body));
+        if (session.role === "staff") {
+          const lines = Array.isArray((body as { lines?: unknown[] }).lines)
+            ? (body as { lines: unknown[] }).lines.length
+            : 0;
+          await notifyOwners(
+            env,
+            "bill",
+            `Bill ${created.billNo} — ${session.name}`,
+            `<p><b>${session.name}</b> (staff) created bill <b>${created.billNo}</b> for ₹${(
+              created.totalPaise / 100
+            ).toFixed(2)} (${lines} line(s)).</p>`,
+          );
+        }
+        return json({ bill: created });
       }
 
       if (url.pathname.match(/^\/api\/bills\/\d+\/cancel$/) && request.method === "POST") {

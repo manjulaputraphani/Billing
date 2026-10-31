@@ -216,5 +216,5 @@ Reconciliation with the interim work of 2026-10-30:
 ## NOTIFICATIONS — see docs/PLAN_NOTIFICATIONS.md (proposed 2026-10-31)
 - [x] **N1** notification settings — settings keys notify_emails / notify_signup / notify_member / notify_bill; owner-only GET/PUT /api/settings/notifications (default = shop email, all events on); audit settings.notify. Verified live (defaults, toggles, restore).
 - [x] **N2** notifyOwners() via Resend — fires on self-signup request, member add, approval and role change; honours notify_* toggles; best-effort (never blocks the action). Verified live without a key: signup 201, approve/role 200, no errors. Needs RESEND_API_KEY + MAIL_FROM for real delivery.
-- [ ] **N3** notify owners when a **staff** member creates a bill
+- [x] **N3 staff bill alerts** — when a staff member creates a bill, owners get an email (bill no, total, line count, member) via notifyOwners/bill toggle. Verified live with a temporary staff account (bill SD-2026-000005 created, cancelled, cleaned); skipped safely without a Resend key.
 - [ ] **N4** web Settings screen (email status, recipients, toggles, test)
