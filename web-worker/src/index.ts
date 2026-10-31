@@ -876,7 +876,7 @@ export default {
            select sm.id, sm.date, sm.item, sm.unit, sm.type,
                   case when sm.type = 'STOCK_CHECK'
                        then coalesce(sm.entered_qty_left, 0)
-                       else abs(sm.qty_change) end as qty_base,
+                       else abs(sm.qty_change) end as "qtyBase",
                   sm.note, al.actor as "user"
            from sm
            left join al on al.entity_id = sm.item_id
