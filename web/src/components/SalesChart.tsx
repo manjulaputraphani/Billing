@@ -48,19 +48,27 @@ export default function SalesChart({ data }: { data: DailyPoint[] }) {
     expenses: Number(day.expenses) || 0,
   }));
   const peak = points.reduce((max, point) => Math.max(max, point.sales, point.expenses), 0);
+
+  // Nothing happened in the window — show a quiet message instead of a dead axis.
+  if (peak === 0) {
+    return (
+      <div className="flex h-full min-h-[144px] items-center justify-center">
+        <p className="text-sm text-muted">No sales or expenses in the last 14 days</p>
+      </div>
+    );
+  }
+
   // With no data the scale would be 0 → show a sensible ₹100 axis instead.
   const max = niceMax(Math.max(peak, 10_000));
-  const height = 144;
 
   const ticks = Array.from({ length: GRID_LINES + 1 }, (_, index) => (max / GRID_LINES) * index);
 
   return (
-    <div className="relative">
-      <div className="flex gap-2">
+    <div className="flex h-full flex-col">
+      <div className="flex min-h-0 flex-1 gap-2">
         {/* y-axis */}
         <div
           className="flex w-12 shrink-0 flex-col justify-between text-[10px] text-muted"
-          style={{ height }}
           aria-hidden="true"
         >
           {[...ticks].reverse().map((tick) => (
@@ -71,8 +79,8 @@ export default function SalesChart({ data }: { data: DailyPoint[] }) {
         </div>
 
         {/* plot */}
-        <div className="min-w-0 flex-1">
-          <div className="relative" style={{ height }}>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="relative min-h-[144px] flex-1">
             {/* gridlines */}
             {ticks.map((tick) => (
               <div

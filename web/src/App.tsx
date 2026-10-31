@@ -129,6 +129,23 @@ const STOCK_TYPE_LABEL: Record<string, string> = {
   WASTAGE: "Wastage",
 };
 
+/** Compact relative time for the activity feed: "2 min ago", "3 h ago", … */
+function relativeTime(value: string | Date): string {
+  const then = new Date(value).getTime();
+  if (!Number.isFinite(then)) return "";
+  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (seconds < 45) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} mo ago`;
+  return `${Math.floor(months / 12)} y ago`;
+}
+
 export default function App() {
   const [checking, setChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -174,6 +191,7 @@ export default function App() {
   const [stockMsg, setStockMsg] = useState<string | null>(null);
   const [daily, setDaily] = useState<Array<{ date: string; sales: string; expenses: string }>>([]);
   const [categories, setCategories] = useState<Array<{ category: string; total: string }>>([]);
+  const [showLowStock, setShowLowStock] = useState(false);
   const [investments, setInvestments] = useState<Array<{ id: number; investor_name: string; amount_paise: number; invested_on: string; note: string | null }>>([]);
   const [investTotal, setInvestTotal] = useState(0);
   const [investment, setInvestment] = useState({ name: "", amount: "", date: new Date().toISOString().slice(0, 10), note: "" });
@@ -368,6 +386,10 @@ export default function App() {
       cancelled = true;
     };
   }, [user, view]);
+
+  // Low-stock items (same rule as the stats query: stock left <= minimum).
+  const lowStockItems = items.filter((item) => item.stockLeftBase <= item.minStockBase);
+  const lowStockCount = stats?.low_stock ?? 0;
 
   function addBillLine() {
     const item = items.find((i) => i.id === draft.itemId);
@@ -904,7 +926,7 @@ export default function App() {
   return (
     <div className="min-h-screen md:flex">
       {/* Desktop: the rail is sticky, so it stays put while the page scrolls */}
-      <aside className="nav-texture sticky top-0 hidden h-screen w-60 shrink-0 flex-col overflow-y-auto bg-nav px-3 py-5 text-nav-text md:flex">
+      <aside className="nav-texture sticky top-0 hidden h-screen w-60 shrink-0 self-start flex-col overflow-y-auto bg-nav px-3 py-5 text-nav-text md:flex">
         <div className="relative z-10 mb-6 flex items-start gap-3 px-2">
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-nav-text/15 text-nav-text">
             <IconCoffeeNav />
@@ -1065,7 +1087,6 @@ export default function App() {
                 ["Month profit", money(stats?.month_profit ?? 0), ""],
                 ["Month expenses", money(stats?.month_expenses ?? 0), ""],
                 ["Credit given", money(stats?.credit_paise ?? 0), `${stats?.credit_bills ?? 0} unpaid bills`],
-                ["Low stock items", String(stats?.low_stock ?? 0), ""],
               ].map(([label, value, hint]) => (
                 <div key={label} className="card p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</p>
@@ -1073,7 +1094,52 @@ export default function App() {
                   {hint ? <p className="mt-0.5 text-[11px] text-muted">{hint}</p> : null}
                 </div>
               ))}
+              <button
+                type="button"
+                onClick={() => setShowLowStock((open) => !open)}
+                aria-expanded={showLowStock}
+                className={`card p-4 text-left transition ${
+                  lowStockCount > 0 ? "border-accent bg-accent-soft" : ""
+                }`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Low stock items</p>
+                <p className={`mt-1 text-2xl font-semibold tracking-tight ${lowStockCount > 0 ? "text-accent-ink" : ""}`}>
+                  {lowStockCount}
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted">{lowStockCount > 0 ? "View items" : "All good"}</p>
+              </button>
             </div>
+
+            {showLowStock && (
+              <div className="card overflow-x-auto">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <h2 className="text-sm font-medium">Low stock items</h2>
+                  <button className="btn-mini" onClick={() => setShowLowStock(false)}>Close</button>
+                </div>
+                {lowStockItems.length === 0 ? (
+                  <p className="px-4 pb-4 text-sm text-muted">All items are above their minimum stock.</p>
+                ) : (
+                  <table className="w-full min-w-[520px] text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th className="px-3 py-2">Item</th>
+                        <th className="px-3 py-2 text-right">Stock left</th>
+                        <th className="px-3 py-2 text-right">Minimum</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lowStockItems.map((item) => (
+                        <tr key={item.id} className="border-t border-line">
+                          <td className="px-3 py-2 font-medium">{item.name}</td>
+                          <td className="px-3 py-2 text-right text-accent-ink">{qty(item.stockLeftBase, item.unit)}</td>
+                          <td className="px-3 py-2 text-right">{qty(item.minStockBase, item.unit)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
 
             {/* Quick add expense — one row, defaults to general. */}
             <div className="card p-4">
@@ -1105,7 +1171,7 @@ export default function App() {
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
-              <div className="card p-4">
+              <div className="card flex flex-col p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="text-sm font-medium">Last 14 days</h2>
                   <div className="flex items-center gap-3 text-xs text-muted">
@@ -1113,7 +1179,9 @@ export default function App() {
                     <span className="flex items-center gap-1"><span className="size-2.5 rounded-sm bg-chart-5" /> Expenses</span>
                   </div>
                 </div>
-                <SalesChart data={daily} />
+                <div className="min-h-0 flex-1">
+                  <SalesChart data={daily} />
+                </div>
               </div>
               <div className="card p-4">
                 <h2 className="mb-3 text-sm font-medium">Expenses by category (month)</h2>
@@ -1137,7 +1205,10 @@ export default function App() {
                 {activity.slice(0, 8).map((row) => (
                   <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
                     <span>{row.summary}</span>
-                    <span className="text-xs text-muted">{row.actor}</span>
+                    <span className="flex items-baseline gap-1.5 text-xs">
+                      <span className="text-muted opacity-70">{row.actor}</span>
+                      <span className="text-muted opacity-50">· {relativeTime(row.at)}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
