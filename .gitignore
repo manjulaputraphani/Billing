@@ -45,3 +45,6 @@ web-worker/.dev.vars
 web/dist
 web-worker/.wrangler
 .wrangler
+
+# Database backups (contain customer + user data, keep them out of git)
+docs/db-backup-*.sql

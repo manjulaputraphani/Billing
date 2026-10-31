@@ -48,7 +48,8 @@ export default function SalesChart({ data }: { data: DailyPoint[] }) {
     expenses: Number(day.expenses) || 0,
   }));
   const peak = points.reduce((max, point) => Math.max(max, point.sales, point.expenses), 0);
-  const max = niceMax(peak);
+  // With no data the scale would be 0 → show a sensible ₹100 axis instead.
+  const max = niceMax(Math.max(peak, 10_000));
   const height = 144;
 
   const ticks = Array.from({ length: GRID_LINES + 1 }, (_, index) => (max / GRID_LINES) * index);

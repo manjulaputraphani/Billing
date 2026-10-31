@@ -14,5 +14,26 @@ export default defineConfig({
   // and an `sdhhe_fy2025` schema. Restrict push to public so drizzle never
   // touches anything outside our own lowercase tables.
   schemaFilter: ["public"],
+  // The old app's CamelCase tables were dropped from the database on
+  // 2026-10-31. Keep them out of every future push so drizzle does not
+  // recreate them (they are not part of src/db/schema.ts).
+  tablesFilter: [
+    "public.items",
+    "public.purchases",
+    "public.batches",
+    "public.stock_movements",
+    "public.movement_batch_links",
+    "public.sales",
+    "public.expenses",
+    "public.expense_bills",
+    "public.activity_log",
+    "public.app_users",
+    "public.user_sessions",
+    "public.customers",
+    "public.sale_bills",
+    "public.sale_items",
+    "public.settings",
+    "public.ai_suggestions",
+  ],
   dbCredentials: { url },
 });
