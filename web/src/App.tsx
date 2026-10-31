@@ -1055,7 +1055,7 @@ export default function App() {
                 <h2 className="text-sm font-medium">Quick expense</h2>
                 <button className="btn-mini" onClick={() => setView("expenses")}>Full form →</button>
               </div>
-              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+              <div className="grid items-stretch gap-2 sm:grid-cols-[2fr_1fr_auto]">
                 <input
                   className="input"
                   placeholder="Category (e.g. Rent, Tea)"
@@ -1071,7 +1071,7 @@ export default function App() {
                   onChange={(e) => setExpense({ ...expense, amount: e.currentTarget.value })}
                   onKeyDown={(e) => { if (e.key === "Enter") void addExpenseNow(); }}
                 />
-                <button className="btn btn-primary whitespace-nowrap" onClick={() => void addExpenseNow()}>
+                <button className="btn btn-primary h-full whitespace-nowrap" onClick={() => void addExpenseNow()}>
                   <span className="flex items-center gap-1.5"><IconPlus size={15} /> Add</span>
                 </button>
               </div>
