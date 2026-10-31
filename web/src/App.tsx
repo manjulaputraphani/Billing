@@ -15,6 +15,34 @@ import type { ShopDetails } from "../../src/db/settings";
 
 type View = "dashboard" | "investments" | "bills" | "billing" | "items" | "purchases" | "stock" | "expenses" | "activity" | "team" | "settings";
 
+function IconEye() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+    </svg>
+  );
+}
+
 const CHART_COLORS = ["#1c1917", "#0f766e", "#b45309", "#7c3aed", "#be123c", "#64748b"];
 
 function Donut({ items }: { items: { label: string; value: number }[] }) {
@@ -757,7 +785,7 @@ export default function App() {
                       <td className="px-3 py-2">{row.invested_on}</td>
                       <td className="px-3 py-2 font-medium">{row.investor_name}</td>
                       <td className="px-3 py-2 text-right">{money(row.amount_paise)}</td>
-                      <td className="px-3 py-2 text-right"><button className="btn-mini btn-mini-danger" onClick={() => void removeInvestment(row.id)}>Delete</button></td>
+                      <td className="px-3 py-2 text-right"><button className="btn-mini btn-mini-danger" onClick={() => void removeInvestment(row.id)}><IconTrash /> Delete</button></td>
                     </tr>
                   ))}</tbody>
                 </table>
@@ -802,7 +830,7 @@ export default function App() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <button className="btn-mini" onClick={() => void openBill(row.id)}>View</button>
+                        <button className="btn-mini" onClick={() => void openBill(row.id)}><IconEye /> View</button>
                       </td>
                     </tr>
                   ))}
@@ -920,7 +948,7 @@ export default function App() {
                       <td className="px-3 py-2">{item.category ?? "—"}</td>
                       <td className="px-3 py-2 text-right">{qty(item.stockLeftBase, item.unit)}</td>
                       <td className="px-3 py-2 text-right">
-                        <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "" })}>Edit</button>
+                        <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "" })}><IconEdit /> Edit</button>
                         {user.role === "owner" && (
                           <button
                             className="btn-mini btn-mini-danger ml-2"

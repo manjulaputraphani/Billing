@@ -76,3 +76,4 @@ thead th {
 .btn-mini-danger:hover { background: #fee2e2; color: #991b1b; }
 .btn-mini-ok { background: #ecfdf5; color: #047857; }
 .btn-mini-ok:hover { background: #d1fae5; }
+.btn-mini svg { width: 13px; height: 13px; }
