@@ -36,6 +36,7 @@ export default function App() {
   const [notifyBill, setNotifyBill] = useState(true);
   const [emailConfigured, setEmailConfigured] = useState(false);
   const [notifyStatus, setNotifyStatus] = useState<string | null>(null);
+  const [resendKey, setResendKey] = useState("");
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [phone, setPhone] = useState("");
@@ -122,7 +123,15 @@ export default function App() {
   async function saveNotify() {
     setNotifyStatus(null);
     try {
-      await api.saveNotifySettings({ emails: notifyEmails, signup: notifySignup, member: notifyMember, bill: notifyBill });
+      await api.saveNotifySettings({
+        emails: notifyEmails,
+        signup: notifySignup,
+        member: notifyMember,
+        bill: notifyBill,
+        ...(resendKey.trim() ? { resendApiKey: resendKey.trim() } : {}),
+      });
+      setResendKey("");
+      await loadNotify();
       setNotifyStatus("Notification settings saved");
     } catch (err) {
       setNotifyStatus(err instanceof Error ? err.message : String(err));
@@ -491,6 +500,11 @@ export default function App() {
                 <label className="flex items-center gap-2"><input type="checkbox" checked={notifySignup} onChange={(e) => setNotifySignup(e.currentTarget.checked)} /> New account requests</label>
                 <label className="flex items-center gap-2"><input type="checkbox" checked={notifyMember} onChange={(e) => setNotifyMember(e.currentTarget.checked)} /> Member changes</label>
                 <label className="flex items-center gap-2"><input type="checkbox" checked={notifyBill} onChange={(e) => setNotifyBill(e.currentTarget.checked)} /> Staff-created bills</label>
+              </div>
+              <div className="space-y-1">
+                <label className="label" htmlFor="resend-key">Resend API key (stored encrypted in the database)</label>
+                <input id="resend-key" type="password" className="input" placeholder={emailConfigured ? "Key saved ✓ — enter a new key to replace" : "re_…"} value={resendKey} onChange={(e) => setResendKey(e.currentTarget.value)} />
+                <p className="text-xs text-stone-500">Encrypted with the Worker secret; never shown again. Prefer the Cloudflare secret for extra safety.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button className="btn btn-primary" onClick={() => void saveNotify()}>Save settings</button>

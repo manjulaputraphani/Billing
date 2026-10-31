@@ -256,16 +256,55 @@ async function readNotify(env: Env): Promise<NotifyConfig> {
   };
 }
 
+async function aesKey(env: Env): Promise<CryptoKey> {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(env.SESSION_SECRET as string));
+  return crypto.subtle.importKey("raw", hash, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+async function encryptText(env: Env, text: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await aesKey(env);
+  const cipher = new Uint8Array(
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(text)),
+  );
+  return `${b64encode(iv)}.${b64encode(cipher)}`;
+}
+
+async function decryptText(env: Env, payload: string): Promise<string | null> {
+  const [ivPart, cipherPart] = payload.split(".");
+  if (!ivPart || !cipherPart) return null;
+  try {
+    const key = await aesKey(env);
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: b64decode(ivPart) },
+      key,
+      b64decode(cipherPart),
+    );
+    return new TextDecoder().decode(plain);
+  } catch {
+    return null;
+  }
+}
+
+/** Resend key: Worker secret first, otherwise the AES-GCM encrypted settings value. */
+async function getResendKey(env: Env): Promise<string | null> {
+  if (env.RESEND_API_KEY) return env.RESEND_API_KEY;
+  const rows = await sqlQuery(env, "select value from settings where key = 'resend_api_key_enc'");
+  if (!rows.length) return null;
+  return decryptText(env, String(rows[0].value));
+}
+
 async function sendOwnerMail(
   env: Env,
   recipients: string[],
   subject: string,
   html: string,
 ): Promise<boolean> {
-  if (!env.RESEND_API_KEY || recipients.length === 0) return false;
+  const key = await getResendKey(env);
+  if (!key || recipients.length === 0) return false;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
+    headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: JSON.stringify({
       from: env.MAIL_FROM || "SREE DURGA HARIHARA ENTERPRISES <onboarding@resend.dev>",
       to: recipients,
@@ -460,7 +499,7 @@ export default {
             signup: map.get("notify_signup") !== "off",
             member: map.get("notify_member") !== "off",
             bill: map.get("notify_bill") !== "off",
-            emailConfigured: Boolean(env.RESEND_API_KEY),
+            emailConfigured: Boolean(await getResendKey(env)),
             defaultEmail: shop.email,
           });
         }
@@ -468,6 +507,8 @@ export default {
           const cfg = await readNotify(env);
           if (!env.RESEND_API_KEY) return json({ error: "Email is not configured (RESEND_API_KEY missing)" }, { status: 503 });
           if (cfg.emails.length === 0) return json({ error: "Add at least one notification email" }, { status: 400 });
+          const storedKey = await getResendKey(env);
+          if (!storedKey) return json({ error: "Email is not configured (add a Resend API key)" }, { status: 503 });
           const ok = await sendOwnerMail(env, cfg.emails, "Stock Tracker test notification", "<p>Owner notifications are working.</p>");
           return ok ? json({ ok: true, to: cfg.emails }) : json({ error: "Email provider refused the message" }, { status: 502 });
         }
@@ -481,6 +522,13 @@ export default {
           ];
           for (const [key, value] of pairs) {
             await sqlQuery(env, "insert into settings (key, value) values ($1,$2) on conflict (key) do update set value = excluded.value", [key, value]);
+          }
+          if (typeof body.resendApiKey === "string" && body.resendApiKey.trim()) {
+            const enc = await encryptText(env, body.resendApiKey.trim());
+            await sqlQuery(env, "insert into settings (key, value) values ('resend_api_key_enc', $1) on conflict (key) do update set value = excluded.value", [enc]);
+          }
+          if (body.clearResendKey === true) {
+            await sqlQuery(env, "delete from settings where key = 'resend_api_key_enc'");
           }
           await asActor(actor, () => logActivity(db, { event: "settings.notify", summary: "Notification settings updated", entity: "settings" }));
           return json({ ok: true });
@@ -560,8 +608,8 @@ export default {
         if (!bill.customerEmail) {
           return json({ error: "This customer has no email — add it in GST Billing" }, { status: 400 });
         }
-        if (!env.RESEND_API_KEY) {
-          return json({ error: "Email is not configured (RESEND_API_KEY missing)" }, { status: 503 });
+        if (!(await getResendKey(env))) {
+          return json({ error: "Email is not configured (add a Resend API key in Settings)" }, { status: 503 });
         }
         const shop = await getShopDetails(db);
         const from = env.MAIL_FROM || "SREE DURGA HARIHARA ENTERPRISES <onboarding@resend.dev>";
@@ -569,7 +617,7 @@ export default {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${env.RESEND_API_KEY}`,
+            Authorization: `Bearer ${(await getResendKey(env)) as string}`,
             "content-type": "application/json",
           },
           body: JSON.stringify({

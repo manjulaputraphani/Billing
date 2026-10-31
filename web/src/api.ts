@@ -86,7 +86,14 @@ export const api = {
     request<{ emails: string[]; signup: boolean; member: boolean; bill: boolean; emailConfigured: boolean; defaultEmail: string }>(
       "/api/settings/notifications",
     ),
-  saveNotifySettings: (body: { emails: string; signup: boolean; member: boolean; bill: boolean }) =>
+  saveNotifySettings: (body: {
+    emails: string;
+    signup: boolean;
+    member: boolean;
+    bill: boolean;
+    resendApiKey?: string;
+    clearResendKey?: boolean;
+  }) =>
     request<{ ok: boolean }>("/api/settings/notifications", { method: "PUT", body: JSON.stringify(body) }),
   testNotify: () => request<{ ok: boolean; to?: string[] }>("/api/settings/notifications/test", { method: "POST" }),
   users: () => request<{ users: Member[] }>("/api/users"),
