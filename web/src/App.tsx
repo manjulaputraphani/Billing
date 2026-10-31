@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   api,
   money,
   qty,
   type ActivityRow,
+  type BatchLedger,
   type BillDetail,
   type BillRow,
   type Customer,
@@ -174,6 +175,11 @@ export default function App() {
   const [expenseMsg, setExpenseMsg] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
+  const [lotItem, setLotItem] = useState<Item | null>(null);
+  const [lotLedger, setLotLedger] = useState<BatchLedger | null>(null);
+  const [lotLoading, setLotLoading] = useState(false);
+  const [lotError, setLotError] = useState<string | null>(null);
+  const [expandedLot, setExpandedLot] = useState<number | null>(null);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -449,6 +455,22 @@ export default function App() {
     setStockMsg(null);
     if (id === "") return setStockBatches([]);
     setStockBatches((await api.batches(id)).batches);
+  }
+
+  async function openLots(item: Item) {
+    setLotItem(item);
+    setLotLedger(null);
+    setLotError(null);
+    setExpandedLot(null);
+    setLotLoading(true);
+    try {
+      const { ledger } = await api.batchLedger(item.id);
+      setLotLedger(ledger);
+    } catch (err) {
+      setLotError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLotLoading(false);
+    }
   }
 
   async function saveStockNow() {
@@ -1705,6 +1727,7 @@ export default function App() {
                         <td className="px-3 py-2 text-right">{qty(item.stockLeftBase, item.unit)}</td>
                         <td className="px-3 py-2 text-right">
                           <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "", imageUrl: item.imageUrl ?? "" })}><IconEdit /> Edit</button>
+                          <button className="btn-mini ml-2" onClick={() => void openLots(item)}>Lots</button>
                           {user.role === "owner" && (
                             <button
                               className="btn-mini btn-mini-danger ml-2"
@@ -1728,6 +1751,114 @@ export default function App() {
                   </tbody>
                 </table>
               </div>
+            )}
+
+            {lotItem && (
+              <section className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold tracking-tight">
+                    Lots — {lotItem.name}
+                    <span className="ml-2 text-sm font-normal text-muted">per purchase batch</span>
+                  </h2>
+                  <button className="btn-mini" onClick={() => { setLotItem(null); setLotLedger(null); setLotError(null); setExpandedLot(null); }}>Close</button>
+                </div>
+                {lotLoading && <p className="text-sm text-muted">Loading lots…</p>}
+                {lotError && <p role="status" className="text-sm text-error-ink">{lotError}</p>}
+                {lotLedger && (
+                  <>
+                    {lotLedger.batches.length === 0 ? (
+                      <div className="card p-4 text-sm text-muted">No purchase lots for this item yet.</div>
+                    ) : (
+                      <div className="card overflow-x-auto">
+                        <table className="w-full min-w-[860px] text-left text-sm">
+                          <thead>
+                            <tr>
+                              <th className="px-3 py-2">Lot</th>
+                              <th className="px-3 py-2">Purchased</th>
+                              <th className="px-3 py-2">Supplier</th>
+                              <th className="px-3 py-2 text-right">Bought</th>
+                              <th className="px-3 py-2 text-right">Unit cost</th>
+                              <th className="px-3 py-2 text-right">Sold qty</th>
+                              <th className="px-3 py-2 text-right">Sold value</th>
+                              <th className="px-3 py-2 text-right">Profit</th>
+                              <th className="px-3 py-2 text-right">Pending</th>
+                              <th className="px-3 py-2 text-right">Pending value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lotLedger.batches.map((row) => {
+                              const open = expandedLot === row.batchId;
+                              return (
+                                <Fragment key={row.batchId}>
+                                  <tr
+                                    className="cursor-pointer border-t border-line hover:bg-surface-2"
+                                    onClick={() => setExpandedLot(open ? null : row.batchId)}
+                                  >
+                                    <td className="px-3 py-2">
+                                      <span className="inline-flex items-center gap-1 font-medium">
+                                        {open ? <IconClose size={13} /> : <IconEye />}#{row.batchId}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2">{row.purchaseDate}</td>
+                                    <td className="px-3 py-2">{row.supplierName ?? "—"}</td>
+                                    <td className="px-3 py-2 text-right">{qty(row.qtyOriginal, lotLedger.unit)}</td>
+                                    <td className="px-3 py-2 text-right">{money(row.unitPricePaise)}</td>
+                                    <td className="px-3 py-2 text-right">{qty(row.qtySold, lotLedger.unit)}</td>
+                                    <td className="px-3 py-2 text-right">{money(row.soldValuePaise)}</td>
+                                    <td className={`px-3 py-2 text-right ${row.profitPaise >= 0 ? "text-success-ink" : "text-error-ink"}`}>{money(row.profitPaise)}</td>
+                                    <td className="px-3 py-2 text-right">{qty(row.qtyRemaining, lotLedger.unit)}</td>
+                                    <td className="px-3 py-2 text-right">{money(row.pendingValuePaise)}</td>
+                                  </tr>
+                                  {open && (
+                                    <tr className="border-t border-line bg-surface-2/60">
+                                      <td colSpan={10} className="px-3 py-3">
+                                        {row.sales.length === 0 ? (
+                                          <p className="text-xs text-muted">Nothing sold from this lot yet.</p>
+                                        ) : (
+                                          <div className="overflow-x-auto">
+                                            <table className="w-full min-w-[560px] text-left text-xs">
+                                              <thead>
+                                                <tr className="text-muted">
+                                                  <th className="px-2 py-1">Bill</th>
+                                                  <th className="px-2 py-1">Date</th>
+                                                  <th className="px-2 py-1">Customer</th>
+                                                  <th className="px-2 py-1 text-right">Qty from this lot</th>
+                                                  <th className="px-2 py-1 text-right">Sale rate</th>
+                                                  <th className="px-2 py-1 text-right">Revenue share</th>
+                                                  <th className="px-2 py-1 text-right">COGS</th>
+                                                  <th className="px-2 py-1 text-right">Profit</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                {row.sales.map((sale) => (
+                                                  <tr key={`${row.batchId}-${sale.billNo}-${sale.saleDate}`} className="border-t border-line/60">
+                                                    <td className="px-2 py-1 font-medium">{sale.billNo}</td>
+                                                    <td className="px-2 py-1">{sale.saleDate}</td>
+                                                    <td className="px-2 py-1">{sale.customerName ?? "—"}</td>
+                                                    <td className="px-2 py-1 text-right">{qty(sale.qtyTaken, lotLedger.unit)}</td>
+                                                    <td className="px-2 py-1 text-right">{money(sale.unitPricePaise)}</td>
+                                                    <td className="px-2 py-1 text-right">{money(sale.revenuePaise)}</td>
+                                                    <td className="px-2 py-1 text-right">{money(sale.cogsPaise)}</td>
+                                                    <td className={`px-2 py-1 text-right ${sale.profitPaise >= 0 ? "text-success-ink" : "text-error-ink"}`}>{money(sale.profitPaise)}</td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  )}
+                                </Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
             )}
           </section>
         )}

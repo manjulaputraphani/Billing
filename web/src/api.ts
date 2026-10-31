@@ -126,6 +126,42 @@ export type UsageRow = {
   lastLogoutAt: string | null;
 };
 
+// Lot-wise (per-batch) ledger — see src/db/reports.ts batchLedger().
+export type BatchLedgerSale = {
+  billNo: string;
+  saleDate: string;
+  customerName: string | null;
+  qtyTaken: number;
+  unitPricePaise: number;
+  revenuePaise: number;
+  cogsPaise: number;
+  profitPaise: number;
+};
+
+export type BatchLedgerRow = {
+  batchId: number;
+  purchaseId: number;
+  purchaseDate: string;
+  supplierName: string | null;
+  qtyOriginal: number;
+  qtyRemaining: number;
+  unitPricePaise: number;
+  expensesPaise: number;
+  qtySold: number;
+  soldValuePaise: number;
+  cogsPaise: number;
+  profitPaise: number;
+  pendingValuePaise: number;
+  sales: BatchLedgerSale[];
+};
+
+export type BatchLedger = {
+  itemId: number;
+  itemName: string;
+  unit: string;
+  batches: BatchLedgerRow[];
+};
+
 export type ActivityRow = {
   id: number;
   at: string;
@@ -188,6 +224,7 @@ export const api = {
   addPurchase: (body: { itemId: number; qty: number; unitPricePaise: number; expensesPaise?: number; date: string; supplierName?: string; paymentMode?: string }) =>
     request<{ purchase: { purchaseId: number } }>("/api/purchases", { method: "POST", body: JSON.stringify(body) }),
   batches: (itemId: number) => request<{ batches: Array<{ id: number; qty_remaining: number; unit_price_paise: number; purchase_date: string }> }>(`/api/items/${itemId}/batches`),
+  batchLedger: (itemId: number) => request<{ ledger: BatchLedger }>(`/api/items/${itemId}/batches/ledger`),
   saveStock: (body: Record<string, unknown>) => request<{ stock: unknown }>("/api/stock", { method: "POST", body: JSON.stringify(body) }),
   expenses: () => request<{ expenses: Array<{ id: number; category: string; amountPaise: number; date: string; paymentMode: string | null; paidTo: string | null; note: string | null }> }>("/api/expenses"),
   addExpense: (body: Record<string, unknown>) => request<{ expense: unknown }>("/api/expenses", { method: "POST", body: JSON.stringify(body) }),
