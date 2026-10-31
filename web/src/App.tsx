@@ -13,7 +13,7 @@ import {
 import { buildBillHtml } from "../../src/lib/printBill";
 import type { ShopDetails } from "../../src/db/settings";
 
-type View = "bills" | "items" | "activity" | "team";
+type View = "bills" | "items" | "activity" | "team" | "settings";
 
 export default function App() {
   const [checking, setChecking] = useState(true);
@@ -30,6 +30,12 @@ export default function App() {
   const [resetTarget, setResetTarget] = useState<Member | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [approveRole, setApproveRole] = useState<Record<number, "staff" | "owner">>({});
+  const [notifyEmails, setNotifyEmails] = useState("");
+  const [notifySignup, setNotifySignup] = useState(true);
+  const [notifyMember, setNotifyMember] = useState(true);
+  const [notifyBill, setNotifyBill] = useState(true);
+  const [emailConfigured, setEmailConfigured] = useState(false);
+  const [notifyStatus, setNotifyStatus] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
   const [bill, setBill] = useState<BillDetail | null>(null);
   const [phone, setPhone] = useState("");
@@ -52,13 +58,25 @@ export default function App() {
       .finally(() => setChecking(false));
   }, []);
 
+  async function loadNotify() {
+    const cfg = await api.notifySettings();
+    setNotifyEmails(cfg.emails.join(", "));
+    setNotifySignup(cfg.signup);
+    setNotifyMember(cfg.member);
+    setNotifyBill(cfg.bill);
+    setEmailConfigured(cfg.emailConfigured);
+  }
+
   async function loadMembers() {
     setMembers((await api.users()).users);
   }
 
   useEffect(() => {
     if (!user) return;
-    if (user.role === "owner") void loadMembers().catch(() => setMembers([]));
+    if (user.role === "owner") {
+      void loadMembers().catch(() => setMembers([]));
+      void loadNotify().catch(() => setNotifyStatus("Could not load notification settings"));
+    }
     void Promise.all([api.bills().then((r) => setBills(r.bills)), api.items().then((r) => setItems(r.items)), api.activity().then((r) => setActivity(r.activity)), api.shop().then((r) => setShop(r.shop as unknown as ShopDetails))]).catch((err) =>
       setError(err instanceof Error ? err.message : String(err)),
     );
@@ -98,6 +116,26 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function saveNotify() {
+    setNotifyStatus(null);
+    try {
+      await api.saveNotifySettings({ emails: notifyEmails, signup: notifySignup, member: notifyMember, bill: notifyBill });
+      setNotifyStatus("Notification settings saved");
+    } catch (err) {
+      setNotifyStatus(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function testNotify() {
+    setNotifyStatus("Sending test…");
+    try {
+      const r = await api.testNotify();
+      setNotifyStatus(`Test email sent to ${(r.to ?? []).join(", ")}`);
+    } catch (err) {
+      setNotifyStatus(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -226,7 +264,12 @@ export default function App() {
     { key: "bills", label: "Invoices" },
     { key: "items", label: "Items" },
     { key: "activity", label: "Activity" },
-    ...(user.role === "owner" ? [{ key: "team" as View, label: "Team" }] : []),
+    ...(user.role === "owner"
+      ? [
+          { key: "team" as View, label: "Team" },
+          { key: "settings" as View, label: "Settings" },
+        ]
+      : []),
   ];
 
   return (
@@ -425,6 +468,35 @@ export default function App() {
               </div>
               <button className="btn btn-primary" onClick={() => void addMember()}>Add member</button>
               {teamStatus && <p role="status" className="text-sm text-stone-600">{teamStatus}</p>}
+            </div>
+          </section>
+        )}
+
+        {view === "settings" && user.role === "owner" && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Settings</h1>
+            <div className="card space-y-4 p-4">
+              <div>
+                <h2 className="text-sm font-medium">Email notifications</h2>
+                <p className="text-sm text-stone-500">
+                  Owner alerts for signups, member changes and staff bills.{" "}
+                  <b>{emailConfigured ? "Email configured ✓" : "Email NOT configured (add RESEND_API_KEY)"}</b>
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="label" htmlFor="notify-emails">Notify these emails (comma separated)</label>
+                <input id="notify-emails" className="input" value={notifyEmails} onChange={(e) => setNotifyEmails(e.currentTarget.value)} />
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2"><input type="checkbox" checked={notifySignup} onChange={(e) => setNotifySignup(e.currentTarget.checked)} /> New account requests</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={notifyMember} onChange={(e) => setNotifyMember(e.currentTarget.checked)} /> Member changes</label>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={notifyBill} onChange={(e) => setNotifyBill(e.currentTarget.checked)} /> Staff-created bills</label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button className="btn btn-primary" onClick={() => void saveNotify()}>Save settings</button>
+                <button className="btn" style={{ border: "1px solid #d6d3d1", background: "#fff" }} onClick={() => void testNotify()}>Send test email</button>
+              </div>
+              {notifyStatus && <p role="status" className="text-sm text-stone-600">{notifyStatus}</p>}
             </div>
           </section>
         )}

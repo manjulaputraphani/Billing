@@ -82,6 +82,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ name, phone, password }),
     }),
+  notifySettings: () =>
+    request<{ emails: string[]; signup: boolean; member: boolean; bill: boolean; emailConfigured: boolean; defaultEmail: string }>(
+      "/api/settings/notifications",
+    ),
+  saveNotifySettings: (body: { emails: string; signup: boolean; member: boolean; bill: boolean }) =>
+    request<{ ok: boolean }>("/api/settings/notifications", { method: "PUT", body: JSON.stringify(body) }),
+  testNotify: () => request<{ ok: boolean; to?: string[] }>("/api/settings/notifications/test", { method: "POST" }),
   users: () => request<{ users: Member[] }>("/api/users"),
   setUserRole: (id: number, role: "staff" | "owner") =>
     request<{ ok: boolean; role: string }>(`/api/users/${id}/role`, { method: "POST", body: JSON.stringify({ role }) }),

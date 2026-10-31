@@ -448,10 +448,10 @@ export default {
       }
 
       // ---- N1 notification settings (owner only) ----
-      if (url.pathname === "/api/settings/notifications") {
+      if (url.pathname.startsWith("/api/settings/notifications")) {
         if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });
         const shop = await getShopDetails(db);
-        if (request.method === "GET") {
+        if (url.pathname === "/api/settings/notifications" && request.method === "GET") {
           const rows = await sqlQuery(env, "select key, value from settings where key in ('notify_emails','notify_signup','notify_member','notify_bill')");
           const map = new Map(rows.map((r) => [String(r.key), String(r.value)]));
           const raw = map.get("notify_emails") ?? shop.email;
@@ -460,10 +460,18 @@ export default {
             signup: map.get("notify_signup") !== "off",
             member: map.get("notify_member") !== "off",
             bill: map.get("notify_bill") !== "off",
+            emailConfigured: Boolean(env.RESEND_API_KEY),
             defaultEmail: shop.email,
           });
         }
-        if (request.method === "PUT") {
+        if (url.pathname === "/api/settings/notifications/test" && request.method === "POST") {
+          const cfg = await readNotify(env);
+          if (!env.RESEND_API_KEY) return json({ error: "Email is not configured (RESEND_API_KEY missing)" }, { status: 503 });
+          if (cfg.emails.length === 0) return json({ error: "Add at least one notification email" }, { status: 400 });
+          const ok = await sendOwnerMail(env, cfg.emails, "Stock Tracker test notification", "<p>Owner notifications are working.</p>");
+          return ok ? json({ ok: true, to: cfg.emails }) : json({ error: "Email provider refused the message" }, { status: 502 });
+        }
+        if (url.pathname === "/api/settings/notifications" && request.method === "PUT") {
           const emails = String(body.emails ?? "").trim();
           const pairs: [string, string][] = [
             ["notify_emails", emails],
