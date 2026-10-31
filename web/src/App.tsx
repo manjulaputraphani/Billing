@@ -565,6 +565,7 @@ export default function App() {
       setExpense({ category: "", amount: "", paidTo: "", note: "", type: "general" });
       setExpensesList((await api.expenses()).expenses);
       setStats((await api.stats()).stats);
+      setCategories((await api.expenseCategories()).categories);
     } catch (err) {
       setExpenseMsg(err instanceof Error ? err.message : String(err));
     }
@@ -1028,8 +1029,10 @@ export default function App() {
 
         {view === "dashboard" && (
           <section className="space-y-4">
-            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Dashboard</h1>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Dashboard</h1>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 ["Today's sales", money(stats?.today_sales ?? 0), ""],
                 ["This month", money(stats?.month_sales ?? 0), ""],
@@ -1045,6 +1048,36 @@ export default function App() {
                 </div>
               ))}
             </div>
+
+            {/* Quick add expense — one row, defaults to general. */}
+            <div className="card p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-medium">Quick expense</h2>
+                <button className="btn-mini" onClick={() => setView("expenses")}>Full form →</button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <input
+                  className="input"
+                  placeholder="Category (e.g. Rent, Tea)"
+                  value={expense.category}
+                  onChange={(e) => setExpense({ ...expense, category: e.currentTarget.value })}
+                  onKeyDown={(e) => { if (e.key === "Enter") void addExpenseNow(); }}
+                />
+                <input
+                  className="input"
+                  type="number"
+                  placeholder="Amount ₹"
+                  value={expense.amount}
+                  onChange={(e) => setExpense({ ...expense, amount: e.currentTarget.value })}
+                  onKeyDown={(e) => { if (e.key === "Enter") void addExpenseNow(); }}
+                />
+                <button className="btn btn-primary whitespace-nowrap" onClick={() => void addExpenseNow()}>
+                  <span className="flex items-center gap-1.5"><IconPlus size={15} /> Add</span>
+                </button>
+              </div>
+              {expenseMsg && <p role="status" className="mt-2 text-sm text-muted">{expenseMsg}</p>}
+            </div>
+
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="card p-4">
                 <div className="mb-3 flex items-center justify-between">
@@ -1380,9 +1413,20 @@ export default function App() {
                 </select>
               </div>
               {stock.itemId !== "" && (
-                <p className="text-sm text-muted">
-                  Current stock: {qty(stockBatches.reduce((sum, b) => sum + b.qty_remaining, 0), items.find((i) => i.id === stock.itemId)?.unit ?? "kg")}
-                </p>
+                <div className="rounded-lg bg-surface-2 px-3 py-2 text-sm">
+                  <p className="text-muted">
+                    Current stock: <span className="font-medium text-ink">{qty(stockBatches.reduce((sum, b) => sum + b.qty_remaining, 0), items.find((i) => i.id === stock.itemId)?.unit ?? "kg")}</span>
+                  </p>
+                  {stockBatches.length > 0 && (
+                    <ul className="mt-1.5 space-y-0.5 text-xs text-muted">
+                      {stockBatches.map((b) => (
+                        <li key={b.id}>
+                          Lot #{b.id} · {b.purchase_date} · {qty(b.qty_remaining, items.find((i) => i.id === stock.itemId)?.unit ?? "kg")} @ {money(b.unit_price_paise)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
               <div className="grid gap-2 sm:grid-cols-2">
                 <input className="input" type="number" placeholder={stock.type === "STOCK_CHECK" ? "Stock left" : "Quantity"} value={stock.qty} onChange={(e) => setStock({ ...stock, qty: e.currentTarget.value })} />
@@ -1580,74 +1624,109 @@ export default function App() {
 
         {view === "billing" && (
           <section className="space-y-4">
-            <h1 className="text-xl font-semibold tracking-tight md:text-2xl">New Bill</h1>
-            <div className="card max-w-3xl space-y-3 p-4">
-              <div className="grid gap-2 sm:grid-cols-4">
-                <CustomerPicker
-                  customers={customers}
-                  value={pickedCustomer}
-                  onSearch={setCustomerSearch}
-                  onPick={(customer) => {
-                    setPickedCustomer(customer);
-                    setBillCustomer({
-                      name: customer.name,
-                      phone: customer.phone ?? "",
-                      email: customer.email ?? "",
-                      gstin: customer.gstin ?? "",
-                    });
-                  }}
-                />
-                <input className="input" placeholder="Customer name" value={billCustomer.name} onChange={(e) => setBillCustomer({ ...billCustomer, name: e.currentTarget.value })} />
-                <input className="input" placeholder="Phone" value={billCustomer.phone} onChange={(e) => setBillCustomer({ ...billCustomer, phone: e.currentTarget.value })} />
-                <input className="input" placeholder="Email (for bill)" value={billCustomer.email} onChange={(e) => setBillCustomer({ ...billCustomer, email: e.currentTarget.value })} />
-              </div>
-              <div className="grid gap-2 sm:grid-cols-4">
-                <input className="input" placeholder="Customer GSTIN" value={billCustomer.gstin} onChange={(e) => setBillCustomer({ ...billCustomer, gstin: e.currentTarget.value })} />
-                <p className="self-center text-xs text-muted">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h1 className="text-xl font-semibold tracking-tight md:text-2xl">New Bill</h1>
+              {billLines.length > 0 && (
+                <button className="btn btn-primary" onClick={() => void saveBill()}>
+                  <span className="flex items-center gap-1.5"><IconBill size={15} /> Save bill · {money(billTotal)}</span>
+                </button>
+              )}
+            </div>
+            <div className="card max-w-4xl space-y-5 p-4">
+              {/* Customer */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Customer</p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <CustomerPicker
+                    customers={customers}
+                    value={pickedCustomer}
+                    onSearch={setCustomerSearch}
+                    onPick={(customer) => {
+                      setPickedCustomer(customer);
+                      setBillCustomer({
+                        name: customer.name,
+                        phone: customer.phone ?? "",
+                        email: customer.email ?? "",
+                        gstin: customer.gstin ?? "",
+                      });
+                    }}
+                  />
+                  <input className="input" placeholder="Customer name" value={billCustomer.name} onChange={(e) => setBillCustomer({ ...billCustomer, name: e.currentTarget.value })} />
+                  <input className="input" placeholder="Phone" value={billCustomer.phone} onChange={(e) => setBillCustomer({ ...billCustomer, phone: e.currentTarget.value })} />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input className="input" placeholder="Email (for bill)" value={billCustomer.email} onChange={(e) => setBillCustomer({ ...billCustomer, email: e.currentTarget.value })} />
+                  <input className="input" placeholder="Customer GSTIN" value={billCustomer.gstin} onChange={(e) => setBillCustomer({ ...billCustomer, gstin: e.currentTarget.value.toUpperCase() })} />
+                </div>
+                <p className="text-xs text-muted">
                   {pickedCustomer
                     ? "Saved client — their details are updated in the master with this bill."
                     : "New client? Their details are saved into the customer master with this bill."}
                 </p>
               </div>
-              <div className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
-                <ItemPicker
-                  items={items}
-                  value={draft.itemId}
-                  onChange={(id) => setDraft({ ...draft, itemId: id })}
-                />
-                <input className="input" type="number" placeholder={`Qty (${items.find((i) => i.id === draft.itemId)?.unit ?? "unit"})`} value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: e.currentTarget.value })} />
-                <input className="input" type="number" placeholder="Rate ₹" value={draft.rate} onChange={(e) => setDraft({ ...draft, rate: e.currentTarget.value })} />
-                <input className="input" placeholder="HSN" value={draft.hsn} onChange={(e) => setDraft({ ...draft, hsn: e.currentTarget.value })} />
-                <button className="btn btn-primary" onClick={addBillLine}>Add</button>
+
+              <hr className="border-line" />
+
+              {/* Line items */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Items</p>
+                <div className="grid gap-2 sm:grid-cols-[2fr_1fr_1fr_1fr_auto]">
+                  <ItemPicker
+                    items={items}
+                    value={draft.itemId}
+                    onChange={(id) => setDraft({ ...draft, itemId: id })}
+                  />
+                  <input className="input" type="number" placeholder={`Qty (${items.find((i) => i.id === draft.itemId)?.unit ?? "unit"})`} value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: e.currentTarget.value })} />
+                  <input className="input" type="number" placeholder="Rate ₹" value={draft.rate} onChange={(e) => setDraft({ ...draft, rate: e.currentTarget.value })} />
+                  <input className="input" placeholder="HSN" value={draft.hsn} onChange={(e) => setDraft({ ...draft, hsn: e.currentTarget.value })} />
+                  <button className="btn btn-primary whitespace-nowrap" onClick={addBillLine}><IconPlus size={15} /> Add</button>
+                </div>
+                {billLines.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[520px] text-left text-sm">
+                      <thead><tr><th className="px-2 py-1">Item</th><th className="px-2 py-1">Qty</th><th className="px-2 py-1 text-right">Rate</th><th className="px-2 py-1 text-right">Amount</th><th /></tr></thead>
+                      <tbody>{billLines.map((l, idx) => (
+                        <tr key={idx} className="border-t border-line">
+                          <td className="px-2 py-1">{l.name}</td>
+                          <td className="px-2 py-1">{qty(l.qtyBase, l.unit)}</td>
+                          <td className="px-2 py-1 text-right">{money(l.ratePaise)}</td>
+                          <td className="px-2 py-1 text-right">{money(l.totalPaise)}</td>
+                          <td className="px-2 py-1 text-right"><button className="btn-mini" onClick={() => setBillLines(billLines.filter((_, i) => i !== idx))}>Remove</button></td>
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-              {billLines.length > 0 && (
-                <table className="w-full min-w-[520px] text-left text-sm">
-                  <thead><tr><th className="px-2 py-1">Item</th><th className="px-2 py-1">Qty</th><th className="px-2 py-1 text-right">Amount</th><th /></tr></thead>
-                  <tbody>{billLines.map((l, idx) => (
-                    <tr key={idx} className="border-t border-line">
-                      <td className="px-2 py-1">{l.name}</td>
-                      <td className="px-2 py-1">{qty(l.qtyBase, l.unit)}</td>
-                      <td className="px-2 py-1 text-right">{money(l.totalPaise)}</td>
-                      <td className="px-2 py-1 text-right"><button className="btn-mini" onClick={() => setBillLines(billLines.filter((_, i) => i !== idx))}>Remove</button></td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              )}
-              <div className="grid gap-2 sm:grid-cols-6">
-                <input className="input" type="number" placeholder="Discount ₹" value={billDiscount} onChange={(e) => setBillDiscount(e.currentTarget.value)} />
-                <input className="input" type="number" placeholder="Delivery ₹" value={billSaleExpenses} onChange={(e) => setBillSaleExpenses(e.currentTarget.value)} />
-                <select className="input" value={billGst} onChange={(e) => setBillGst(e.currentTarget.value)}>
-                  <option value="0">GST 0%</option><option value="500">GST 5%</option><option value="1200">GST 12%</option><option value="1800">GST 18%</option><option value="2800">GST 28%</option>
-                </select>
-                <select className="input" value={billMode} onChange={(e) => setBillMode(e.currentTarget.value)}>
-                  <option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option>
-                </select>
-                <input className="input" type="date" value={billDate} onChange={(e) => setBillDate(e.currentTarget.value)} />
-                <button className="btn btn-primary" onClick={() => void saveBill()}>Save bill</button>
+
+              <hr className="border-line" />
+
+              {/* Bill details + totals */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">Bill details</p>
+                <div className="grid gap-2 sm:grid-cols-5">
+                  <input className="input" type="date" value={billDate} onChange={(e) => setBillDate(e.currentTarget.value)} />
+                  <select className="input" value={billMode} onChange={(e) => setBillMode(e.currentTarget.value)}>
+                    <option>Cash</option><option>UPI</option><option>Card</option><option>Credit</option>
+                  </select>
+                  <select className="input" value={billGst} onChange={(e) => setBillGst(e.currentTarget.value)}>
+                    <option value="0">GST 0%</option><option value="500">GST 5%</option><option value="1200">GST 12%</option><option value="1800">GST 18%</option><option value="2800">GST 28%</option>
+                  </select>
+                  <input className="input" type="number" placeholder="Discount ₹" value={billDiscount} onChange={(e) => setBillDiscount(e.currentTarget.value)} />
+                  <input className="input" type="number" placeholder="Delivery ₹" value={billSaleExpenses} onChange={(e) => setBillSaleExpenses(e.currentTarget.value)} />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface-2 px-4 py-3">
+                  <div className="text-sm text-muted">
+                    Subtotal {money(billSubtotal)} · GST {money(billGstPaise)}
+                  </div>
+                  <div className="text-lg font-semibold tracking-tight">Total {money(billTotal)}</div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button className="btn btn-primary" onClick={() => void saveBill()} disabled={billLines.length === 0}>Save bill</button>
+                  {lastBillId && <button className="btn btn-secondary" onClick={() => void openBill(lastBillId).then(() => setView("bills"))}>View last bill</button>}
+                </div>
+                {billMsg && <p role="status" className="rounded bg-surface-2 px-3 py-2 text-sm">{billMsg}</p>}
               </div>
-              <p className="text-sm text-muted">Subtotal {money(billSubtotal)} · GST {money(billGstPaise)} · <b>Total {money(billTotal)}</b></p>
-              {billMsg && <p role="status" className="rounded bg-surface-2 px-3 py-2 text-sm">{billMsg}</p>}
-              {lastBillId && <button className="btn btn-secondary" onClick={() => void openBill(lastBillId).then(() => setView("bills"))}>View last bill</button>}
             </div>
           </section>
         )}
