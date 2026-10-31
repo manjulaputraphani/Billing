@@ -155,7 +155,7 @@ function relativeTime(value: string | Date): string {
 export default function App() {
   const [checking, setChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [view, setView] = useState<View>("bills");
+  const [view, setView] = useState<View>("dashboard");
   const [bills, setBills] = useState<BillRow[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [activity, setActivity] = useState<ActivityRow[]>([]);
