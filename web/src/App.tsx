@@ -923,7 +923,7 @@ export default function App() {
                         <button className="btn-mini" onClick={() => setItemForm({ id: item.id, name: item.name, unit: item.unit, category: item.category ?? "", minStock: "" })}>Edit</button>
                         {user.role === "owner" && (
                           <button
-                            className="ml-3 text-sm text-red-700 underline"
+                            className="btn-mini btn-mini-danger ml-2"
                             onClick={async () => {
                               if (!window.confirm(`Delete ${item.name}?`)) return;
                               try {
