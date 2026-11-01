@@ -16,12 +16,14 @@ RBAC (Owner / CA / Staff) on web + desktop; macOS `.app`/`.dmg` built 2026-10-31
   "Load more" (`listActivity(db, limit, offset)`, `/api/activity?offset=`). (3) 14-day chart
   window now IST: `today−13 … today` via `(now() at time zone 'Asia/Kolkata')::date` (was
   UTC `current_date`).
-- **Chart empty = missing data, not the query** (verified read-only against the live DB):
-  `sale_bills`, `sale_items`, `expenses`, `sales` all have 0 rows. The 4 bills dated
-  30–31 Oct were deleted as "development data" in commit `aebc6d1` (2026-10-31 cleanup;
-  customers/suppliers labelled TEST too). Restore point: `docs/db-backup-2026-10-31.sql`
-  (bills SD-2026-000001…4 + lines + movements + batch qtys as of then). **Awaiting owner
-  decision: restore them or re-enter the sales.** Live worker is current (routes 401, not 404).
+- **Chart empty = deleted data, not the query** (verified read-only against the live DB):
+  the 4 bills dated 30–31 Oct were deleted as "development data" in commit `aebc6d1`
+  (2026-10-31 cleanup). **Restored 2026-11-01**: `SD-2026-000002` (30 Oct, KALKI ENTERPRISES,
+  ₹7,875) verbatim from `docs/db-backup-2026-10-31.sql` (bill + line + movement + batch link;
+  batch 2: 1000→500; audit `sale.restore`; id sequences fixed; KALKI's customer row was also
+  gone and was restored). Chart now shows sales on 30 Oct. **Open**: `SD-2026-000003` /
+  `SD-2026-000004` (31 Oct, TEST-labelled customers) + `SD-2026-000001` (cancelled) skipped —
+  owner to confirm if any is a real 31 Oct sale (restore the same way) or re-enter it.
 - **RBAC** (2026-10-31): `src/logic/permissions.ts` (13 modules × actions), `role_permissions`
   table, `app_users.role` `ca` + `access_until`; `routePermission()` 403 on every route;
   sidebar/actions filtered; Settings Members + owner-only Roles grid. Live DB altered by
@@ -32,16 +34,15 @@ RBAC (Owner / CA / Staff) on web + desktop; macOS `.app`/`.dmg` built 2026-10-31
   web build ok.
 
 ## Release plan (Windows / Android / Linux)
-Full plan: **`docs/RELEASE_PLAN.md`**. Summary: **Windows `.exe`** — fix identifier
-(`com.stocktracker.app` → `com.sdhhe.stocktracker`), tag `v1.0.0` → `release.yml` builds
-NSIS `.exe` + `.msi` (unsigned → SmartScreen unless a cert is bought). **Android** — desktop
-UI is 1024 px / keyring desktop-only → use the responsive **web app**: PWA (manifest + SW)
-then **TWA APK** via Bubblewrap (1–2 days). **Decisions**: PWA+TWA vs Tauri shell vs offline
-bundle; sideload vs Play; Windows signing cert; offline needed on phone?
+Full plan: **`docs/RELEASE_PLAN.md`**. **Windows**: fix identifier → tag `v1.0.0` →
+`release.yml` builds NSIS `.exe`/`.msi` (unsigned → SmartScreen warning). **Android**: use
+the responsive web app → PWA + TWA APK via Bubblewrap. **Open decisions**: PWA+TWA vs Tauri
+shell vs offline; sideload vs Play; Windows cert; offline needed on phone?
 
 ## Next tasks
-1. Owner decision: restore the 30–31 Oct bills from `docs/db-backup-2026-10-31.sql`, or
-   re-enter those sales (chart fills either way once rows exist).
+1. Owner decision: are `SD-2026-000003` / `SD-2026-000004` (31 Oct) real sales? If yes,
+   restore their rows from `docs/db-backup-2026-10-31.sql` the same way as `SD-2026-000002`;
+   if no, re-enter the real 31 Oct sale via Billing.
 2. Owner decision on the 4 release questions above.
 3. Windows: identifier fix → tag `v1.0.0` → download `.exe`/`.msi` from the draft release.
 4. Android: PWA then TWA APK (if approved).
@@ -54,3 +55,5 @@ bundle; sideload vs Play; Windows signing cert; offline needed on phone?
 - Desktop: `npm run tauri build` (macOS `.app`/`.dmg` in `src-tauri/target/release/bundle/`).
 - Tests: `npx vitest run --reporter=dot` (248) · `npm run test:db` (needs DATABASE_URL_TEST) ·
   `npx tsc --noEmit` clean (root + web + worker).
+## Blockers
+- Neon HTTP (fetch) is flaky from this machine: intermittent "TypeError: fetch failed" — retry 3–5× before trusting a failure.
