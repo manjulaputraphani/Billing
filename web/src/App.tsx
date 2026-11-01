@@ -205,6 +205,11 @@ function relativeTime(value: string | Date): string {
   return `${Math.floor(months / 12)} y ago`;
 }
 
+/** The dashboard card shows only the latest few activity rows (query-limited). */
+const DASHBOARD_ACTIVITY_ROWS = 4;
+/** The Activity screen pages 20 rows at a time ("Load more"). */
+const ACTIVITY_PAGE = 20;
+
 export default function App() {
   const [checking, setChecking] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -263,6 +268,8 @@ export default function App() {
   const [investment, setInvestment] = useState({ name: "", amount: "", date: new Date().toISOString().slice(0, 10), note: "" });
   const [investmentMsg, setInvestmentMsg] = useState<string | null>(null);
   const [activityFilter, setActivityFilter] = useState("");
+  const [activityHasMore, setActivityHasMore] = useState(false);
+  const [activityBusy, setActivityBusy] = useState(false);
   const [expense, setExpense] = useState({ category: "", amount: "", paidTo: "", note: "", type: "general", date: new Date().toISOString().slice(0, 10) });
   const [expenseMsg, setExpenseMsg] = useState<string | null>(null);
   const [shop, setShop] = useState<ShopDetails | null>(null);
@@ -369,16 +376,21 @@ export default function App() {
   }, [user, view, finYear]);
 
   /**
-   * Refresh the activity list whenever the Activity or Dashboard tab is opened —
+   * Load the activity feed whenever the Activity or Dashboard tab is opened —
    * otherwise a colleague's sign-in only appears after a full reload.
+   * The Dashboard only asks for the latest 4 rows; the Activity screen fetches
+   * its first page of 20 and offers "Load more".
    */
   useEffect(() => {
     if (!user || (view !== "activity" && view !== "dashboard")) return;
     let cancelled = false;
+    const limit = view === "dashboard" ? DASHBOARD_ACTIVITY_ROWS : ACTIVITY_PAGE;
     api
-      .activity()
+      .activity(limit, 0)
       .then((res) => {
-        if (!cancelled) setActivity(res.activity);
+        if (cancelled) return;
+        setActivity(res.activity);
+        setActivityHasMore(view === "activity" && res.activity.length >= ACTIVITY_PAGE);
       })
       .catch(() => undefined);
     return () => {
@@ -775,9 +787,39 @@ export default function App() {
     if (canView("purchases")) jobs.push(api.purchases().then((r) => setPurchasesList(r.purchases)));
     if (canView("bills")) jobs.push(api.bills().then((r) => setBills(r.bills)));
     if (canView("items")) jobs.push(api.items().then((r) => setItems(r.items)));
-    if (canView("activity")) jobs.push(api.activity().then((r) => setActivity(r.activity)));
     void Promise.allSettled(jobs);
   }, [user]);
+
+  /** The Activity screen: fetch the next page of 20 rows and append it. */
+  async function loadMoreActivity() {
+    setActivityBusy(true);
+    try {
+      const res = await api.activity(ACTIVITY_PAGE, activity.length);
+      setActivity((rows) => [
+        ...rows,
+        ...res.activity.filter((row) => !rows.some((existing) => existing.id === row.id)),
+      ]);
+      setActivityHasMore(res.activity.length >= ACTIVITY_PAGE);
+    } catch {
+      /* keep what is already loaded */
+    } finally {
+      setActivityBusy(false);
+    }
+  }
+
+  /** The Activity screen's Refresh button: start again from the newest row. */
+  async function refreshActivity() {
+    setActivityBusy(true);
+    try {
+      const res = await api.activity(ACTIVITY_PAGE, 0);
+      setActivity(res.activity);
+      setActivityHasMore(res.activity.length >= ACTIVITY_PAGE);
+    } catch {
+      /* keep what is already loaded */
+    } finally {
+      setActivityBusy(false);
+    }
+  }
 
   async function requestAccount(e: FormEvent) {
     e.preventDefault();
@@ -1096,8 +1138,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen md:flex">
-      {/* Desktop: the rail is sticky, so it stays put while the page scrolls */}
-      <aside className="nav-texture sticky top-0 hidden h-screen w-60 shrink-0 self-start flex-col overflow-y-auto bg-nav px-3 py-5 text-nav-text md:flex">
+      {/* Desktop: the rail is sticky and exactly one viewport tall, so it stays put
+          while only the main content scrolls. The nav scrolls internally when the
+          links outgrow the screen; the footer stays pinned at the bottom. */}
+      <aside className="nav-texture sticky top-0 hidden h-screen w-60 shrink-0 self-start flex-col bg-nav px-3 py-5 text-nav-text supports-[height:100dvh]:h-dvh md:flex">
         <div className="relative z-10 mb-6 flex items-start gap-3 px-2">
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-nav-text/15 text-nav-text">
             <IconCoffeeNav />
@@ -1108,7 +1152,7 @@ export default function App() {
             ENTERPRISES
           </p>
         </div>
-        <nav className="relative z-10 flex flex-col gap-4">
+        <nav className="thin-scrollbar relative z-10 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
           {navGroups.map((group, groupIndex) => (
             <div key={group.heading ?? `group-${groupIndex}`}>
               {group.heading ? (
@@ -1135,7 +1179,7 @@ export default function App() {
             </div>
           ))}
         </nav>
-        <div className="relative z-10 mt-auto space-y-3 px-2 pt-6 text-[11px]">
+        <div className="relative z-10 mt-auto shrink-0 space-y-3 px-2 pt-6 text-[11px]">
           <ThemeToggle onDark />
           <div className="space-y-1">
             <p className="text-nav-muted">{user.name} · {user.role}</p>
@@ -1187,7 +1231,7 @@ export default function App() {
               className="fixed inset-0 z-40 cursor-default bg-[#1C1612]/50"
               onClick={() => setMenuOpen(false)}
             />
-            <aside className="nav-texture fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto bg-nav px-3 py-4 text-nav-text">
+            <aside className="nav-texture thin-scrollbar fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto bg-nav px-3 py-4 text-nav-text">
               <div className="relative z-10 mb-5 flex items-start gap-3 px-2">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-nav-text/15 text-nav-text">
                   <IconCoffeeNav />
@@ -1361,7 +1405,7 @@ export default function App() {
             <div className="card p-4">
               <h2 className="mb-2 text-sm font-medium">Recent activity</h2>
               <ul className="divide-y divide-line text-sm">
-                {activity.slice(0, 8).map((row) => (
+                {activity.slice(0, DASHBOARD_ACTIVITY_ROWS).map((row) => (
                   <li key={row.id} className="flex flex-wrap items-baseline justify-between gap-2 py-1.5">
                     <span>{row.summary}</span>
                     <span className="flex items-baseline gap-1.5 text-xs">
@@ -1371,6 +1415,17 @@ export default function App() {
                   </li>
                 ))}
               </ul>
+              {can("activity", "view") && (
+                <div className="mt-2 text-right">
+                  <button
+                    type="button"
+                    className="text-xs text-muted underline hover:text-ink"
+                    onClick={() => setView("activity")}
+                  >
+                    View all activity →
+                  </button>
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -2872,7 +2927,8 @@ export default function App() {
                   </select>
                   <button
                     className="btn-mini"
-                    onClick={() => void api.activity().then((res) => setActivity(res.activity))}
+                    disabled={activityBusy}
+                    onClick={() => void refreshActivity()}
                   >
                     Refresh
                   </button>
@@ -2899,6 +2955,18 @@ export default function App() {
                 </div>
               ))}
               {shown.length === 0 && <p className="text-sm text-muted">No activity yet.</p>}
+              {activityHasMore && (
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    className="btn-mini"
+                    disabled={activityBusy}
+                    onClick={() => void loadMoreActivity()}
+                  >
+                    {activityBusy ? "Loading…" : "Load more"}
+                  </button>
+                </div>
+              )}
             </section>
           );
         })()}

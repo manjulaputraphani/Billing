@@ -48,8 +48,8 @@ export type ActivityRow = {
   summary: string;
 };
 
-/** Newest first, for the Settings screen. */
-export async function listActivity(db: Db, limit = 25): Promise<ActivityRow[]> {
+/** Newest first. `offset` pages through the list (the Activity screen loads 20 at a time). */
+export async function listActivity(db: Db, limit = 25, offset = 0): Promise<ActivityRow[]> {
   return db
     .select({
       id: activityLog.id,
@@ -60,5 +60,6 @@ export async function listActivity(db: Db, limit = 25): Promise<ActivityRow[]> {
     })
     .from(activityLog)
     .orderBy(desc(activityLog.at), desc(activityLog.id))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 }

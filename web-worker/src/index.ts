@@ -542,7 +542,8 @@ export default {
 
       if (url.pathname === "/api/activity" && request.method === "GET") {
         const limit = Math.min(Number(url.searchParams.get("limit")) || 25, 200);
-        return json({ activity: await listActivity(db, limit) });
+        const offset = Math.min(Math.max(Number(url.searchParams.get("offset")) || 0, 0), 10_000);
+        return json({ activity: await listActivity(db, limit, offset) });
       }
 
       if (url.pathname === "/api/shop" && request.method === "GET") {
@@ -550,11 +551,15 @@ export default {
       }
 
       if (url.pathname === "/api/stats/daily" && request.method === "GET") {
+        // Rolling window: "today" in Asia/Kolkata (the shop's sale/expense dates are
+        // IST calendar dates) minus (days − 1) through today — NOT the current month
+        // and not `current_date`, which follows the UTC database clock and shifts the
+        // window around midnight IST.
         const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 14, 7), 31);
         const rows = await sqlQuery(env, `select d::date::text as date,
           coalesce((select sum(total_paise) from sale_bills b where not b.cancelled and b.sale_date = d::date),0)::bigint as sales,
           coalesce((select sum(amount_paise) from expenses e where e.expense_date = d::date),0)::bigint as expenses
-          from generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d`, [days]);
+          from generate_series((now() at time zone 'Asia/Kolkata')::date - ($1::int - 1), (now() at time zone 'Asia/Kolkata')::date, interval '1 day') d`, [days]);
         return json({ daily: rows });
       }
 

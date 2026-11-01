@@ -429,10 +429,29 @@
 /* ------------------------------------------------------------------
    Sidebar texture — a faint coffee-bean pattern (inline SVG, no image
    file). It sits BEHIND the text, so the contrast never changes.
+   NOTE: no `position` here on purpose — this rule is unlayered CSS and
+   would override the Tailwind `sticky`/`fixed` utilities on the same
+   element (the sidebar must stay pinned while the page scrolls). Both
+   usages already carry their own positioning utility.
    ------------------------------------------------------------------ */
 .nav-texture {
-  position: relative;
   isolation: isolate;
+}
+
+/* Thin, subtle scrollbar for the sidebar's internal nav scroll. */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
 }
 .nav-texture::before {
   content: "";
