@@ -5,6 +5,7 @@ import Bills from "./Bills";
 import { DbProvider } from "../lib/db-context";
 import { cancelSaleBill, getSaleBill, listSaleBills, type SaleBillRow } from "../db/billing";
 import { sendEmail } from "../lib/email";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 vi.mock("../db/client", () => ({
   getDb: vi.fn(() => ({})),
@@ -40,6 +41,7 @@ vi.mock("../lib/email", () => ({
   billEmailSubject: (billNo: string, shopName: string) => `Invoice ${billNo} — ${shopName}`,
 }));
 vi.mock("../db/activity", () => ({ logActivity: vi.fn(async () => {}) }));
+vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
 vi.mock("../lib/secrets", () => ({
   getSecret: vi.fn(async () => "app-password"),
   SECRET_KEYS: { SMTP_PASSWORD: "SMTP_PASSWORD" },
@@ -117,6 +119,7 @@ beforeEach(() => {
   vi.mocked(listSaleBills).mockReset().mockResolvedValue(ROWS);
   vi.mocked(getSaleBill).mockReset().mockResolvedValue(DETAIL);
   vi.mocked(cancelSaleBill).mockReset().mockResolvedValue({ restored: 1 });
+  vi.mocked(openUrl).mockReset();
 });
 
 describe("Bills list", () => {
@@ -207,5 +210,37 @@ describe("Bills list", () => {
     renderPage();
     await screen.findByText("SD-2026-000002");
     expect(screen.getAllByRole("button", { name: /^Cancel$/ })).toHaveLength(1);
+  });
+
+  it("opens WhatsApp with the bill summary for the customer's phone", async () => {
+    vi.mocked(getSaleBill).mockResolvedValue({ ...DETAIL, customerPhone: "+91 98765 43210" });
+    renderPage();
+    const user = userEvent.setup();
+    const [viewButton] = await screen.findAllByRole("button", { name: "View" });
+    await user.click(viewButton);
+    await screen.findByTestId("bills-detail");
+
+    await user.click(screen.getByTestId("bills-whatsapp"));
+
+    expect(openUrl).toHaveBeenCalledTimes(1);
+    const link = String(vi.mocked(openUrl).mock.calls[0][0]);
+    expect(link.startsWith("https://wa.me/919876543210?text=")).toBe(true);
+    const text = decodeURIComponent(link.split("text=")[1]);
+    expect(text).toContain("SD-2026-000001");
+    expect(text).toContain("Total:");
+    expect(await screen.findByText(/WhatsApp opened/)).toBeInTheDocument();
+  });
+
+  it("refuses WhatsApp when the customer has no phone", async () => {
+    renderPage();
+    const user = userEvent.setup();
+    const [viewButton] = await screen.findAllByRole("button", { name: "View" });
+    await user.click(viewButton);
+    await screen.findByTestId("bills-detail");
+
+    await user.click(screen.getByTestId("bills-whatsapp"));
+
+    expect(openUrl).not.toHaveBeenCalled();
+    expect(await screen.findByText(/Add the customer's phone/)).toBeInTheDocument();
   });
 });

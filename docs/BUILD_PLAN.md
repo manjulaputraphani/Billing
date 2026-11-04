@@ -174,6 +174,11 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   customer). Bills → View → **Email bill** sends the HTML invoice from the shop's address and logs
   `bill.email`. Rust command `send_email` via `lettre` (rustls). Tested with GSTIN 37JAGPM1479E1ZE
   (valid): bill SD-2026-000004. 203 tests green, cargo check clean.
+- [x] **T-10.5 WhatsApp bill** — Bills → View → **WhatsApp bill** opens the customer's wa.me chat
+  (10-digit mobile → +91; 0/00 prefixes stripped; +NN country codes kept) with a pre-filled summary
+  (bill no, date, total, credit due, thanks); logs `bill.whatsapp`; no phone → friendly error.
+  wa.me text links can't carry files — attach the PDF via Print / Save PDF manually. First slice of
+  V2-P12's WhatsApp share; no new libraries (Tauri opener plugin). 259 tests green, tsc clean.
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO

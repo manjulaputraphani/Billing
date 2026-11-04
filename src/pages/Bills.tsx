@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   cancelSaleBill,
   getSaleBill,
@@ -11,6 +12,7 @@ import { getEmailSettings, getShopDetails, type ShopDetails } from "../db/settin
 import { logActivity } from "../db/activity";
 import { getSecret, SECRET_KEYS } from "../lib/secrets";
 import { billEmailSubject, sendEmail } from "../lib/email";
+import { billWhatsAppText, buildWhatsAppLink } from "../lib/whatsapp";
 import { useDb, useDbUrl } from "../lib/db-context";
 import { printBill, buildBillHtml } from "../lib/printBill";
 import { formatRupees } from "../logic/units";
@@ -31,6 +33,7 @@ export default function Bills() {
   const [loading, setLoading] = useState(true);
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [waStatus, setWaStatus] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [bills, shopRow] = await Promise.all([listSaleBills(db, 100), getShopDetails(db)]);
@@ -134,6 +137,30 @@ export default function Bills() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setEmailBusy(false);
+    }
+  }
+
+  /** Open WhatsApp with the customer's chat and the bill summary pre-filled. */
+  async function whatsappBill() {
+    if (!detail || !shop) return;
+    setError(null);
+    setWaStatus(null);
+    const link = buildWhatsAppLink(detail.customerPhone, billWhatsAppText(detail, shop.name));
+    if (!link) {
+      setError("Add the customer's phone in GST Billing first (it is saved with the customer)");
+      return;
+    }
+    try {
+      await openUrl(link);
+      await logActivity(db, {
+        event: "bill.whatsapp",
+        summary: `Bill ${detail.billNo} shared on WhatsApp to ${detail.customerPhone}`,
+        entity: "sale",
+        entityId: detail.id,
+      });
+      setWaStatus("WhatsApp opened — press Send");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -321,6 +348,14 @@ export default function Bills() {
             </button>
             <button
               type="button"
+              className="btn-ghost"
+              data-testid="bills-whatsapp"
+              onClick={() => void whatsappBill()}
+            >
+              WhatsApp bill
+            </button>
+            <button
+              type="button"
               className="btn-primary"
               data-testid="bills-print"
               onClick={() => shop && printBill(detail, shop)}
@@ -340,7 +375,9 @@ export default function Bills() {
                 Cancel bill
               </button>
             )}
-            {emailStatus && <span className="self-center text-sm text-success-ink">{emailStatus}</span>}
+            {(emailStatus || waStatus) && (
+              <span className="self-center text-sm text-success-ink">{emailStatus ?? waStatus}</span>
+            )}
           </div>
         </section>
       )}
