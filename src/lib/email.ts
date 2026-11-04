@@ -10,6 +10,7 @@ export type SendEmailInput = {
   to: string;
   subject: string;
   html: string;
+  attachmentPath?: string;
 };
 
 /** Send an email through the Rust SMTP command (Gmail app password from Keychain). */

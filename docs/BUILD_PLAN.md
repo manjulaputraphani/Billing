@@ -179,6 +179,13 @@ Each task: Files · Steps · Acceptance. Do ONE task per session if context is s
   (bill no, date, total, credit due, thanks); logs `bill.whatsapp`; no phone → friendly error.
   wa.me text links can't carry files — attach the PDF via Print / Save PDF manually. First slice of
   V2-P12's WhatsApp share; no new libraries (Tauri opener plugin). 259 tests green, tsc clean.
+- [x] **T-10.6 Bill PDF bin + email attachment** — Email bill now generates the invoice PDF
+  (jspdf+html2canvas via `src/lib/billPdf.ts`), writes it to a temp bin (Rust `save_bill_pdf`,
+  name-sanitised; path-guarded `delete_bill_pdf`), attaches it (lettre `Attachment`), and
+  **auto-deletes on success**; WhatsApp bill opens the chat + reveals the PDF in Finder with a
+  "Delete PDF" chip; the bin purges >24 h files when Bills loads (`purge_bill_bin`). Email falls
+  back to HTML if PDF generation fails. Libs logged in DECISIONS.md. Web email PDF pending (worker
+  email is HTML-only). 262 tests green, tsc + cargo check/test clean.
 - [ ] **V2-P11** Credit (udhaar) + supplier dues, ledgers, payments, receivable/payable cards
 - [ ] **V2-P12** Pack units + bill PDF/print/WhatsApp share
 - [ ] **V2-P13** GST + purchase bill photo (file) + expiry/FEFO

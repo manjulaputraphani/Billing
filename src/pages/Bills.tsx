@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import {
   cancelSaleBill,
   getSaleBill,
@@ -13,6 +13,7 @@ import { logActivity } from "../db/activity";
 import { getSecret, SECRET_KEYS } from "../lib/secrets";
 import { billEmailSubject, sendEmail } from "../lib/email";
 import { billWhatsAppText, buildWhatsAppLink } from "../lib/whatsapp";
+import { deleteBillPdf, purgeBillBin, saveBillPdf } from "../lib/billPdf";
 import { useDb, useDbUrl } from "../lib/db-context";
 import { printBill, buildBillHtml } from "../lib/printBill";
 import { formatRupees } from "../logic/units";
@@ -34,6 +35,7 @@ export default function Bills() {
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [waStatus, setWaStatus] = useState<string | null>(null);
+  const [waPdf, setWaPdf] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [bills, shopRow] = await Promise.all([listSaleBills(db, 100), getShopDetails(db)]);
@@ -47,6 +49,11 @@ export default function Bills() {
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
   }, [load]);
+
+  // Bill PDFs left in the bin from yesterday are no longer needed.
+  useEffect(() => {
+    void purgeBillBin();
+  }, []);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -115,6 +122,12 @@ export default function Bills() {
         setError("Set up email in Settings → Email (sender address + Gmail app password)");
         return;
       }
+      let attachmentPath: string | undefined;
+      try {
+        attachmentPath = await saveBillPdf(detail, shop);
+      } catch {
+        // PDF failed — still email the HTML invoice instead of blocking the bill.
+      }
       await sendEmail({
         host: cfg.host,
         port: Number(cfg.port) || 465,
@@ -125,6 +138,7 @@ export default function Bills() {
         to: detail.customerEmail,
         subject: billEmailSubject(detail.billNo, shop.name),
         html: buildBillHtml(detail, shop),
+        attachmentPath,
       });
       await logActivity(db, {
         event: "bill.email",
@@ -132,7 +146,8 @@ export default function Bills() {
         entity: "sale",
         entityId: detail.id,
       });
-      setEmailStatus(`Emailed to ${detail.customerEmail}`);
+      setEmailStatus(`Emailed PDF to ${detail.customerEmail}`);
+      if (attachmentPath) await deleteBillPdf(attachmentPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -145,20 +160,45 @@ export default function Bills() {
     if (!detail || !shop) return;
     setError(null);
     setWaStatus(null);
+    setWaPdf(null);
     const link = buildWhatsAppLink(detail.customerPhone, billWhatsAppText(detail, shop.name));
     if (!link) {
       setError("Add the customer's phone in GST Billing first (it is saved with the customer)");
       return;
     }
     try {
+      let pdfPath: string | null = null;
+      try {
+        pdfPath = await saveBillPdf(detail, shop);
+      } catch {
+        // No PDF — the text summary still shares fine.
+      }
       await openUrl(link);
+      if (pdfPath) await revealItemInDir(pdfPath);
       await logActivity(db, {
         event: "bill.whatsapp",
         summary: `Bill ${detail.billNo} shared on WhatsApp to ${detail.customerPhone}`,
         entity: "sale",
         entityId: detail.id,
       });
-      setWaStatus("WhatsApp opened — press Send");
+      setWaPdf(pdfPath);
+      setWaStatus(
+        pdfPath
+          ? "WhatsApp opened — attach the PDF shown in Finder, then press Send"
+          : "WhatsApp opened — press Send",
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  /** Drop the WhatsApp PDF once it has been sent. */
+  async function cleanupWaPdf() {
+    if (!waPdf) return;
+    try {
+      await deleteBillPdf(waPdf);
+      setWaPdf(null);
+      setWaStatus("PDF deleted from the bin");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -376,7 +416,19 @@ export default function Bills() {
               </button>
             )}
             {(emailStatus || waStatus) && (
-              <span className="self-center text-sm text-success-ink">{emailStatus ?? waStatus}</span>
+              <span className="self-center text-sm text-success-ink">
+                {emailStatus ?? waStatus}
+                {waPdf && !emailStatus && (
+                  <button
+                    type="button"
+                    className="ml-2 underline"
+                    data-testid="bills-delete-pdf"
+                    onClick={() => void cleanupWaPdf()}
+                  >
+                    Delete PDF
+                  </button>
+                )}
+              </span>
             )}
           </div>
         </section>

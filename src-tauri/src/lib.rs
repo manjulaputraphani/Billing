@@ -116,6 +116,7 @@ struct EmailInput {
     to: String,
     subject: String,
     html: String,
+    attachment_path: Option<String>,
 }
 
 /// Send the invoice email from the shop's own address (Gmail app password).
@@ -128,7 +129,7 @@ async fn send_email(input: EmailInput) -> Result<(), String> {
 
 fn send_email_blocking(input: EmailInput) -> Result<(), String> {
     use lettre::message::header::ContentType;
-    use lettre::message::Mailbox;
+    use lettre::message::{Attachment, Mailbox, MultiPart, SinglePart};
     use lettre::transport::smtp::authentication::Credentials;
     use lettre::{Message, SmtpTransport, Transport};
 
@@ -139,13 +140,41 @@ fn send_email_blocking(input: EmailInput) -> Result<(), String> {
             .parse()
             .map_err(|_| "Invalid sender email")?,
     );
-    let message = Message::builder()
-        .from(from)
-        .to(input.to.parse().map_err(|_| "Invalid recipient email")?)
-        .subject(input.subject)
-        .header(ContentType::TEXT_HTML)
-        .body(input.html)
-        .map_err(|e| e.to_string())?;
+    let message = match &input.attachment_path {
+        Some(path) => {
+            let bytes =
+                std::fs::read(path).map_err(|e| format!("Cannot read the bill PDF: {e}"))?;
+            let name = std::path::Path::new(path)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "bill.pdf".to_string());
+            let attachment = Attachment::new(name).body(
+                bytes,
+                ContentType::parse("application/pdf").map_err(|e| e.to_string())?,
+            );
+            Message::builder()
+                .from(from.clone())
+                .to(input.to.parse().map_err(|_| "Invalid recipient email")?)
+                .subject(input.subject.clone())
+                .multipart(
+                    MultiPart::mixed()
+                        .singlepart(
+                            SinglePart::builder()
+                                .header(ContentType::TEXT_HTML)
+                                .body(input.html.clone()),
+                        )
+                        .singlepart(attachment),
+                )
+                .map_err(|e| e.to_string())?
+        }
+        None => Message::builder()
+            .from(from)
+            .to(input.to.parse().map_err(|_| "Invalid recipient email")?)
+            .subject(input.subject)
+            .header(ContentType::TEXT_HTML)
+            .body(input.html)
+            .map_err(|e| e.to_string())?,
+    };
 
     let mailer = SmtpTransport::relay(&input.host)
         .map_err(|e| e.to_string())?
@@ -154,6 +183,70 @@ fn send_email_blocking(input: EmailInput) -> Result<(), String> {
         .build();
 
     mailer.send(&message).map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Temp folder where generated bill PDFs wait to be attached or emailed.
+fn bill_bin_dir() -> std::path::PathBuf {
+    std::env::temp_dir().join("stock-tracker-bills")
+}
+
+/// Keep only safe filename characters (no path tricks).
+fn sanitize_pdf_name(name: &str) -> String {
+    let clean: String = name
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.')
+        .collect();
+    if clean.is_empty() {
+        "bill.pdf".to_string()
+    } else {
+        clean
+    }
+}
+
+/// Write a generated bill PDF into the bin; returns the full path.
+#[tauri::command]
+fn save_bill_pdf(name: String, bytes: Vec<u8>) -> Result<String, String> {
+    use std::io::Write;
+    let dir = bill_bin_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join(sanitize_pdf_name(&name));
+    let mut file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+    file.write_all(&bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// Delete a bin PDF (refuses paths outside the bin).
+#[tauri::command]
+fn delete_bill_pdf(path: String) -> Result<(), String> {
+    let dir = bill_bin_dir();
+    let path = std::path::Path::new(&path);
+    if !path.starts_with(&dir) {
+        return Err("Refusing to delete outside the bill bin".into());
+    }
+    std::fs::remove_file(path).map_err(|e| e.to_string())
+}
+
+/// Delete PDFs left in the bin for more than a day (called when Bills loads).
+#[tauri::command]
+fn purge_bill_bin() -> Result<u32, String> {
+    use std::time::Duration;
+    let dir = bill_bin_dir();
+    let mut removed = 0u32;
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let Ok(meta) = entry.metadata() else { continue };
+            let stale = meta
+                .modified()
+                .ok()
+                .and_then(|m| m.elapsed().ok())
+                .map(|age| age > Duration::from_secs(24 * 3600))
+                .unwrap_or(false);
+            if meta.is_file() && stale && std::fs::remove_file(entry.path()).is_ok() {
+                removed += 1;
+            }
+        }
+    }
+    Ok(removed)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -168,7 +261,10 @@ pub fn run() {    tauri::Builder::default()
             verify_pin,
             hash_password,
             verify_password,
-            send_email
+            send_email,
+            save_bill_pdf,
+            delete_bill_pdf,
+            purge_bill_bin
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

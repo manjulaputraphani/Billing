@@ -5,7 +5,8 @@ import Bills from "./Bills";
 import { DbProvider } from "../lib/db-context";
 import { cancelSaleBill, getSaleBill, listSaleBills, type SaleBillRow } from "../db/billing";
 import { sendEmail } from "../lib/email";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
+import { deleteBillPdf, purgeBillBin, saveBillPdf } from "../lib/billPdf";
 
 vi.mock("../db/client", () => ({
   getDb: vi.fn(() => ({})),
@@ -41,7 +42,15 @@ vi.mock("../lib/email", () => ({
   billEmailSubject: (billNo: string, shopName: string) => `Invoice ${billNo} — ${shopName}`,
 }));
 vi.mock("../db/activity", () => ({ logActivity: vi.fn(async () => {}) }));
-vi.mock("@tauri-apps/plugin-opener", () => ({ openUrl: vi.fn(async () => {}) }));
+vi.mock("@tauri-apps/plugin-opener", () => ({
+  openUrl: vi.fn(async () => {}),
+  revealItemInDir: vi.fn(async () => {}),
+}));
+vi.mock("../lib/billPdf", () => ({
+  saveBillPdf: vi.fn(async () => "/tmp/stock-tracker-bills/SD-2026-000001.pdf"),
+  deleteBillPdf: vi.fn(async () => {}),
+  purgeBillBin: vi.fn(async () => 0),
+}));
 vi.mock("../lib/secrets", () => ({
   getSecret: vi.fn(async () => "app-password"),
   SECRET_KEYS: { SMTP_PASSWORD: "SMTP_PASSWORD" },
@@ -120,6 +129,10 @@ beforeEach(() => {
   vi.mocked(getSaleBill).mockReset().mockResolvedValue(DETAIL);
   vi.mocked(cancelSaleBill).mockReset().mockResolvedValue({ restored: 1 });
   vi.mocked(openUrl).mockReset();
+  vi.mocked(revealItemInDir).mockReset();
+  vi.mocked(saveBillPdf).mockReset().mockResolvedValue("/tmp/stock-tracker-bills/SD-2026-000001.pdf");
+  vi.mocked(deleteBillPdf).mockReset();
+  vi.mocked(purgeBillBin).mockReset().mockResolvedValue(0);
 });
 
 describe("Bills list", () => {
@@ -199,11 +212,13 @@ describe("Bills list", () => {
       expect.objectContaining({
         to: "buyer@example.com",
         subject: expect.stringContaining("SD-2026-000001"),
+        attachmentPath: "/tmp/stock-tracker-bills/SD-2026-000001.pdf",
       }),
     );
     const call = vi.mocked(sendEmail).mock.calls[0][0];
     expect(call.html).toContain("ROBUSTA P BERRY");
-    expect(await screen.findByText(/Emailed to buyer@example.com/)).toBeInTheDocument();
+    expect(await screen.findByText(/Emailed PDF to buyer@example.com/)).toBeInTheDocument();
+    expect(deleteBillPdf).toHaveBeenCalledWith("/tmp/stock-tracker-bills/SD-2026-000001.pdf");
   });
 
   it("does not offer cancel for an already cancelled bill", async () => {
@@ -228,7 +243,13 @@ describe("Bills list", () => {
     const text = decodeURIComponent(link.split("text=")[1]);
     expect(text).toContain("SD-2026-000001");
     expect(text).toContain("Total:");
-    expect(await screen.findByText(/WhatsApp opened/)).toBeInTheDocument();
+    expect(saveBillPdf).toHaveBeenCalledTimes(1);
+    expect(revealItemInDir).toHaveBeenCalledWith("/tmp/stock-tracker-bills/SD-2026-000001.pdf");
+    expect(await screen.findByText(/WhatsApp opened — attach the PDF/)).toBeInTheDocument();
+
+    await user.click(screen.getByTestId("bills-delete-pdf"));
+    expect(deleteBillPdf).toHaveBeenCalledWith("/tmp/stock-tracker-bills/SD-2026-000001.pdf");
+    expect(await screen.findByText(/PDF deleted from the bin/)).toBeInTheDocument();
   });
 
   it("refuses WhatsApp when the customer has no phone", async () => {
@@ -241,6 +262,7 @@ describe("Bills list", () => {
     await user.click(screen.getByTestId("bills-whatsapp"));
 
     expect(openUrl).not.toHaveBeenCalled();
+    expect(saveBillPdf).not.toHaveBeenCalled();
     expect(await screen.findByText(/Add the customer's phone/)).toBeInTheDocument();
   });
 });

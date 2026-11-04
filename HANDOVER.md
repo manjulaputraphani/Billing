@@ -9,10 +9,13 @@ RBAC (Owner / CA / Staff) on web + desktop; macOS `.app`/`.dmg` built 2026-10-31
 
 ## Done
 - **T-10.5 + W7 WhatsApp bill (2026-11-04)**: desktop Bills → View → "WhatsApp bill" opens the
-  customer's wa.me chat (10-digit mobile → +91; 0/00 stripped; +NN kept) with pre-filled summary
-  (bill no, date, total, credit due, thanks); desktop logs `bill.whatsapp`; no phone → friendly
-  error. Web Invoices preview got the same button (shared `src/lib/whatsapp`; no web audit yet) —
-  deployed live 2026-11-04. PDF stays a manual attach (wa.me can't carry files). 259 green.
+  customer's wa.me chat (10-digit mobile → +91; 0/00 stripped; +NN kept) with pre-filled summary;
+  desktop logs `bill.whatsapp`; no phone → friendly error. Web Invoices got the same button
+  (shared `src/lib/whatsapp`; no web audit yet) — deployed live 2026-11-04.
+- **T-10.6 Bill PDF bin (2026-11-04)**: Email bill sends the PDF invoice and **auto-deletes it after
+  a successful send** (lettre attachment); WhatsApp bill reveals the PDF in Finder + "Delete PDF" chip;
+  bin purges >24 h files on Bills load (Rust save/delete/purge, path-guarded). jspdf+html2canvas
+  (DECISIONS logged). 262 green, tsc + cargo clean. **Desktop rebuild needed**; web email PDF pending.
 - **Web email LIVE (2026-11-04)**: `RESEND_API_KEY` set as worker secret via machine wrangler OAuth
   (user's CF API token has NO Workers perms). Test mail delivered to blvphani@gmail.com (Resend
   signup address — `onboarding@resend.dev` delivers ONLY there until a domain is verified → `MAIL_FROM`).
@@ -28,7 +31,7 @@ RBAC (Owner / CA / Staff) on web + desktop; macOS `.app`/`.dmg` built 2026-10-31
   still errors "activity_log already exists").
 - **Build**: macOS `.app` 7.19 MiB + `Stock Tracker_1.0.0_aarch64.dmg` 3.41 MiB in
   `src-tauri/target/release/bundle/`; `tauri.conf.json` targets `"all"`.
-- Checks green: `npx tsc --noEmit` clean (root + web + worker), `npx vitest run` = 259, web build ok.
+- Checks green: `npx tsc --noEmit` clean (root + web + worker), `npx vitest run` = 262, web build ok.
 
 ## Release plan (Windows / Android / Linux)
 Full plan: **`docs/RELEASE_PLAN.md`**. **Windows**: fix identifier → tag `v1.0.0` → `release.yml` builds
@@ -40,10 +43,11 @@ NSIS `.exe`/`.msi` (unsigned → SmartScreen warning). **Android**: responsive w
    `docs/db-backup-2026-10-31.sql` like SD-2026-000002, or re-enter via Billing.
 2. Owner decision on the 4 release questions above.
 3. Email finish: verify a domain in Resend → `wrangler secret put MAIL_FROM` → Send test via UI.
-4. Windows: identifier fix → tag `v1.0.0` → download `.exe`/`.msi` from the draft release.
-5. Android: PWA then TWA APK (if approved).
-6. T-4 lot-wise FY report; T-5 sale preview batch breakdown; Delivery-in-total decision;
-   `login-bg.webp`; rotate owner password; Playwright suites.
+4. Rebuild desktop `.app`/`.dmg` (`npm run tauri build`) so T-10.5/T-10.6 are in the installed app.
+5. Windows: identifier fix → tag `v1.0.0` → download `.exe`/`.msi` from the draft release.
+6. Android: PWA then TWA APK (if approved).
+7. T-4 lot-wise FY report; T-5 sale preview batch breakdown; Delivery-in-total decision;
+   `login-bg.webp`; rotate owner password; Playwright suites; web email PDF attachment.
 
 ## Commands
 - Web: `cd web-worker && ./node_modules/.bin/wrangler dev` · `cd web && npm run dev` ·

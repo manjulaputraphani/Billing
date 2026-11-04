@@ -712,7 +712,7 @@ export default function Settings({
         <div>
           <h2 className="text-sm font-medium">Email (send bills)</h2>
           <p className="text-sm text-muted">
-            Gmail SMTP + app password. Bills go out from your own address as HTML invoices.
+            Gmail SMTP + app password. Bills go out from your own address with the PDF invoice attached.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
