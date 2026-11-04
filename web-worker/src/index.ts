@@ -10,6 +10,8 @@ import { getDb, withTransaction } from "../../src/db/client";
 import { sql } from "drizzle-orm";
 import { listItems } from "../../src/db/items";
 import { getSaleBill, listSaleBills } from "../../src/db/billing";
+import { askAssistant, type ChatTurn } from "../../src/ai/chat";
+import { chat } from "../../src/ai/ollama";
 import { listExpenses } from "../../src/db/expenses";
 import { listActivity } from "../../src/db/activity";
 import { getShopDetails, saveShopDetails } from "../../src/db/settings";
@@ -42,6 +44,7 @@ export interface Env {
   DATABASE_URL?: string;
   SESSION_SECRET?: string;
   RESEND_API_KEY?: string;
+  OLLAMA_API_KEY?: string;
   MAIL_FROM?: string;
   ASSETS?: { fetch: typeof fetch };
 }
@@ -666,6 +669,23 @@ export default {
       const body = ["POST", "PUT"].includes(request.method)
         ? await request.json().catch(() => ({}))
         : {};
+
+      if (url.pathname === "/api/ai/chat" && request.method === "POST") {
+        if (!env.OLLAMA_API_KEY) {
+          return json({ error: "AI is not configured (missing OLLAMA_API_KEY secret)" }, { status: 503 });
+        }
+        const message = String(body.message ?? "").trim();
+        if (!message) return json({ error: "Message is required" }, { status: 400 });
+        const history = (Array.isArray(body.history) ? body.history : []) as ChatTurn[];
+        const config = { mode: "cloud" as const, apiKey: env.OLLAMA_API_KEY, model: "glm-5.3-flash:cloud" };
+        const result = await askAssistant(db, config, history, message, (c, m, t) =>
+          chat(c, m, t, globalThis.fetch),
+        );
+        await asActor(actor, () =>
+          logActivity(db, { event: "ai.chat", summary: `AI asked: ${message.slice(0, 60)}`, entity: "ai" }),
+        );
+        return json(result);
+      }
 
       if (url.pathname === "/api/roles" && (request.method === "POST" || request.method === "PUT")) {
         if (session.role !== "owner") return json({ error: "Owner only" }, { status: 403 });

@@ -284,6 +284,8 @@ export const api = {
   saveRolePermissions: (role: Role, permissions: RolePermissions) =>
     request<{ role: Role; permissions: RolePermissions }>("/api/roles", { method: "POST", body: JSON.stringify({ role, permissions }) }),
   emailBill: (id: number) => request<{ ok: boolean; to?: string }>(`/api/bills/${id}/email`, { method: "POST" }),
+  aiChat: (message: string, history: { role: "user" | "assistant"; content: string }[]) =>
+    request<{ answer: string; usedTools: string[] }>("/api/ai/chat", { method: "POST", body: JSON.stringify({ message, history }) }),
   finYears: () => request<{ finYears: string[] }>("/api/reports/fin-years"),
   finYearReport: (finYear: string) => request<{ report: FinYearReport }>(`/api/reports/fin-year?fy=${finYear}`),
   dealProfits: (finYear: string) => request<{ deals: DealProfit[] }>(`/api/reports/deals?fy=${finYear}`),

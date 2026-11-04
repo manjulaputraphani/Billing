@@ -64,8 +64,14 @@ export async function askAssistant(
     }
   }
 
+  // The model never stopped calling tools — ask once more WITHOUT tools so it must answer.
+  const final = await chatImpl(
+    config,
+    [...messages, { role: "user", content: "Answer now using what you found." }],
+    undefined,
+  );
   return {
-    answer: "That took too many steps. Please ask a simpler question.",
+    answer: final.content || "I could not find an answer in your data.",
     usedTools,
   };
 }

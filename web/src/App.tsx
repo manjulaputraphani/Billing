@@ -250,6 +250,9 @@ export default function App() {
   const [draft, setDraft] = useState({ itemId: "" as number | "", qty: "", rate: "", hsn: "" });
   const [billLines, setBillLines] = useState<{ itemId: number; name: string; unit: string; qtyBase: number; ratePaise: number; hsn: string; totalPaise: number }[]>([]);
   const [billMsg, setBillMsg] = useState<string | null>(null);
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const [lastBillId, setLastBillId] = useState<number | null>(null);
   const [stats, setStats] = useState<{ today_sales: number; month_sales: number; month_profit: number; month_expenses: number; credit_paise: number; credit_bills: number; low_stock: number } | null>(null);
   const [purchasesList, setPurchasesList] = useState<Array<{ id: number; name: string; unit: string; qty_base: number; unit_price_paise: number; total_paise: number; purchase_date: string; expenses_paise: number; supplier_name: string | null }>>([]);
@@ -967,6 +970,23 @@ export default function App() {
     }
   }
 
+  async function askAi() {
+    const text = aiInput.trim();
+    if (!text || aiBusy) return;
+    setAiBusy(true);
+    setAiInput("");
+    const history = aiMessages.slice(-10);
+    setAiMessages((m) => [...m, { role: "user", content: text }]);
+    try {
+      const res = await api.aiChat(text, history);
+      setAiMessages((m) => [...m, { role: "assistant", content: res.answer }]);
+    } catch (err) {
+      setAiMessages((m) => [...m, { role: "assistant", content: err instanceof Error ? err.message : String(err) }]);
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
   function whatsappBill(bill: BillDetail, shopName: string) {
     const link = buildWhatsAppLink(bill.customerPhone, billWhatsAppText(bill, shopName));
     if (!link) {
@@ -1302,6 +1322,41 @@ export default function App() {
         {error && <p role="alert" className="mb-4 rounded bg-error-soft px-3 py-2 text-sm text-error-ink">{error}</p>}
 
         {view === "dashboard" && (
+          <>
+          <section className="card space-y-3 p-4" data-testid="web-ai-chat">
+            <h2 className="text-lg font-semibold tracking-tight">Ask AI</h2>
+            <div className="max-h-72 space-y-2 overflow-y-auto text-sm" data-testid="web-ai-messages">
+              {aiMessages.length === 0 && (
+                <p className="text-muted">Ask anything read-only about your shop — sales, stock, expenses.</p>
+              )}
+              {aiMessages.map((m, i) => (
+                <p key={i} className={m.role === "user" ? "text-right" : ""}>
+                  <span className={"inline-block rounded-lg px-3 py-1.5 " + (m.role === "user" ? "bg-surface-2" : "bg-surface-3")}>
+                    {m.content}
+                  </span>
+                </p>
+              ))}
+              {aiBusy && (
+                <p>
+                  <span className="inline-block animate-pulse rounded-lg bg-surface-3 px-3 py-1.5">
+                    Thinking… (reading your data — can take up to a minute)
+                  </span>
+                </p>
+              )}
+            </div>
+            <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void askAi(); }}>
+              <input
+                className="input flex-1"
+                value={aiInput}
+                onChange={(e) => setAiInput(e.currentTarget.value)}
+                placeholder="e.g. total sales this month?"
+                aria-label="Ask AI"
+              />
+              <button className="btn btn-primary" type="submit" disabled={aiBusy}>
+                {aiBusy ? "Asking…" : "Ask"}
+              </button>
+            </form>
+          </section>
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Dashboard</h1>
@@ -1439,6 +1494,7 @@ export default function App() {
               )}
             </div>
           </section>
+          </>
         )}
 
         {view === "reports" && (

@@ -40,7 +40,7 @@ describe("chat with read-only tools (§F)", () => {
 
     const result = await askAssistant(db, { mode: "local", model: "m" }, [], "loop?", chatImpl);
     expect(result.usedTools).toHaveLength(5);
-    expect(result.answer).toMatch(/too many steps/i);
+    expect(result.answer).toMatch(/could not find an answer/i);
   });
 
   it("has no write tool at all — a delete request cannot be executed", async () => {
