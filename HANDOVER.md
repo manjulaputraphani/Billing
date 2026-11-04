@@ -15,7 +15,7 @@ RBAC (Owner / CA / Staff) on web + desktop; macOS `.app`/`.dmg` built 2026-10-31
 - **T-10.6 Bill PDF bin (2026-11-04)**: Email bill sends the PDF invoice and **auto-deletes it after
   a successful send** (lettre attachment); WhatsApp bill reveals the PDF in Finder + "Delete PDF" chip;
   bin purges >24 h files on Bills load (Rust save/delete/purge, path-guarded). jspdf+html2canvas
-  (DECISIONS logged). 262 green, tsc + cargo clean. **Desktop rebuild needed**; web email PDF pending.
+  (DECISIONS logged). 262 green, tsc + cargo clean. Desktop rebuilt (7.43 MiB); web email PDF pending.
 - **Web email LIVE (2026-11-04)**: `RESEND_API_KEY` set as worker secret via machine wrangler OAuth
   (user's CF API token has NO Workers perms). Test mail delivered to blvphani@gmail.com (Resend
   signup address — `onboarding@resend.dev` delivers ONLY there until a domain is verified → `MAIL_FROM`).
@@ -29,8 +29,8 @@ RBAC (Owner / CA / Staff) on web + desktop; macOS `.app`/`.dmg` built 2026-10-31
   `app_users.role` `ca` + `access_until`; `routePermission()` 403 on every route; sidebar/actions
   filtered; Settings Members + owner-only Roles grid. Live DB altered by one-off SQL (drizzle push
   still errors "activity_log already exists").
-- **Build**: macOS `.app` 7.19 MiB + `Stock Tracker_1.0.0_aarch64.dmg` 3.41 MiB in
-  `src-tauri/target/release/bundle/`; `tauri.conf.json` targets `"all"`.
+- **Build (2026-11-04)**: rebuilt `.app` 7.43 MiB + `Stock Tracker_1.0.0_aarch64.dmg` 3.63 MiB in
+  `src-tauri/target/release/bundle/` — includes T-10.5 WhatsApp + T-10.6 PDF bin.
 - Checks green: `npx tsc --noEmit` clean (root + web + worker), `npx vitest run` = 262, web build ok.
 
 ## Release plan (Windows / Android / Linux)
