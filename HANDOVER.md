@@ -8,10 +8,11 @@ Web LIVE: https://sdhhe-api.blvphani.workers.dev · Desktop = Tauri app in `src/
 RBAC (Owner / CA / Staff) on web + desktop; macOS `.app`/`.dmg` built 2026-10-31.
 
 ## Done
-- **T-10.5 WhatsApp bill (2026-11-04)**: desktop Bills → View → "WhatsApp bill" opens the customer's
-  wa.me chat (10-digit mobile → +91; 0/00 stripped; +NN kept) with pre-filled summary (bill no, date,
-  total, credit due, thanks); audit `bill.whatsapp`; no phone → friendly error. wa.me can't attach
-  files — attach the PDF manually (Print / Save PDF). `src/lib/whatsapp.ts`; no new libs. 259 green.
+- **T-10.5 + W7 WhatsApp bill (2026-11-04)**: desktop Bills → View → "WhatsApp bill" opens the
+  customer's wa.me chat (10-digit mobile → +91; 0/00 stripped; +NN kept) with pre-filled summary
+  (bill no, date, total, credit due, thanks); desktop logs `bill.whatsapp`; no phone → friendly
+  error. Web Invoices preview got the same button (shared `src/lib/whatsapp`; no web audit yet) —
+  deployed live 2026-11-04. PDF stays a manual attach (wa.me can't carry files). 259 green.
 - **Web email LIVE (2026-11-04)**: `RESEND_API_KEY` set as worker secret via machine wrangler OAuth
   (user's CF API token has NO Workers perms). Test mail delivered to blvphani@gmail.com (Resend
   signup address — `onboarding@resend.dev` delivers ONLY there until a domain is verified → `MAIL_FROM`).
@@ -39,10 +40,9 @@ NSIS `.exe`/`.msi` (unsigned → SmartScreen warning). **Android**: responsive w
    `docs/db-backup-2026-10-31.sql` like SD-2026-000002, or re-enter via Billing.
 2. Owner decision on the 4 release questions above.
 3. Email finish: verify a domain in Resend → `wrangler secret put MAIL_FROM` → Send test via UI.
-4. **W7 web WhatsApp bill**: mirror T-10.5 on the web Invoices tab (wa.me link + customer phone).
-5. Windows: identifier fix → tag `v1.0.0` → download `.exe`/`.msi` from the draft release.
-6. Android: PWA then TWA APK (if approved).
-7. T-4 lot-wise FY report; T-5 sale preview batch breakdown; Delivery-in-total decision;
+4. Windows: identifier fix → tag `v1.0.0` → download `.exe`/`.msi` from the draft release.
+5. Android: PWA then TWA APK (if approved).
+6. T-4 lot-wise FY report; T-5 sale preview batch breakdown; Delivery-in-total decision;
    `login-bg.webp`; rotate owner password; Playwright suites.
 
 ## Commands

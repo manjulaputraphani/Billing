@@ -17,6 +17,7 @@ import {
   type User,
 } from "./api";
 import { buildBillHtml } from "../../src/lib/printBill";
+import { billWhatsAppText, buildWhatsAppLink } from "../../src/lib/whatsapp";
 import type { ShopDetails } from "../../src/db/settings";
 import {
   ACTION_LABELS,
@@ -964,6 +965,16 @@ export default function App() {
     } catch (err) {
       setEmailStatus(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  function whatsappBill(bill: BillDetail, shopName: string) {
+    const link = buildWhatsAppLink(bill.customerPhone, billWhatsAppText(bill, shopName));
+    if (!link) {
+      setEmailStatus("Add the customer's phone in the bill first");
+      return;
+    }
+    window.open(link, "_blank", "noopener,noreferrer");
+    setEmailStatus("WhatsApp opened — press Send");
   }
 
   async function openBill(id: number) {
@@ -2088,7 +2099,10 @@ export default function App() {
                   <h2 className="text-lg font-semibold tracking-tight">Bill preview</h2>
                   <div className="flex items-center gap-3">
                     {can("bills", "export") && (
-                      <button className="btn btn-primary" onClick={() => void emailBill(bill.id)}>Email bill</button>
+                      <>
+                        <button className="btn btn-primary" onClick={() => void emailBill(bill.id)}>Email bill</button>
+                        <button className="btn" onClick={() => whatsappBill(bill, shop.name)}>WhatsApp bill</button>
+                      </>
                     )}
                     <button className="btn-mini" onClick={() => setBill(null)}>Close</button>
                   </div>
