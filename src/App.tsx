@@ -14,6 +14,8 @@ import Bills from "./pages/Bills";
 import Chat from "./pages/Chat";
 import ComingSoon from "./pages/ComingSoon";
 import Dashboard from "./pages/Dashboard";
+import Analytics from "./pages/Analytics";
+import Analysis from "./pages/Analysis";
 import Expenses from "./pages/Expenses";
 import Items from "./pages/Items";
 import Lock from "./pages/Lock";
@@ -99,6 +101,8 @@ export default function App() {
             <Route path="sales" element={<Guarded module="bills"><Sales /></Guarded>} />
             <Route path="expenses" element={<Guarded module="expenses"><Expenses /></Guarded>} />
             <Route path="reports" element={<Guarded module="reports"><Reports /></Guarded>} />
+            <Route path="analytics" element={<Guarded module="dashboard"><Analytics /></Guarded>} />
+            <Route path="analysis" element={<Guarded module="reports"><Analysis /></Guarded>} />
             <Route
               path="settings"
               element={

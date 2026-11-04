@@ -33,6 +33,8 @@ const GROUPS: { heading: string; links: Link[] }[] = [
     links: [
       { to: "/expenses", label: "Expenses", module: "expenses" },
       { to: "/reports", label: "Reports", module: "reports" },
+      { to: "/analytics", label: "Analytics", module: "dashboard" },
+      { to: "/analysis", label: "Batch Analysis", module: "reports" },
     ],
   },
   {

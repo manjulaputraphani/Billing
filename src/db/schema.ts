@@ -301,6 +301,16 @@ export const settings = pgTable("settings", {
   value: text("value").notNull(),
 });
 
+/** Capital ledger — added to the live DB by the web worker (2026-10-31); read-only here.
+ *  Treated as the capital account for analytics (opening/closing capital per period). */
+export const investments = pgTable("investments", {
+  id: serial("id").primaryKey(),
+  investorName: text("investor_name").notNull(),
+  amountPaise: integer("amount_paise").notNull(),
+  investedOn: date("invested_on").notNull(),
+  note: text("note"),
+});
+
 export const aiSuggestions = pgTable("ai_suggestions", {
   id: serial("id").primaryKey(),
   type: text("type").notNull(),
